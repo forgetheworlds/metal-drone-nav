@@ -1,0 +1,1 @@
+{"phase":"velocity","seed":1,"success":true,"collision":false,"timeout":false,"steps":365,"time_s":3.65,"path_m":3.8335,"final_error_m":0.345257,"peak_speed_mps":1.70006,"min_sensor_range_m":1.45245,"altitude_min_m":1.1562,"altitude_max_m":1.5,"tracking_rms_mps":0.243017,"sensor_updates":73,"raptor_loaded":true,"navigation_loaded":false}

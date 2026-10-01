@@ -1,0 +1,1 @@
+{"phase":"raptor-hover","seed":1,"success":false,"collision":false,"timeout":true,"steps":800,"time_s":8,"path_m":0.64545,"final_error_m":3.99169,"peak_speed_mps":0.758506,"min_sensor_range_m":1.79801,"altitude_min_m":1.21576,"altitude_max_m":1.5,"tracking_rms_mps":0.10923,"sensor_updates":160,"raptor_loaded":true,"navigation_loaded":false}

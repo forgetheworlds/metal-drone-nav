@@ -1,0 +1,56 @@
+{
+  "webots_release": "R2025a",
+  "calibration_prerequisite": "Pass both range_plane_calibration.wbt and range_plane_calibration_far.wbt before changing the camera mount, optical axis, projection, near clip, or pixel resampling.",
+  "sensor": {
+    "type": "RangeFinder",
+    "image_size": [20, 16],
+    "horizontal_fov_deg": 90,
+    "native_vertical_tan_half_fov": 0.8,
+    "policy_vertical_tan_half_fov": 0.75,
+    "body_mount_xyz_m": [0.08, 0, 0],
+    "rotation_axis_angle": [0, 0, 1, 0],
+    "measured_optical_axis_body_flu": [1, 0, 0],
+    "measured_image_left_axis_body_flu": [0, 1, 0],
+    "measured_image_up_axis_body_flu": [0, 0, 1]
+  },
+  "plane_measurements": [
+    {
+      "world_plane_front_face_x_m": 1.95,
+      "camera_world_xyz_m": [0.0778978, 0.0182189, 1.49313],
+      "body_to_world_rotation_row_major": [0.973723, -0.227736, 0, 0.227736, 0.973723, 0, 0, 0, 1],
+      "center_pixel_xy": [10, 8],
+      "expected_axial_depth_m": 1.9004,
+      "measured_axial_depth_m": 1.9,
+      "measured_resampled_ray_range_m": 1.90446
+    },
+    {
+      "world_plane_front_face_x_m": 2.95,
+      "camera_world_xyz_m": [0.0778978, 0.0182189, 1.49313],
+      "body_to_world_rotation_row_major": [0.973723, -0.227736, 0, 0.227736, 0.973723, 0, 0, 0, 1],
+      "center_pixel_xy": [10, 8],
+      "expected_axial_depth_m": 2.91552,
+      "measured_axial_depth_m": 2.916,
+      "measured_resampled_ray_range_m": 2.92284
+    }
+  ],
+  "direction_markers": {
+    "body_left_and_up": "top-left image quadrant; measured nearest depth 1.55987 m",
+    "body_right_and_down": "bottom-right image quadrant; measured nearest depth 1.53276 m",
+    "raw_log": "range-calibration-near.log"
+  },
+  "resampling": {
+    "method": "Map each target slope v in [-0.75, 0.75] to the nearest native row under tanV=0.8; take the closer adjacent axial depth conservatively; convert with target ray norm; then 2x2 min-pool to 8x10.",
+    "pose_history_origin": "RangeFinder world position, computed as body GPS position plus body-to-world rotation times [0.08, 0, 0]. The current query pose remains the vehicle body center.",
+    "near_clip_correction": "None. Two plane distances agree with the measured camera pose and pixel ray; no empirical depth offset is applied."
+  },
+  "provenance": [
+    "R2025a RangeFinder API returns metric axial depth and stores rows top-to-bottom: https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/rangefinder.md",
+    "The camera axis and mount were selected by the measured +X plane and left/up marker tests, not by generic OpenGL axis assumptions."
+  ],
+  "artifact_sha256": {
+    "protos/RaptorCrazyflie.proto": "ea23cf4e1adf13b320f4230e4a6c931cb621eb251742113b164ab0d3c3d27edf",
+    "controllers/raptor_webots/raptor_webots.cpp": "32066e37a8f246d5d88ac4abe0c3228e623f79cce8641b5f60b6e7e3167e7a0c",
+    "controllers/raptor_webots/raptor_webots": "02d54ab33b967a58c94e0e063a1ffca1dc773a593a4aa81035c61b3210eee8ed",
+    "benchmark.py": "feba6664f7db8d968241d9f88c7cdde5dfa02ac87e80d130764713782b7c9271"
+  }
+}

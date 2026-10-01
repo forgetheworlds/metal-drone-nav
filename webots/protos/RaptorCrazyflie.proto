@@ -1,0 +1,101 @@
+#VRML_SIM R2025a utf8
+# license: MIT
+# Compact FLU quadrotor. Webots Propeller and ODE handle thrust, torque, rigid-body
+# motion and contacts. Motor lag is applied by the controller at the measured 100 Hz.
+PROTO RaptorCrazyflie [
+  field SFVec3f translation 0 0 1.5
+  field SFRotation rotation 0 0 1 0
+  field SFString name "RaptorCrazyflie"
+  field SFString controller "raptor_webots"
+  field MFString controllerArgs []
+  field SFString customData ""
+  field SFBool supervisor TRUE
+]
+{
+  Robot {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "RAPTOR Crazyflie (Webots R2025a ODE)"
+    controller IS controller
+    controllerArgs IS controllerArgs
+    customData IS customData
+    supervisor IS supervisor
+    children [
+      InertialUnit { name "imu" }
+      Gyro { name "gyro" }
+      GPS { name "gps" }
+      RangeFinder {
+        name "depth"
+        translation 0.08 0 0
+        # Webots RangeFinder optical +X, left +Y and up +Z match body FLU.
+        rotation 0 0 1 0
+        projection "planar"
+        fieldOfView 1.570796327
+        width 20
+        height 16
+        near 0.03
+        minRange 0.03
+        maxRange 12
+        noise 0
+        resolution 0.001
+      }
+      Shape {
+        appearance PBRAppearance { baseColor 0.12 0.16 0.20 roughness 0.7 }
+        geometry Box { size 0.060 0.060 0.014 }
+      }
+      Shape {
+        appearance PBRAppearance { baseColor 0.08 0.08 0.08 roughness 0.8 }
+        geometry Box { size 0.084 0.008 0.008 }
+      }
+      Shape {
+        appearance PBRAppearance { baseColor 0.08 0.08 0.08 roughness 0.8 }
+        geometry Box { size 0.008 0.084 0.008 }
+      }
+      # RLtools rotor order: front-right, back-right, back-left, front-left.
+      # Alternating shaft speed signs and thrust coefficients yield +z thrust.
+      DEF PROP_FR Propeller {
+        shaftAxis 0 0 1 centerOfThrust 0.028 -0.028 0
+        thrustConstants -0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        # High kinematic torque avoids a second, unintended Webots ramp; the
+        # L2F rise/fall motor lag is applied in the controller.
+        device RotationalMotor { name "motor_fr" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation 0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+        slowHelix Solid { translation 0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+      }
+      DEF PROP_BR Propeller {
+        shaftAxis 0 0 1 centerOfThrust -0.028 -0.028 0
+        thrustConstants 0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        device RotationalMotor { name "motor_br" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation -0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+        slowHelix Solid { translation -0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+      }
+      DEF PROP_BL Propeller {
+        shaftAxis 0 0 1 centerOfThrust -0.028 0.028 0
+        thrustConstants -0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        device RotationalMotor { name "motor_bl" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation -0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+        slowHelix Solid { translation -0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+      }
+      DEF PROP_FL Propeller {
+        shaftAxis 0 0 1 centerOfThrust 0.028 0.028 0
+        thrustConstants 0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        device RotationalMotor { name "motor_fl" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation 0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+        slowHelix Solid { translation 0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 } geometry Cylinder { height 0.001 radius 0.025 } } ] }
+      }
+    ]
+    # Match the policy simulator's conservative 0.18 m collision envelope.
+    boundingObject Sphere { radius 0.18 }
+    physics Physics {
+      density -1
+      mass 0.0306
+      centerOfMass [ 0 0 0 ]
+      inertiaMatrix [ 0.00000941655673 0.00000964405170 0.00001745951732, 0 0 0 ]
+    }
+  }
+}

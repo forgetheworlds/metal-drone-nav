@@ -1,0 +1,8 @@
+controllers/**/build/
+controllers/**/*.o
+controllers/**/*.d
+controllers/raptor_webots/raptor_webots
+controllers/propeller_probe/propeller_probe
+worlds/.*.wbproj
+worlds/.run-*.wbt
+__pycache__/
