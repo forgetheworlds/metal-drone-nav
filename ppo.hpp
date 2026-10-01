@@ -69,6 +69,7 @@ inline void actor_forward(const float* obs, const ActorParams& p, float* hidden,
         float z = w[actor_b2_offset + a];
         const std::size_t row = actor_w2_offset + a * hidden_dim;
         for (std::size_t h = 0; h < hidden_dim; ++h) z += w[row + h] * hidden[h];
+        if constexpr(actor_obs_dim==184) { if(a<3)z+=obs[actor_obs_dim-3+a]; }
         mean[a] = z;
     }
 }

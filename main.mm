@@ -80,7 +80,7 @@ kernel void physics_fixture(device const RLPhysicsState* states [[buffer(0)]],de
 static std::string base_source() {
     std::string root=SOURCE_DIR;
     const std::string actor_obs_define="#define FIXED_PPO_ACTOR_OBS_DIM "+std::to_string(fixed_ppo::actor_obs_dim)+"\n";
-    return "#include <metal_stdlib>\nusing namespace metal;\n"+read_text(root+"/world.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+actor_obs_define+read_text(root+"/ppo.metal")+read_text(root+"/sim.metal")+control_test_kernels;
+    return "#include <metal_stdlib>\nusing namespace metal;\n"+read_text(root+"/world.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+actor_obs_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+control_test_kernels;
 }
 static std::vector<float> poses(size_t n) { std::vector<float> p(n*12,0);for(size_t i=0;i<n;i++){p[i*12+2]=1.5f;p[i*12+3]=p[i*12+7]=p[i*12+11]=1;}return p; }
 static void world_tests(Metal& m) {
@@ -375,10 +375,10 @@ struct SimRun {
 };
 struct SimConfig {
     uint32_t n=128,tick=0,mode=0,family=0,substeps=5,sensor_period=1,sensor_delay=0,command_delay=0,max_steps=200,seed=42,eval=0;
-    float speed=2,distance=4,wind=0,depth_noise=0,dropout=0;
+    float speed=2,distance=4,wind=0,depth_noise=0,dropout=0,risk_coef=0,entropy_coef=.005f,learning_rate=.0003f;uint32_t velocity_contract=1;
 };
-static_assert(sizeof(SimRun)==184 && sizeof(SimConfig)==64,"sim layout mismatch");
-static_assert(fixed_ppo::actor_obs_dim==181 || fixed_ppo::actor_obs_dim==661,
+static_assert(sizeof(SimRun)==184 && sizeof(SimConfig)==80,"sim layout mismatch");
+static_assert((fixed_ppo::actor_obs_dim==181||fixed_ppo::actor_obs_dim==184) || fixed_ppo::actor_obs_dim==661,
               "navigation actor supports only pooled-181 or raw-661 observations");
 using BufferBinding=std::pair<id<MTLBuffer>,size_t>;
 [[maybe_unused]] static void encode(Metal& m,id<MTLCommandBuffer> cb,const char* name,size_t count,std::initializer_list<BufferBinding> bindings,size_t group=128) {
@@ -456,8 +456,8 @@ struct Sim {
     }
 };
 struct EvalScore { double success=0,collision=0,timeout=1,goal_time=1e9; };
-static EvalScore sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr,float speed=1,float distance=3,uint32_t seed=700001,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0) {
-    SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=seed;cfg.distance=distance;cfg.speed=speed;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;require(sensor_delay<=6 && command_delay<=7,"delay rings support <=6 sensor frames and <=7 command steps");
+static EvalScore sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr,float speed=1,float distance=3,uint32_t seed=700001,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t velocity_contract=1) {
+    SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=seed;cfg.distance=distance;cfg.speed=speed;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;cfg.velocity_contract=velocity_contract;require(sensor_delay<=6 && command_delay<=7,"delay rings support <=6 sensor frames and <=7 command steps");
     Sim sim(m,cfg,32);if(actor)std::memcpy(sim.actor.contents,actor,fixed_ppo::actor_param_count*4);
     double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,cfg.max_steps);double gpu=m.finish(cb);sim.report("eval family="+std::to_string(family)+" mode="+std::to_string(mode),seconds()-start);std::cout<<"eval_GPU_s="<<gpu<<"\n";
     const auto* r=(const SimRun*)sim.runs.contents;double success=0,collision=0,timeout=0,time=0;for(uint i=0;i<cfg.n;i++){require(r[i].episodes==1,"eval must finish exactly one episode per seed");success+=r[i].successes;collision+=r[i].collisions;timeout+=r[i].timeouts;time+=r[i].success_time;}return {success/cfg.n,collision/cfg.n,timeout/cfg.n,success?time/success:1e9};
@@ -471,7 +471,7 @@ static void closed_loop_tests(Metal& m) {
     for(uint n=0;n<cfg.n;n++)for(uint tick=0;tick<32;tick++) {
         auto& s=states[n];auto& run=runs[n];const auto& world=worlds[n];float rotation[9];raptor_quaternion_matrix(s.orientation_wxyz,rotation);
         WVec delta=wv(world.goal[0]-s.position[0],world.goal[1]-s.position[1],world.goal[2]-s.position[2]);WVec d=wm(wn(delta),fmin(wl(delta),cfg.speed));
-        float body[3];for(uint j=0;j<3;j++)body[j]=(rotation[j]*d.x+rotation[3+j]*d.y+rotation[6+j]*d.z);body[2]*=.5f;
+        float body[3];for(uint j=0;j<3;j++)body[j]=(rotation[j]*d.x+rotation[3+j]*d.y+rotation[6+j]*d.z);if(cfg.velocity_contract==0)body[2]*=.5f;
         float velocity[3];for(uint j=0;j<3;j++)velocity[j]=rotation[j*3]*body[0]+rotation[j*3+1]*body[1]+rotation[j*3+2]*body[2];
         const float qtarget[4]={1,0,0,0},wind[3]={0,0,0};
         for(uint sub=0;sub<cfg.substeps;sub++) {
@@ -628,7 +628,14 @@ struct PpoCheckpointHeader {
     uint64_t optimizer_step;
     SimConfig config;
 };
-static_assert(sizeof(PpoCheckpointHeader) == 112, "PPO checkpoint header layout mismatch");
+static_assert(sizeof(PpoCheckpointHeader) == 128, "PPO checkpoint header layout mismatch");
+
+static PpoCheckpointHeader read_checkpoint_header(std::ifstream& file) {
+    PpoCheckpointHeader h{};static_assert(offsetof(PpoCheckpointHeader,config)==48,"checkpoint prefix");
+    file.read((char*)&h,48);require(file && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=5),"checkpoint prefix/version");
+    file.read((char*)&h.config,64);if(h.version>=4){file.read((char*)&h+112,16);if(h.version==4)h.config.velocity_contract=0;}else{h.config.risk_coef=0;h.config.entropy_coef=h.family==7?.002f:.005f;h.config.learning_rate=.0003f;h.config.velocity_contract=0;}
+    require(bool(file),"checkpoint header truncated");return h;
+}
 
 struct PPOTrainer {
     Sim& sim;
@@ -687,7 +694,7 @@ struct PPOTrainer {
         metric_rows=metal.buffer(size_t(updates_per_rollout)*4*4); metric_mean=metal.buffer(4*4);
         rows_b=scalar(metal,rows); envs_b=scalar(metal,sim.cfg.n); horizon_b=scalar(metal,sim.horizon);
         gamma_b=scalar(metal,.99f); lambda_b=scalar(metal,.95f); gae_epsilon_b=scalar(metal,1.0e-8f);
-        clip_b=scalar(metal,.2f); value_coef_b=scalar(metal,.5f); entropy_coef_b=scalar(metal,sim.cfg.family==7?.002f:.005f);
+        clip_b=scalar(metal,.2f); value_coef_b=scalar(metal,.5f); entropy_coef_b=scalar(metal,sim.cfg.entropy_coef);
         actor_count_b=scalar(metal,uint32_t(fixed_ppo::actor_param_count));
         critic_count_b=scalar(metal,uint32_t(fixed_ppo::critic_param_count));
         actor_max_norm_b=scalar(metal,.5f); critic_max_norm_b=scalar(metal,.5f);
@@ -708,15 +715,15 @@ struct PPOTrainer {
     }
     void load_checkpoint(const std::string& path,uint32_t family,uint32_t horizon,uint32_t n,uint32_t seed) {
         std::ifstream f(path,std::ios::binary); if(!f)return;
-        PpoCheckpointHeader h{}; f.read(reinterpret_cast<char*>(&h),sizeof(h));
-        require(f && std::memcmp(h.magic,"PPOFIX1",7)==0 && h.version==3,"invalid PPO checkpoint header");
+        PpoCheckpointHeader h=read_checkpoint_header(f);
+        require(f && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=5),"invalid PPO checkpoint header");
         require(h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"PPO checkpoint dimensions mismatch");
         require(h.family==family && h.horizon==horizon && h.n==n && h.base_seed==seed,"PPO checkpoint config mismatch");
         require(h.config.family==sim.cfg.family && h.config.n==sim.cfg.n && h.config.substeps==sim.cfg.substeps &&
                 h.config.sensor_period==sim.cfg.sensor_period && h.config.sensor_delay==sim.cfg.sensor_delay &&
                 h.config.command_delay==sim.cfg.command_delay && h.config.max_steps==sim.cfg.max_steps &&
                 h.config.mode==sim.cfg.mode && h.config.speed==sim.cfg.speed && h.config.distance==sim.cfg.distance &&
-                h.config.wind==sim.cfg.wind && h.config.depth_noise==sim.cfg.depth_noise && h.config.dropout==sim.cfg.dropout,
+                h.config.wind==sim.cfg.wind && h.config.depth_noise==sim.cfg.depth_noise && h.config.dropout==sim.cfg.dropout && h.config.risk_coef==sim.cfg.risk_coef && h.config.entropy_coef==sim.cfg.entropy_coef && h.config.learning_rate==sim.cfg.learning_rate && h.config.velocity_contract==sim.cfg.velocity_contract,
                 "PPO checkpoint simulator settings mismatch");
         auto readbuf=[&](id<MTLBuffer> b,size_t count){f.read((char*)b.contents,count*4);require(bool(f),"truncated PPO checkpoint");};
         readbuf(sim.actor,fixed_ppo::actor_param_count); readbuf(sim.critic,fixed_ppo::critic_param_count);
@@ -734,7 +741,7 @@ struct PPOTrainer {
         if(path.empty())return;
         const std::filesystem::path checkpoint_path(path);
         if(checkpoint_path.has_parent_path())std::filesystem::create_directories(checkpoint_path.parent_path());
-        PpoCheckpointHeader h{};std::memcpy(h.magic,"PPOFIX1",7);h.version=3;
+        PpoCheckpointHeader h{};std::memcpy(h.magic,"PPOFIX1",7);h.version=5;
         h.actor_count=fixed_ppo::actor_param_count;h.critic_count=fixed_ppo::critic_param_count;
         h.horizon=sim.horizon;h.n=sim.cfg.n;h.family=family;h.base_seed=seed;h.completed_rollouts=completed_rollouts;
         h.optimizer_step=optimizer_step;h.config=sim.cfg;h.config.tick=0;
@@ -774,7 +781,7 @@ struct PPOTrainer {
                 dispatch(cb,critic_grad_direct_p,fixed_ppo::critic_param_count,{{sim.co,co_offset},{critic_hidden,0},{d_values,0},{critic_hidden_delta,0},{critic_grad,0},{bb,0}},128);
                 require(optimizer_step<uint64_t(std::numeric_limits<uint32_t>::max()),"PPO Adam step overflow");
                 const uint32_t step=uint32_t(++optimizer_step);
-                PpoAdamHostConfig ac{3.0e-4f,.9f,.999f,1.0e-8f,0.0f,step};
+                PpoAdamHostConfig ac{sim.cfg.learning_rate,.9f,.999f,1.0e-8f,0.0f,step};
                 std::memcpy(adam_configs[update].contents,&ac,sizeof(ac));
                 dispatch(cb,norm_factor_p,256,{{actor_grad,0},{actor_scale,0},{actor_count_b,0},{actor_max_norm_b,0}},256);
                 dispatch(cb,scale_grad_p,fixed_ppo::actor_param_count,{{actor_grad,0},{actor_scale,0},{actor_count_b,0}},128);
@@ -791,29 +798,29 @@ struct PPOTrainer {
     }
 };
 
-static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint,const std::string& warmstart="",float speed=1,float distance=3) {
+static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint,const std::string& warmstart="",float speed=1,float distance=3,float risk=0,float entropy=-1,float learning_rate=.0003f,uint32_t velocity_contract=1) {
     require(iterations>0,"train_navigation needs at least one rollout");
     m.compile(base_source()+PPO_TRAINER_MSL);
     constexpr uint32_t n=128,horizon=32,base_seed=42;
-    SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=distance;cfg.speed=speed;cfg.max_steps=200;
+    SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=distance;cfg.speed=speed;cfg.max_steps=200;cfg.risk_coef=risk;cfg.entropy_coef=entropy>=0?entropy:(family==7?.002f:.005f);cfg.learning_rate=learning_rate;cfg.velocity_contract=velocity_contract;
     Sim sim(m,cfg,horizon);PPOTrainer trainer(sim);trainer.load_checkpoint(checkpoint,family,horizon,n,base_seed);
     if(!warmstart.empty() && trainer.completed_rollouts==0) {
-        std::ifstream f(warmstart,std::ios::binary);PpoCheckpointHeader h{};f.read((char*)&h,sizeof(h));
-        require(f && h.version==3 && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
+        std::ifstream f(warmstart,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);
+        require(f && (h.version>=3&&h.version<=5) && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
         f.read((char*)sim.actor.contents,fixed_ppo::actor_param_count*4);f.read((char*)sim.critic.contents,fixed_ppo::critic_param_count*4);require(bool(f),"warmstart read failed");
         for(uint j=0;j<4;j++)((float*)sim.actor.contents)[fixed_ppo::actor_log_std_offset+j]=-1.0f;
         std::cout<<"warmstart parameters from "<<warmstart<<"; reset optimizer and exploration\n";
     }
     EvalScore best;
     if(!checkpoint.empty() && std::filesystem::exists(checkpoint+".best")) {
-        std::ifstream f(checkpoint+".best",std::ios::binary);PpoCheckpointHeader h{};f.read((char*)&h,sizeof(h));std::vector<float> a(fixed_ppo::actor_param_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"best checkpoint read");best=sim_evaluate(m,family,4,a.data(),cfg.speed,cfg.distance);
+        std::ifstream f(checkpoint+".best",std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);std::vector<float> a(fixed_ppo::actor_param_count);f.read((char*)a.data(),a.size()*4);require(f && h.actor_count==fixed_ppo::actor_param_count,"best checkpoint read/dimensions");best=sim_evaluate(m,family,4,a.data(),cfg.speed,cfg.distance);
     }
     std::filesystem::create_directories("results");
     std::ofstream history("results/training.tsv",std::ios::app);
     const double run_start=seconds();
     const uint32_t start_rollout=trainer.completed_rollouts;
     const uint32_t finish_rollout=start_rollout+iterations;
-    std::cout<<"PPO training device="<<m.device.name.UTF8String<<" family="<<family<<" envs="<<n<<" horizon="<<horizon<<" speed="<<cfg.speed<<" distance="<<cfg.distance<<"\n";
+    std::cout<<"PPO training device="<<m.device.name.UTF8String<<" family="<<family<<" envs="<<n<<" horizon="<<horizon<<" speed="<<cfg.speed<<" distance="<<cfg.distance<<" risk="<<cfg.risk_coef<<" entropy="<<cfg.entropy_coef<<" lr="<<cfg.learning_rate<<"\n";
     for(uint32_t r=start_rollout;r<finish_rollout;r++) {@autoreleasepool{
         if(m.profiler.available)m.profiler.arm();const double rollout_start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,horizon);trainer.rollout_update(cb,r);
         const double gpu=m.finish(cb);
@@ -834,7 +841,7 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
 }
 
 static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode,uint family,uint32_t seed=800001,float speed=1,float distance=3,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0) {
-    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h{};f.read((char*)&h,sizeof(h));require(f && h.version==3 && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay);
+    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);require(f && (h.version>=3&&h.version<=5) && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay,h.config.velocity_contract);
 }
 
 static void gpu_training_benchmark(Metal& m,uint32_t n,uint32_t rollouts,uint32_t family=1) {
@@ -846,6 +853,6 @@ static void gpu_training_benchmark(Metal& m,uint32_t n,uint32_t rollouts,uint32_
 
 int main(int argc,char** argv){@autoreleasepool{try{
     std::string command=argc>1?argv[1]:"test";if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}

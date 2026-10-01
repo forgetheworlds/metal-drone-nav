@@ -55,6 +55,7 @@ inline void ppo_actor_mean(device const float* params, thread const float* obs,
         float z = params[PPO_ACTOR_B2 + a];
         const uint row = PPO_ACTOR_W2 + a * PPO_HIDDEN;
         for (uint h = 0; h < PPO_HIDDEN; ++h) z += params[row + h] * hidden[h];
+        if(PPO_ACTOR_OBS==184 && a<3)z+=obs[PPO_ACTOR_OBS-3+a];
         mean[a] = z;
     }
 }
@@ -171,6 +172,7 @@ kernel void ppo_actor_forward_simd_fused(device const float* observations [[buff
         const uint row = PPO_ACTOR_W2 + action * PPO_HIDDEN;
         for (uint h = 0; h < PPO_HIDDEN; ++h)
             mean += params[row + h] * tile_h[sample_local * PPO_HIDDEN + h];
+        if(PPO_ACTOR_OBS==184 && action<3 && sample<batch_size)mean+=observations[sample*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3+action];
         if (sample < batch_size) means[sample * PPO_ACTIONS + action] = mean;
     }
 }

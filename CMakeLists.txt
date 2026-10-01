@@ -15,3 +15,6 @@ endfunction()
 # uses the same rays and physics with 2x2 min pooling before the actor MLP.
 add_navigation_target(metal_nav 661)
 add_navigation_target(metal_nav_pooled 181)
+
+# Learned residual over a deployable depth/goal geometric prior.
+add_navigation_target(metal_nav_guided 184)
