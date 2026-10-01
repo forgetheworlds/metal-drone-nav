@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.20)
+project(metal_nav LANGUAGES CXX OBJCXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_OBJCXX_STANDARD 17)
+add_executable(metal_nav main.mm)
+target_compile_options(metal_nav PRIVATE -O3 -fobjc-arc -Wall -Wextra)
+target_compile_definitions(metal_nav PRIVATE SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(metal_nav PRIVATE "-framework Foundation" "-framework Metal")
