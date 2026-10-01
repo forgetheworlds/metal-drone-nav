@@ -23,3 +23,23 @@ Hypothesis: parallelize each ray rather than computing 320 rays in one environme
 Experiment: scalar C++/MSL shared geometry source; compare one GPU thread/world against one GPU thread/ray across the required environment ladder.
 
 Result: exact CPU/GPU parity in fixtures. Ray-parallel decomposition is faster at all measured sizes; at 32,768 environments the component takes 11.318 ms versus 43.425 ms. Decision: use ray-parallel depth as the initial integration path. Do not call this an end-to-end training optimization until measured in that workload.
+
+## RAPTOR / PX4 exact behavior
+
+Pinned RAPTOR: `2c789dfcf16cc96fe697704492b3bf79dd2cc5a0`; pinned RLtools: `e43ae4bcda4556321a63f4eb5dcc826cd637aa39`; checkpoint training metadata: `c9bcfde8acd3f0d616edbfc3ba5a53d4497c7fa7`. Checkpoint: `2025-04-19_16-16-17`.
+
+22 FLU inputs: position3, row-major rotation9, world velocity3, body omega3, previous motors4. Dense22→16 ReLU, GRU16 (reset/update/new gate order), dense16→4. Per-environment learned initial recurrent state. Motors [front-right, back-right, back-left, front-left]. Native update10ms. Raw inference and executor clipping are separate operations. Initial comparison incorrectly compared clipped outputs with raw official oracle outputs; corrected, then official parity passed.
+
+PX4 `15f9af91ee3f8a2ac503864b5e557d7e4a1cb8fd`: transform state errors by inverse target quaternion, clip position±0.5m and velocity±1m/s, encode relative attitude. The velocity-like nav adapter supplies a finite target position `current_position + desired_world_velocity*0.5s`, desired velocity and yaw-only target. The 0.5s preview is our explicit navigation contract; it is not a PX4 default. OFFBOARD source has no NaN-position fallback; all targets stay finite.
+
+Sources: https://github.com/rl-tools/raptor ; https://github.com/rl-tools/px4/blob/15f9af91ee3f8a2ac503864b5e557d7e4a1cb8fd/external_modules/src/modules/rl_tools_policy/RLtoolsPolicy.cpp
+
+## Physics fidelity
+
+Use Crazyflie default, because RAPTOR's published L2F demo uses the default dynamics; its x500 change is only the UI model. Preserve RK4, quaternion normalization, thrust/motor time constants and force in newtons. Optional x500 simulator profile is available. Dynamics and RK4 source hashes match between RAPTOR's pinned RLtools and current source used in initial archaeology. `reference.cpp` produces official `rlt::step()` fixtures against the pinned source.
+
+Sources: https://github.com/rl-tools/rl-tools/blob/e43ae4bcda4556321a63f4eb5dcc826cd637aa39/include/rl_tools/rl/environments/l2f/operations_generic/60_dynamics.h ; https://github.com/rl-tools/rl-tools/blob/e43ae4bcda4556321a63f4eb5dcc826cd637aa39/include/rl_tools/rl/environments/l2f/parameters/dynamics/crazyflie.h
+
+## Fixed PPO path
+
+Actor: 660 deployable inputs, 64 tanh units, four unsquashed Gaussian outputs; tanh is applied only to executed commands so stored raw-action log probabilities are consistent. Critic: 32 privileged inputs, 64 tanh units. Distinct parameter sets prevent privileged actor leakage. GAE bootstraps time limits from pre-reset terminal-state value and stops carry on either termination or truncation. Fixed PPO clip±0.2, MSE value objective, entropy term, parameter-major sample gradients, reduction and Adam. No generic autograd or dynamic tensor API.

@@ -1,0 +1,115 @@
+// All buffers have fixed layouts. Policy -> reference -> RAPTOR -> RK4 runs on GPU.
+struct SimRun {
+    float hidden[16], motors[4], previous_nav[4], desired_velocity[3], yaw;
+    uint rng, steps;
+    float path, elapsed, peak_speed, min_clearance, initial_distance;
+    uint successes, collisions, timeouts, episodes;
+    float success_time, total_path, total_elapsed, final_progress;
+};
+struct SimConfig {
+    uint n, tick, mode, family, substeps, sensor_period, sensor_delay, command_delay, max_steps, seed, eval;
+    float speed, distance, wind, depth_noise, dropout;
+};
+inline void sim_rotation(thread const float* q, thread float* r) {
+    float w=q[0],x=q[1],y=q[2],z=q[3];
+    r[0]=1-2*(y*y+z*z);r[1]=2*(x*y-w*z);r[2]=2*(x*z+w*y);
+    r[3]=2*(x*y+w*z);r[4]=1-2*(x*x+z*z);r[5]=2*(y*z-w*x);
+    r[6]=2*(x*z-w*y);r[7]=2*(y*z+w*x);r[8]=1-2*(x*x+y*y);
+}
+inline float sim_normal(thread uint& rng) { float u=max(wurand(rng),1e-7f),v=wurand(rng);return sqrt(-2*log(u))*cos(6.28318530718f*v); }
+inline void sim_reset_one(device RLPhysicsState& s,device SimRun& run,device WWorld& world,device float* sensors,device float* commands,device const float* weights,constant RLPhysicsParams& p,constant SimConfig& cfg,uint n,bool first) {
+    uint rng=first?(cfg.seed+n*747796405u+2891336453u):run.rng;
+    wgenerate(world,wrng(rng),cfg.family,cfg.distance);
+    world.wind[0]=cfg.wind;world.wind[1]=0;world.wind[2]=0;
+    for(uint j=0;j<3;j++){s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;run.desired_velocity[j]=0;}
+    s.orientation_wxyz[0]=1;for(uint j=1;j<4;j++)s.orientation_wxyz[j]=0;
+    float target=p.mass*9.81f/4,c0=p.rotor_thrust_coefficients[0],c1=p.rotor_thrust_coefficients[1],c2=p.rotor_thrust_coefficients[2];
+    float hover=clamp((-c1+sqrt(c1*c1-4*c2*(c0-target)))/(2*c2),p.action_min,p.action_max);
+    float hidden[16];raptor_reset(weights,hidden);for(uint j=0;j<16;j++)run.hidden[j]=hidden[j];
+    for(uint j=0;j<4;j++){s.rpm[j]=hover;run.motors[j]=0;run.previous_nav[j]=0;}
+    for(uint j=0;j<8*320;j++)sensors[n*8*320+j]=12;
+    for(uint j=0;j<8*4;j++)commands[n*8*4+j]=0;
+    run.yaw=0;run.rng=rng;run.steps=0;run.path=run.elapsed=run.peak_speed=0;run.min_clearance=12;run.initial_distance=length(float3(world.goal[0],world.goal[1],world.goal[2]-1.5f));
+    if(first){run.successes=run.collisions=run.timeouts=run.episodes=0;run.success_time=run.total_path=run.total_elapsed=run.final_progress=0;}
+}
+kernel void sim_reset(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],constant RLPhysicsParams& p [[buffer(6)]],constant SimConfig& cfg [[buffer(7)]],uint n [[thread_position_in_grid]]) {
+    if(n<cfg.n)sim_reset_one(states[n],runs[n],worlds[n],sensors,commands,weights,p,cfg,n,true);
+}
+kernel void sim_depth(device const RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],constant RLPhysicsParams& p [[buffer(4)]],constant SimConfig& cfg [[buffer(5)]],uint i [[thread_position_in_grid]]) {
+    uint n=i/320,k=i%320;if(n>=cfg.n || (cfg.eval && runs[n].episodes) || runs[n].steps%cfg.sensor_period!=0)return;
+    RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);WVec ray=wcamera(k);
+    WVec d=wv(r[0]*ray.x+r[1]*ray.y+r[2]*ray.z,r[3]*ray.x+r[4]*ray.y+r[5]*ray.z,r[6]*ray.x+r[7]*ray.y+r[8]*ray.z);
+    float depth=wray(worlds[n],wv(s.position[0],s.position[1],s.position[2]),d,runs[n].elapsed);
+    uint rng=runs[n].rng+k*1664525u+runs[n].steps*1013904223u;
+    depth=clamp(depth+cfg.depth_noise*sim_normal(rng),0.0f,12.0f);if(wurand(rng)<cfg.dropout)depth=12;
+    uint frame=(runs[n].steps/cfg.sensor_period)%8;sensors[(n*8+frame)*320+k]=depth;
+}
+inline void sim_critic_obs(thread const RLPhysicsState& s,device const WWorld& w,device const SimRun& run,thread float* obs) {
+    for(uint j=0;j<32;j++)obs[j]=0;
+    for(uint j=0;j<3;j++){obs[j]=(w.goal[j]-s.position[j])/10;obs[j+3]=s.linear_velocity[j]/4;obs[j+6]=s.angular_velocity_body[j]/4;obs[j+13]=s.position[j]/10;obs[j+16]=w.wind[j];}
+    for(uint j=0;j<4;j++)obs[9+j]=s.orientation_wxyz[j];
+    obs[19]=wclearance(w,wv(s.position[0],s.position[1],s.position[2]),run.elapsed)/5;obs[20]=float(run.steps)/200;
+    for(uint j=0;j<min(w.count,3u);j++){WVec c=wc(w.obstacles[j],run.elapsed);obs[21+j*3]=(c.x-s.position[0])/10;obs[22+j*3]=(c.y-s.position[1])/10;obs[23+j*3]=(c.z-s.position[2])/10;}
+}
+kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device const SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* sensors [[buffer(3)]],device float* obs [[buffer(4)]],device float* critic_obs [[buffer(5)]],constant RLPhysicsParams& p [[buffer(6)]],constant SimConfig& cfg [[buffer(7)]],uint n [[thread_position_in_grid]]) {
+    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);
+    uint available=runs[n].steps/cfg.sensor_period,frame=available>cfg.sensor_delay?available-cfg.sensor_delay:0,prev=frame>0?frame-1:0;
+    uint row=(cfg.tick*cfg.n+n)*660,crow=(cfg.tick*cfg.n+n)*32;
+    for(uint k=0;k<320;k++){obs[row+k]=sensors[(n*8+frame%8)*320+k]/12;obs[row+320+k]=sensors[(n*8+prev%8)*320+k]/12;}
+    float3 delta=float3(worlds[n].goal[0]-s.position[0],worlds[n].goal[1]-s.position[1],worlds[n].goal[2]-s.position[2]);float distance=max(length(delta),1e-6f);
+    for(uint j=0;j<3;j++) {
+        obs[row+640+j]=(r[j]*delta.x+r[3+j]*delta.y+r[6+j]*delta.z)/distance;
+        obs[row+644+j]=(r[j]*s.linear_velocity[0]+r[3+j]*s.linear_velocity[1]+r[6+j]*s.linear_velocity[2])/4;
+        obs[row+647+j]=s.angular_velocity_body[j]/4;obs[row+650+j]=r[6+j];
+    }
+    obs[row+643]=min(distance/10,1.5f);for(uint j=0;j<4;j++)obs[row+653+j]=runs[n].previous_nav[j];
+    obs[row+657]=float(runs[n].steps-frame*cfg.sensor_period)*p.dt*cfg.substeps;obs[row+658]=obs[row+659]=0;
+    float co[32];sim_critic_obs(s,worlds[n],runs[n],co);for(uint j=0;j<32;j++)critic_obs[crow+j]=co[j];
+}
+kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* observations [[buffer(3)]],device const float* critic_obs [[buffer(4)]],device const float* actor [[buffer(5)]],device const float* critic [[buffer(6)]],device float* actions [[buffer(7)]],device float* logp [[buffer(8)]],device float* values [[buffer(9)]],device float* commands [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {
+    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float obs[660],co[32],hidden[64],mean[4],a[4];
+    for(uint j=0;j<660;j++)obs[j]=observations[row*660+j];for(uint j=0;j<32;j++)co[j]=critic_obs[row*32+j];
+    ppo_actor_mean(actor,obs,hidden,mean);values[row]=ppo_critic_value(critic,co,hidden);
+    uint rng=runs[n].rng;float lp=0;for(uint j=0;j<4;j++) {
+        a[j]=mean[j]+(cfg.mode==0?exp(actor[PPO_ACTOR_LOG_STD+j])*sim_normal(rng):0);
+        if(cfg.mode==1)a[j]=sim_normal(rng);
+        float diff=(a[j]-mean[j])*exp(-actor[PPO_ACTOR_LOG_STD+j]);lp+=-0.5f*(diff*diff+2*actor[PPO_ACTOR_LOG_STD+j]+PPO_LOG_TWO_PI);
+        actions[row*4+j]=a[j];commands[(n*8+runs[n].steps%8)*4+j]=tanh(a[j]);
+    }
+    logp[row]=lp;runs[n].rng=rng;
+    if(cfg.mode==2 || cfg.mode==3) {
+        float3 d=float3(worlds[n].goal[0]-states[n].position[0],worlds[n].goal[1]-states[n].position[1],worlds[n].goal[2]-states[n].position[2]);d=normalize(d)*min(length(d),cfg.speed);
+        RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);
+        a[0]=(r[0]*d.x+r[3]*d.y+r[6]*d.z)/cfg.speed;a[1]=(r[1]*d.x+r[4]*d.y+r[7]*d.z)/cfg.speed;a[2]=(r[2]*d.x+r[5]*d.y+r[8]*d.z)/cfg.speed;a[3]=0;
+        for(uint j=0;j<4;j++)commands[(n*8+runs[n].steps%8)*4+j]=a[j];
+    }
+    uint applied=runs[n].steps>cfg.command_delay?runs[n].steps-cfg.command_delay:0;
+    for(uint j=0;j<4;j++)runs[n].previous_nav[j]=commands[(n*8+applied%8)*4+j];
+    RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);float v[3]={runs[n].previous_nav[0]*cfg.speed,runs[n].previous_nav[1]*cfg.speed,runs[n].previous_nav[2]*cfg.speed*0.5f};
+    for(uint j=0;j<3;j++)runs[n].desired_velocity[j]=r[j*3]*v[0]+r[j*3+1]*v[1]+r[j*3+2]*v[2];runs[n].yaw+=runs[n].previous_nav[3]*p.dt*cfg.substeps*0.5f;
+}
+kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],device const float* critic [[buffer(6)]],device float* rewards [[buffer(7)]],device float* next_values [[buffer(8)]],device uchar* terminated [[buffer(9)]],device uchar* truncated [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {
+    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;RLPhysicsState s=states[n];float h[16],motors[4];for(uint j=0;j<16;j++)h[j]=runs[n].hidden[j];for(uint j=0;j<4;j++)motors[j]=runs[n].motors[j];
+    float3 goal=float3(worlds[n].goal[0],worlds[n].goal[1],worlds[n].goal[2]);float before=length(goal-float3(s.position[0],s.position[1],s.position[2]));float yaw=runs[n].yaw,c=cos(yaw),si=sin(yaw);bool collision=false;
+    float wind[3]={worlds[n].wind[0]*p.mass,worlds[n].wind[1]*p.mass,worlds[n].wind[2]*p.mass};
+    for(uint step=0;step<cfg.substeps;step++) {
+        float obs[22],v[3];for(uint j=0;j<3;j++)v[j]=runs[n].desired_velocity[j];
+        float dp[3]={-v[0]*0.5f,-v[1]*0.5f,-v[2]*0.5f},dv[3]={s.linear_velocity[0]-v[0],s.linear_velocity[1]-v[1],s.linear_velocity[2]-v[2]};
+        obs[0]=clamp(c*dp[0]+si*dp[1],-.5f,.5f);obs[1]=clamp(-si*dp[0]+c*dp[1],-.5f,.5f);obs[2]=clamp(dp[2],-.5f,.5f);
+        float ch=cos(yaw*.5f),sh=sin(yaw*.5f),q[4]={ch*s.orientation_wxyz[0]+sh*s.orientation_wxyz[3],ch*s.orientation_wxyz[1]+sh*s.orientation_wxyz[2],ch*s.orientation_wxyz[2]-sh*s.orientation_wxyz[1],ch*s.orientation_wxyz[3]-sh*s.orientation_wxyz[0]};
+        float r[9];sim_rotation(q,r);for(uint j=0;j<9;j++)obs[3+j]=r[j];obs[12]=clamp(c*dv[0]+si*dv[1],-1.0f,1.0f);obs[13]=clamp(-si*dv[0]+c*dv[1],-1.0f,1.0f);obs[14]=clamp(dv[2],-1.0f,1.0f);
+        for(uint j=0;j<3;j++)obs[15+j]=s.angular_velocity_body[j];for(uint j=0;j<4;j++)obs[18+j]=motors[j];
+        raptor_forward(weights,obs,h,motors);raptor_clip_action(motors);RLPhysicsState next;rl_physics_step(s,motors,wind,p,next);
+        runs[n].path+=distance(float3(s.position[0],s.position[1],s.position[2]),float3(next.position[0],next.position[1],next.position[2]));s=next;runs[n].elapsed+=p.dt;
+        float clearance=wclearance(worlds[n],wv(s.position[0],s.position[1],s.position[2]),runs[n].elapsed);runs[n].min_clearance=min(runs[n].min_clearance,clearance);runs[n].peak_speed=max(runs[n].peak_speed,length(float3(s.linear_velocity[0],s.linear_velocity[1],s.linear_velocity[2])));
+        if(clearance<=0 || !isfinite(s.position[0]) || !isfinite(s.position[1]) || !isfinite(s.position[2])) {collision=true;break;}
+    }
+    runs[n].steps++;states[n]=s;for(uint j=0;j<16;j++)runs[n].hidden[j]=h[j];for(uint j=0;j<4;j++)runs[n].motors[j]=motors[j];
+    float after=length(goal-float3(s.position[0],s.position[1],s.position[2]));bool success=after<.35f&&!collision,timeout=runs[n].steps>=cfg.max_steps;
+    rewards[row]=(before-after)*2-0.01f+(success?10.0f:0)-(collision?10.0f:0);terminated[row]=collision||success;truncated[row]=timeout&&!terminated[row];
+    float co[32],hidden[64];sim_critic_obs(s,worlds[n],runs[n],co);next_values[row]=ppo_critic_value(critic,co,hidden);
+    if(success||collision||timeout) {
+        runs[n].successes+=success;runs[n].collisions+=collision;runs[n].timeouts+=timeout&&!terminated[row];runs[n].episodes++;runs[n].success_time+=success?runs[n].elapsed:0;runs[n].total_path+=runs[n].path;runs[n].total_elapsed+=runs[n].elapsed;runs[n].final_progress+=1-after/max(runs[n].initial_distance,1e-4f);
+        if(!cfg.eval)sim_reset_one(states[n],runs[n],worlds[n],sensors,commands,weights,p,cfg,n,false);
+    }
+}

@@ -8,8 +8,26 @@ Build on Apple Silicon with macOS 15 or newer and Command Line Tools:
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j 4
 ./build/metal_nav
+./build/metal_nav test
+./build/metal_nav sim
+./build/metal_nav bench-depth
 ```
 
 Metal kernels compile at runtime through `MTLDevice`. Full Xcode is not required for the verified path. FP32, safe arithmetic, and precise floating-point functions are used for parity.
 
 No Python, PyTorch, MLX or tensor runtime is used in the training hot loop.
+
+`test` checks analytic geometry, official RAPTOR outputs, official L2F physics fixtures, the PX4 target adapter, PPO operators and an integrated 160-control-step CPU/GPU trajectory. `sim` measures the simple goal-direction controller on four scene families with one completed episode per held-out seed.
+
+References are pinned outside the build. To regenerate the cold assets:
+
+```sh
+git clone https://github.com/rl-tools/raptor /tmp/raptor-reference
+git -C /tmp/raptor-reference checkout 2c789dfcf16cc96fe697704492b3bf79dd2cc5a0
+git -C /tmp/raptor-reference submodule update --init rl-tools data
+python3 export_raptor.py /tmp/raptor-reference/data/raptor-policy-checkpoint.tar.gz
+clang++ -std=c++17 -O2 -I/tmp/raptor-reference/rl-tools/include reference.cpp -o build/reference
+./build/reference assets/physics.bin
+```
+
+RAPTOR and RLtools code/weights are used under their MIT notices in `THIRD_PARTY_LICENSES.txt`.

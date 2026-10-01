@@ -96,7 +96,7 @@ WF void wgenerate(WP WWorld& w,uint seed,uint family,float distance) {
     for(uint j=0;j<3;j++) w.wind[j]=0;
     for(uint i=0;i<16;i++) {
         WP WObstacle& o=w.obstacles[i]; o.kind=family==2?2:(family==3?1:0);
-        o.center[0]=1.8f+wurand(rng)*fmax(1.0f,distance-2.3f);
+        o.center[0]=1.8f+wurand(rng)*fmax(1.0f,distance-3.3f);
         o.center[1]=(wurand(rng)-0.5f)*7; o.center[2]=family==2?2.5f:0.6f+wurand(rng)*3;
         o.size[0]=0.2f+wurand(rng)*0.35f;o.size[1]=0.3f+wurand(rng)*0.55f;o.size[2]=family==2?2.5f:0.2f+wurand(rng)*0.75f;
         o.velocity[0]=0;o.velocity[1]=family==3?(wurand(rng)-0.5f)*0.8f:0;o.velocity[2]=0;
