@@ -115,7 +115,7 @@ public:
     std::vector<SimRun> runs;
     std::vector<WWorld> worlds;
     std::vector<WVec> camera_rays;
-    std::vector<float> sensors, commands;
+    std::vector<float> sensors, poses, commands;
     std::vector<float> observations, critic_observations, actions, old_logp, values;
     std::vector<float> rewards, next_values, advantages, returns;
     std::vector<uint8_t> terminated, truncated, reset_after_bootstrap;
@@ -131,6 +131,7 @@ public:
         camera_rays.resize(sensor_pixels);
         for(uint32_t k=0;k<sensor_pixels;k++)camera_rays[k]=wcamera(k);
         sensors.resize(envs*sensor_frames*sensor_pixels);
+        poses.resize(envs*sensor_frames*12);
         commands.resize(envs*sensor_frames*action_dim);
         observations.resize(rows*actor_dim);critic_observations.resize(rows*critic_dim);
         actions.resize(rows*action_dim);old_logp.resize(rows);values.resize(rows);
@@ -235,6 +236,8 @@ private:
         if(first) {
             run.successes=run.collisions=run.timeouts=run.episodes=0;
             run.success_time=run.total_path=run.total_elapsed=run.final_progress=0;
+            std::fill(poses.begin()+size_t(n)*sensor_frames*12,
+                      poses.begin()+size_t(n+1)*sensor_frames*12,0.0f);
         }
     }
 
@@ -244,6 +247,8 @@ private:
         if(run.steps%cfg.sensor_period==0) {
             float r[9];rotation(s.orientation_wxyz,r);
             const size_t frame=(run.steps/cfg.sensor_period)%sensor_frames;
+            for(uint32_t j=0;j<3;j++)poses[(size_t(n)*sensor_frames+frame)*12+j]=s.position[j];
+            for(uint32_t j=0;j<9;j++)poses[(size_t(n)*sensor_frames+frame)*12+3+j]=r[j];
             for(uint32_t k=0;k<sensor_pixels;k++) {
                 const WVec ray=camera_rays[k];
                 const WVec d=wv(r[0]*ray.x+r[1]*ray.y+r[2]*ray.z,
@@ -294,7 +299,29 @@ private:
         observations[context+17]=float(run.steps-frame*cfg.sensor_period)*physics.dt*cfg.substeps;
         const float ref[3]={run.reference_position[0]-s.position[0],run.reference_position[1]-s.position[1],run.reference_position[2]-s.position[2]};
         for(uint32_t j=0;j<3;j++)observations[context+18+j]=clampf((r[j]*ref[0]+r[3+j]*ref[1]+r[6+j]*ref[2])*2.0f,-1.0f,1.0f);
-        if constexpr(actor_dim==184){float cur[80],prev[80],goal[3],vel[3],hint[3];for(uint32_t j=0;j<80;j++){cur[j]=observations[row+j]*12;prev[j]=observations[row+80+j]*12;}for(uint32_t j=0;j<3;j++){goal[j]=observations[context+j];vel[j]=observations[context+4+j]*4;}nav_guidance(cur,prev,goal,distance,vel,float(cfg.sensor_period)*physics.dt*cfg.substeps,hint);for(uint32_t j=0;j<3;j++)observations[row+actor_dim-3+j]=hint[j];}
+        if constexpr(actor_dim==184) {
+            float cur[80],prev_range[80],goal[3],vel[3],hint[3],current_pose[12];
+            for(uint32_t j=0;j<80;j++) {
+                cur[j]=observations[row+j]*12.0f;
+                prev_range[j]=observations[row+80+j]*12.0f;
+            }
+            for(uint32_t j=0;j<3;j++) {
+                goal[j]=observations[context+j];
+                vel[j]=observations[context+4+j]*4.0f;
+                current_pose[j]=s.position[j];
+            }
+            for(uint32_t j=0;j<9;j++)current_pose[j+3]=r[j];
+            const float sensor_dt=float(cfg.sensor_period)*physics.dt*cfg.substeps;
+            if(cfg.geometry_memory) {
+                const uint32_t valid_frames=available>=cfg.sensor_delay
+                    ?std::min(frame+1,sensor_frames-cfg.sensor_delay):0;
+                nav_guidance_memory(cur,prev_range,goal,distance,vel,sensor_dt,
+                    sensors.data()+size_t(n)*sensor_frames*sensor_pixels,
+                    poses.data()+size_t(n)*sensor_frames*12,current_pose,
+                    frame,valid_frames,hint);
+            } else nav_guidance(cur,prev_range,goal,distance,vel,sensor_dt,hint);
+            for(uint32_t j=0;j<3;j++)observations[row+actor_dim-3+j]=hint[j];
+        }
         critic_observation(s,world,run,critic_observations.data()+crow);
     }
 
@@ -383,6 +410,7 @@ private:
         const WVec goal=wv(world.goal[0],world.goal[1],world.goal[2]);
         const float before=wl(ws(goal,wv(s.position[0],s.position[1],s.position[2])));
         const float yaw=run.yaw,c=std::cos(yaw),si=std::sin(yaw);bool collision=false;
+        float step_clearance=12.0f;
         const float wind[3]={world.wind[0]*physics.mass,world.wind[1]*physics.mass,world.wind[2]*physics.mass};
         for(uint32_t step=0;step<cfg.substeps;step++) {
             float motor_obs[22],v[3]={run.desired_velocity[0],run.desired_velocity[1],run.desired_velocity[2]};
@@ -409,6 +437,7 @@ private:
             run.path+=wl(ws(wv(s.position[0],s.position[1],s.position[2]),wv(next.position[0],next.position[1],next.position[2])));
             s=next;run.elapsed+=physics.dt;
             const float clearance=wclearance(world,wv(s.position[0],s.position[1],s.position[2]),run.elapsed);
+            step_clearance=std::min(step_clearance,clearance);
             run.min_clearance=std::min(run.min_clearance,clearance);
             run.peak_speed=std::max(run.peak_speed,wl(wv(s.linear_velocity[0],s.linear_velocity[1],s.linear_velocity[2])));
             if(clearance<=0 || !std::isfinite(s.position[0]) || !std::isfinite(s.position[1]) || !std::isfinite(s.position[2])){collision=true;break;}
@@ -417,7 +446,9 @@ private:
         const float after=wl(ws(goal,wv(s.position[0],s.position[1],s.position[2])));
         const bool success=after<.35f&&!collision,timeout=run.steps>=cfg.max_steps;
         const size_t row=size_t(t)*cfg.n+n;
-        rewards[row]=(before-after)*2.0f-.01f+(success?10.0f:0.0f)-(collision?10.0f:0.0f);
+        rewards[row]=(before-after)*2.0f-.01f
+            -cfg.risk_coef*clampf((0.6f-step_clearance)/0.6f,0.0f,1.0f)
+            +(success?10.0f:0.0f)-(collision?10.0f:0.0f);
         terminated[row]=uint8_t(collision||success);truncated[row]=uint8_t(timeout&&!terminated[row]);
         reset_after_bootstrap[n]=uint8_t(success||collision||timeout);
         if(reset_after_bootstrap[n]) {
