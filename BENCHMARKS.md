@@ -94,3 +94,20 @@ Selected checkpoint SHA-256: `fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b2901
 Commit eec01c4 includes the actor-only asset and loader. `./build/metal_nav_guided export results/guided-table-memory.bin.best assets/navigation.bin`:48,496 bytes,184 observations,12,104 FP32 parameters,mode17,1.5m/s,source FNV64 `1d991b0048dec80a`. Eight observation probes match the fixed PPO CPU actor exactly (maximum error0). `./build/metal_nav_guided eval-policy assets/navigation.bin 8 800001` reproduces checkpoint episode results:89.0625%success,10.9375%collision,0%timeout,2.83684s successful goal time.
 
 `./build/metal_nav_guided policy-bench assets/navigation.bin`:10,000 sequential CPU evaluations at batch1,5.28245us average on M3. Inputs change and previous-command features update each iteration. This excludes depth acquisition, geometry-memory preparation, RAPTOR and physical command response. It does not establish end-to-end reaction latency.
+
+## Disturbance curricula and controlled-threat acceptance gaps
+
+Same guided184/spherical/memory actor,FP32 onM3,128episodes/configuration,freshseed800001. Each candidate receives1000additional PPOrollouts withrisk.04,entropy.0003,learningrate.0001,sensor2frames,command1tick,acceleration.5m/s²,noise.05m,pixel-drop.1,validationselectionmode17. Broadstress warmsfromtheoriginaltable-memorybest;doorand rehearsalwarmfrombroadstressbest. These are curriculum candidates, not a controlled architecture-speed comparison. Full rows and checkpointSHA256 are inassets/continuation-evaluation.csv.
+
+| Candidate | Clean held doors | Combined held doors | Clean tables | Combined tables |
+|---|---:|---:|---:|---:|
+| Packaged original | 89.06% | 70.31% | 96.88% | 89.06% |
+| Broad stress | 85.94% | 77.34% | 97.66% | 92.19% |
+| Door stress | 95.31% | 83.59% | 58.59% | 39.84% |
+| Rehearsal stress | 89.06% | 93.75% | 78.13% | 76.56% |
+
+Rehearsal is50%doors,25%tables,25%broad0–6;heldfamily8isneversampled. It raisescommand-delay-onlyhelddoor success76.56%→95.31%,butdoesnotretaintablequality. The original export is preserved. The next requirement is broadskillretentionacrosscleananddisturbedconditions.
+
+Controlled threats: `python3 evaluation.py --threats`.24configurations×128episodes,flyingstartvx1.5m/s,approach/crossing,.5/2m/s,sphere.35m,nominalTTC.5/1s,modes17/13/2,seed800001. Goal-script collides100% inallcases. Selectedoldpolicy succeeds100% onslowapproach/1s and82.03%on2m/sapproach/1s,but0% on2m/sapproach/.5s andfastcrossing. This contradicts a broad fast-evasion claim. TTC is a nominal scene parameter,not the actual policy path's measuredcollisiontime.
+
+Reaction diagnostic: `./build/metal_nav_guided reaction-latency results/guided-table-memory.bin.best 0 0` and`... 2 1`. Pairclonedwarmedtrajectories,verifyidenticalmotorsbeforeaddingoneapproachingthreat,anddetectcommand/motordelta>1e-4. Simulatedresponseupperbounds50ms clean and200ms delayed,resolution50ms. These include modeledsample/queue delays; theyexclude actualsensor/transportdelay and do not prove evasion. Normaltrainingstillhasnoper-stepCPUwait;the diagnostic intentionallyreadsaftereachnavigationtick.

@@ -188,6 +188,12 @@ WF void wgenerate_mixed(WP WWorld& w,WT uint& rng,float distance) {
     const float low_box_y=wroute_y(w,low_box_x,distance)-0.88f;
     wadd_box(w,wv(low_box_x,low_box_y,0.48f),wv(0.34f,0.30f,0.48f));
 }
+// Training-only rehearsal mixture. Held two-door family8 is never sampled.
+WF uint wtraining_family(uint family,WT uint& rng) {
+    if(family==7)return wrng(rng)%7;
+    if(family==9){uint choice=wrng(rng)%4;return choice<2?4:(choice==2?5:wrng(rng)%7);}
+    return family;
+}
 WF void wgenerate(WP WWorld& w,uint seed,uint family,float distance) {
     uint rng=seed?seed:1; w.seed=seed;w.family=family;w.count=family==0?0:8;
     w.goal[0]=distance; w.goal[1]=(wurand(rng)-0.5f)*2; w.goal[2]=1.5f+(wurand(rng)-0.5f)*0.8f;

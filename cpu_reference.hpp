@@ -211,10 +211,7 @@ private:
     void reset_env(uint32_t n,bool first) {
         auto& s=states[n];auto& run=runs[n];
         uint32_t rng=first ? cfg.seed+n*747796405u+2891336453u : run.rng;
-        uint32_t episode_family=cfg.family;
-        if(episode_family==7) {
-            episode_family=wrng(rng)%7;
-        }
+        uint32_t episode_family=wtraining_family(cfg.family,rng);
         wgenerate(worlds[n],wrng(rng),episode_family,cfg.distance);
         worlds[n].wind[0]=cfg.wind;worlds[n].wind[1]=0;worlds[n].wind[2]=0;
         for(int j=0;j<3;j++) {

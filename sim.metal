@@ -20,7 +20,7 @@ inline void sim_rotation(thread const float* q, thread float* r) {
 inline float sim_normal(thread uint& rng) { float u=max(wurand(rng),1e-7f),v=wurand(rng);return sqrt(-2*log(u))*cos(6.28318530718f*v); }
 inline void sim_reset_one(device RLPhysicsState& s,device SimRun& run,device WWorld& world,device float* sensors,device float* commands,device const float* weights,constant RLPhysicsParams& p,constant SimConfig& cfg,uint n,bool first) {
     uint rng=first?(cfg.seed+n*747796405u+2891336453u):run.rng;
-    uint episode_family=cfg.family;if(episode_family==7){episode_family=wrng(rng)%7;}
+    uint episode_family=wtraining_family(cfg.family,rng);
     wgenerate(world,wrng(rng),episode_family,cfg.distance);
     world.wind[0]=cfg.wind;world.wind[1]=0;world.wind[2]=0;
     for(uint j=0;j<3;j++){s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;run.desired_velocity[j]=0;run.reference_position[j]=s.position[j];}

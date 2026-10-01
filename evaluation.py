@@ -7,6 +7,7 @@ import argparse
 import csv
 from datetime import datetime, timezone
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -15,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 FAMILY_NAMES = {
+    0: "controlled_threat",
     3: "moving_spheres",
     5: "table_counter",
     7: "mixed_training_families_0_6",
@@ -29,6 +31,9 @@ FIELDS = [
     "mean_goal_time_s", "mean_speed_mps", "peak_speed_mps", "min_clearance_m",
     "sim_wall_s", "gpu_s", "elapsed_wall_s", "started_utc", "completed_utc",
     "raw_eval_line", "raw_gpu_line",
+]
+THREAT_FIELDS = FIELDS + [
+    "threat_kind", "threat_speed_mps", "nominal_ttc_s", "initial_vx_mps",
 ]
 EVAL_RE = re.compile(
     r"^(eval family=\d+ mode=\d+ episodes=\d+ .*? min_clearance=\S+ wall_s=\S+)$",
@@ -100,6 +105,36 @@ def build_cases() -> list[dict[str, object]]:
     return cases
 
 
+def build_threat_cases() -> list[dict[str, object]]:
+    cases: list[dict[str, object]] = []
+    for kind_id, kind_name in ((0, "approach"), (1, "crossing")):
+        for threat_speed in (0.5, 2.0):
+            for ttc in (0.5, 1.0):
+                for mode in (17, 13, 2):
+                    cases.append({
+                        "case_id": f"threat_{kind_name}_m{mode}_v{threat_speed:g}_ttc{ttc:g}_s800001",
+                        "group": "controlled_threat",
+                        "mode": mode,
+                        "mode_name": MODE_NAMES[mode],
+                        "family": 0,
+                        "family_name": FAMILY_NAMES[0],
+                        "seed": 800001,
+                        "speed_mps": 1.5,
+                        "distance_m": 4.0,
+                        "sensor_delay_frames": 0,
+                        "wind_param": 0.0,
+                        "depth_noise_m": 0.0,
+                        "dropout_probability": 0.0,
+                        "command_delay_steps": 0,
+                        "threat_kind": kind_name,
+                        "threat_kind_id": kind_id,
+                        "threat_speed_mps": threat_speed,
+                        "nominal_ttc_s": ttc,
+                        "initial_vx_mps": 1.5,
+                    })
+    return cases
+
+
 def parse_metrics(stdout: str) -> tuple[dict[str, str], str, str]:
     eval_match = EVAL_RE.search(stdout)
     gpu_match = GPU_RE.search(stdout)
@@ -112,15 +147,26 @@ def parse_metrics(stdout: str) -> tuple[dict[str, str], str, str]:
     return lines, eval_match.group(1), gpu_match.group(1)
 
 
-def evaluate_case(cli: Path, checkpoint: Path, case: dict[str, object], timeout: float) -> dict[str, object]:
-    started = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-    command = [
+def build_command(cli: Path, checkpoint: Path, case: dict[str, object]) -> list[str]:
+    if "threat_kind_id" in case:
+        return [
+            str(cli), "threat-eval", str(checkpoint), str(case["mode"]),
+            str(case["threat_kind_id"]), str(case["threat_speed_mps"]),
+            str(case["nominal_ttc_s"]), str(case["seed"]),
+            str(case["sensor_delay_frames"]), str(case["command_delay_steps"]),
+        ]
+    return [
         str(cli), "eval", str(checkpoint), str(case["mode"]), str(case["family"]),
         str(case["seed"]), str(case["speed_mps"]), str(case["distance_m"]),
         str(case["sensor_delay_frames"]), str(case["wind_param"]),
         str(case["depth_noise_m"]), str(case["dropout_probability"]),
         str(case["command_delay_steps"]),
     ]
+
+
+def evaluate_case(cli: Path, checkpoint: Path, case: dict[str, object], timeout: float) -> dict[str, object]:
+    started = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    command = build_command(cli, checkpoint, case)
     begin = time.perf_counter()
     result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=timeout)
     elapsed = time.perf_counter() - begin
@@ -132,8 +178,10 @@ def evaluate_case(cli: Path, checkpoint: Path, case: dict[str, object], timeout:
     metrics, eval_line, gpu_line = parse_metrics(result.stdout)
     if metrics["mode"] != str(case["mode"]) or metrics["family"] != str(case["family"]):
         raise RuntimeError(f"Evaluation output does not match requested case {case['case_id']}: {eval_line}")
+    if int(metrics["episodes"]) != 128:
+        raise RuntimeError(f"Expected 128 completed episodes for {case['case_id']}, got {metrics['episodes']}: {eval_line}")
     gpu_match = re.search(r"=([^\s]+)", gpu_line)
-    return {
+    row = {
         **case,
         "episodes": metrics["episodes"],
         "success": metrics["success"],
@@ -152,30 +200,39 @@ def evaluate_case(cli: Path, checkpoint: Path, case: dict[str, object], timeout:
         "raw_eval_line": eval_line,
         "raw_gpu_line": gpu_line,
     }
+    row.pop("threat_kind_id", None)
+    return row
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cli", type=Path, default=ROOT / "build/metal_nav_guided")
     parser.add_argument("--checkpoint", type=Path, default=ROOT / "results/guided-table-memory.bin.best")
-    parser.add_argument("--output", type=Path, default=ROOT / "results/evaluation.csv")
+    parser.add_argument("--output", type=Path, help="CSV destination (default depends on evaluation matrix)")
     parser.add_argument("--timeout", type=float, default=120.0, help="timeout per evaluation, in seconds")
     parser.add_argument("--dry-run", action="store_true", help="print the planned matrix; do not launch GPU runs")
     parser.add_argument("--resume", action="store_true", help="skip case IDs already present in the output CSV")
+    parser.add_argument("--threats", action="store_true", help="run the 24-case controlled moving-threat matrix")
     args = parser.parse_args()
     cli = args.cli if args.cli.is_absolute() else ROOT / args.cli
     checkpoint = args.checkpoint if args.checkpoint.is_absolute() else ROOT / args.checkpoint
-    output = args.output if args.output.is_absolute() else ROOT / args.output
+    if args.output is None:
+        output = ROOT / ("results/threat-evaluation.csv" if args.threats else "results/evaluation.csv")
+    else:
+        output = args.output if args.output.is_absolute() else ROOT / args.output
     if not cli.is_file():
         parser.error(f"CLI binary not found: {cli}")
     if not checkpoint.is_file():
         parser.error(f"Checkpoint not found: {checkpoint}")
 
-    cases = build_cases()
+    cases = build_threat_cases() if args.threats else build_cases()
     if args.dry_run:
         print(f"planned_cases={len(cases)} output={output}")
         for case in cases:
-            print(case["case_id"])
+            if args.threats:
+                print(f"{case['case_id']}\t{shlex.join(build_command(cli,checkpoint,case))}")
+            else:
+                print(case["case_id"])
         return 0
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -186,7 +243,7 @@ def main() -> int:
     remaining = [case for case in cases if case["case_id"] not in complete]
     mode = "a" if args.resume and output.exists() and output.stat().st_size else "w"
     with output.open(mode, newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        writer = csv.DictWriter(f, fieldnames=THREAT_FIELDS if args.threats else FIELDS)
         if mode == "w":
             writer.writeheader()
         for index, case in enumerate(remaining, 1):

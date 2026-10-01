@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <cstring>
 #include "world.hpp"
+#include "threat_evaluation.hpp"
 #include "raptor.hpp"
 #include "physics.hpp"
 #include "ppo.hpp"
@@ -916,11 +917,14 @@ struct PPOTrainer {
     }
 };
 
-static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint,const std::string& warmstart="",float speed=1,float distance=3,float risk=0,float entropy=-1,float learning_rate=.0003f,uint32_t velocity_contract=1,uint32_t memory=0) {
+static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint,const std::string& warmstart="",float speed=1,float distance=3,float risk=0,float entropy=-1,float learning_rate=.0003f,uint32_t velocity_contract=1,uint32_t memory=0,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t evaluation_mode=4) {
     require(iterations>0,"train_navigation needs at least one rollout");
+    require(sensor_delay<=6 && command_delay<=7,"training delay exceeds the sensor/command rings");
+    require(std::isfinite(speed) && speed>0 && std::isfinite(distance) && distance>1 && std::isfinite(wind) && std::isfinite(noise) && noise>=0 && std::isfinite(dropout) && dropout>=0 && dropout<=1,"invalid training scene/corruption parameters");
+    require(evaluation_mode==4 || (fixed_ppo::actor_obs_dim==184 && evaluation_mode==17),"training selection supports learned mean4 or guided mode17");
     m.compile(base_source()+PPO_TRAINER_MSL);
     constexpr uint32_t n=128,horizon=32,base_seed=42;
-    SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=distance;cfg.speed=speed;cfg.max_steps=200;cfg.risk_coef=risk;cfg.entropy_coef=entropy>=0?entropy:(family==7?.002f:.005f);cfg.learning_rate=learning_rate;cfg.velocity_contract=velocity_contract;cfg.geometry_memory=memory;
+    SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=distance;cfg.speed=speed;cfg.max_steps=200;cfg.risk_coef=risk;cfg.entropy_coef=entropy>=0?entropy:(family==7?.002f:.005f);cfg.learning_rate=learning_rate;cfg.velocity_contract=velocity_contract;cfg.geometry_memory=memory;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;
     Sim sim(m,cfg,horizon);PPOTrainer trainer(sim);trainer.load_checkpoint(checkpoint,family,horizon,n,base_seed);
     if(!warmstart.empty() && trainer.completed_rollouts==0) {
         std::ifstream f(warmstart,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);
@@ -931,14 +935,18 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
     }
     EvalScore best;
     if(!checkpoint.empty() && std::filesystem::exists(checkpoint+".best")) {
-        std::ifstream f(checkpoint+".best",std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);std::vector<float> a(fixed_ppo::actor_param_count);f.read((char*)a.data(),a.size()*4);require(f && h.actor_count==fixed_ppo::actor_param_count,"best checkpoint read/dimensions");best=sim_evaluate(m,family,4,a.data(),cfg.speed,cfg.distance,700001,0,0,0,0,0,cfg.velocity_contract,cfg.geometry_memory);
+        std::ifstream f(checkpoint+".best",std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);std::vector<float> a(fixed_ppo::actor_param_count);f.read((char*)a.data(),a.size()*4);require(f && h.actor_count==fixed_ppo::actor_param_count,"best checkpoint read/dimensions");best=sim_evaluate(m,family,evaluation_mode,a.data(),cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
+    }
+    if(!checkpoint.empty() && !std::filesystem::exists(checkpoint+".best")) {
+        best=sim_evaluate(m,family,evaluation_mode,(const float*)sim.actor.contents,cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
+        trainer.save_checkpoint(checkpoint+".best",family,base_seed,trainer.completed_rollouts);
     }
     std::filesystem::create_directories("results");
     std::ofstream history("results/training.tsv",std::ios::app);
     const double run_start=seconds();
     const uint32_t start_rollout=trainer.completed_rollouts;
     const uint32_t finish_rollout=start_rollout+iterations;
-    std::cout<<"PPO training device="<<m.device.name.UTF8String<<" family="<<family<<" envs="<<n<<" horizon="<<horizon<<" speed="<<cfg.speed<<" distance="<<cfg.distance<<" risk="<<cfg.risk_coef<<" entropy="<<cfg.entropy_coef<<" lr="<<cfg.learning_rate<<"\n";
+    std::cout<<"PPO training device="<<m.device.name.UTF8String<<" family="<<family<<" envs="<<n<<" horizon="<<horizon<<" speed="<<cfg.speed<<" distance="<<cfg.distance<<" risk="<<cfg.risk_coef<<" entropy="<<cfg.entropy_coef<<" lr="<<cfg.learning_rate<<" sensor_delay="<<cfg.sensor_delay<<" command_delay="<<cfg.command_delay<<" wind_accel="<<cfg.wind<<" depth_noise="<<cfg.depth_noise<<" dropout="<<cfg.dropout<<" selection_mode="<<evaluation_mode<<"\n";
     for(uint32_t r=start_rollout;r<finish_rollout;r++) {@autoreleasepool{
         if(m.profiler.available)m.profiler.arm();const double rollout_start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,horizon);trainer.rollout_update(cb,r);
         const double gpu=m.finish(cb);
@@ -946,7 +954,7 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
         if((r+1)%10==0 || r+1==finish_rollout) {
             std::cout<<"train rollout="<<(r+1)<<" policy_loss="<<met[0]<<" value_loss="<<met[1]<<" entropy_loss="<<met[2]<<" ratio="<<met[3]<<" optimizer_step="<<trainer.optimizer_step<<" gpu_s="<<gpu<<"\n";
             sim.report("train",0.0);
-            EvalScore score=sim_evaluate(m,family,4,(const float*)sim.actor.contents,cfg.speed,cfg.distance,700001,0,0,0,0,0,cfg.velocity_contract,cfg.geometry_memory);
+            EvalScore score=sim_evaluate(m,family,evaluation_mode,(const float*)sim.actor.contents,cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
             history<<checkpoint<<'\t'<<r+1<<'\t'<<seconds()-run_start<<'\t'<<gpu<<'\t'<<score.success<<'\t'<<score.collision<<'\t'<<score.timeout<<'\t'<<score.goal_time<<'\n';history.flush();
             if(score.success>best.success || (score.success==best.success && score.goal_time<best.goal_time)) {
                 best=score;trainer.completed_rollouts=r+1;trainer.save_checkpoint(checkpoint+".best",family,base_seed,r+1);
@@ -982,8 +990,56 @@ static void gpu_training_benchmark(Metal& m,uint32_t n,uint32_t rollouts,uint32_
     std::cout<<"GPU training family="<<family<<" n="<<n<<" rollouts="<<rollouts<<" transitions="<<uint64_t(n)*32*rollouts<<" gpu_s="<<gpu<<" wall_s="<<wall<<" optimizer_step="<<trainer.optimizer_step<<" policy="<<metrics[0]<<" value="<<metrics[1]<<" entropy="<<metrics[2]<<" ratio="<<metrics[3]<<"\n";
 }
 
+static void evaluate_threat(Metal& m,const std::string& checkpoint,uint32_t mode,uint32_t kind,float threat_speed,float nominal_ttc,uint32_t seed,uint32_t sensor_delay,uint32_t command_delay) {
+    require(kind<=1 && sensor_delay<=6 && command_delay<=7,"invalid threat kind or delay");
+    std::ifstream f(checkpoint,std::ios::binary);auto h=read_checkpoint_header(f);
+    require(h.actor_count==fixed_ppo::actor_param_count,"threat actor dimensions");
+    std::vector<float> actor(h.actor_count);f.read((char*)actor.data(),actor.size()*4);require(bool(f),"threat actor read");
+    SimConfig cfg;cfg.mode=mode;cfg.family=0;cfg.eval=1;cfg.seed=seed;cfg.speed=1.5f;cfg.distance=4;
+    cfg.sensor_delay=sensor_delay;cfg.command_delay=command_delay;cfg.velocity_contract=h.config.velocity_contract;cfg.geometry_memory=h.config.geometry_memory||mode>=13;
+    Sim sim(m,cfg,32);std::memcpy(sim.actor.contents,actor.data(),actor.size()*4);
+    auto* worlds=(WWorld*)sim.worlds.contents;auto* states=(RLPhysicsState*)sim.states.contents;auto* runs=(SimRun*)sim.runs.contents;
+    for(uint32_t n=0;n<cfg.n;n++) {
+        uint32_t obstacle=0;require(add_threat_sphere(worlds[n],seed+n*747796405u,ThreatKind(kind),cfg.speed,threat_speed,nominal_ttc,obstacle),"invalid or overlapping threat scene");
+        states[n].linear_velocity[0]=cfg.speed;runs[n].desired_velocity[0]=cfg.speed;runs[n].previous_nav[0]=1;
+    }
+    std::cout<<"threat kind="<<kind<<" speed="<<threat_speed<<" nominal_ttc="<<nominal_ttc<<" initial_vx="<<cfg.speed<<" seed="<<seed<<" sensor_delay="<<sensor_delay<<" command_delay="<<command_delay<<"\n";
+    const double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,cfg.max_steps);double gpu=m.finish(cb);
+    sim.report("eval family=0 mode="+std::to_string(mode),seconds()-start);std::cout<<"eval_GPU_s="<<gpu<<"\n";
+}
+
+static void measure_reaction_latency(Metal& m,const std::string& checkpoint,uint32_t sensor_delay,uint32_t command_delay) {
+    require(fixed_ppo::actor_obs_dim==184 && sensor_delay<=6 && command_delay<=7,"latency requires guided actor and valid delays");
+    std::ifstream file(checkpoint,std::ios::binary);auto h=read_checkpoint_header(file);
+    require(h.actor_count==fixed_ppo::actor_param_count,"latency actor dimensions");
+    std::vector<float> actor(h.actor_count);file.read((char*)actor.data(),actor.size()*4);require(bool(file),"latency actor read");
+    SimConfig cfg;cfg.n=1;cfg.mode=17;cfg.family=0;cfg.eval=1;cfg.seed=800001;cfg.speed=1.5f;cfg.distance=10;
+    cfg.sensor_delay=sensor_delay;cfg.command_delay=command_delay;cfg.velocity_contract=h.config.velocity_contract;cfg.geometry_memory=1;
+    Sim control(m,cfg,32),event(m,cfg,32);std::memcpy(control.actor.contents,actor.data(),actor.size()*4);
+    auto warm=[m.queue commandBuffer];control.collect(warm,20);m.finish(warm);
+    for(auto pair:{std::make_pair(control.states,event.states),std::make_pair(control.runs,event.runs),std::make_pair(control.worlds,event.worlds),std::make_pair(control.sensors,event.sensors),std::make_pair(control.poses,event.poses),std::make_pair(control.commands,event.commands),std::make_pair(control.actor,event.actor),std::make_pair(control.critic,event.critic)})std::memcpy(pair.second.contents,pair.first.contents,pair.first.length);
+    auto paired_step=[&](){auto cb=[m.queue commandBuffer];control.collect(cb,1);event.collect(cb,1);m.finish(cb);};
+    paired_step();
+    auto* baseline=(SimRun*)control.runs.contents;auto* changed=(SimRun*)event.runs.contents;
+    for(uint j=0;j<4;j++)require(std::fabs(baseline[0].motors[j]-changed[0].motors[j])<1e-6f,"latency paired baseline diverged before event");
+    const auto state=((RLPhysicsState*)event.states.contents)[0];float rotation[9];raptor_quaternion_matrix(state.orientation_wxyz,rotation);
+    const WVec forward=wv(rotation[0],rotation[3],rotation[6]);const WVec at_event=wa(wv(state.position[0],state.position[1],state.position[2]),wm(forward,2.0f));
+    const WVec velocity=wm(forward,-1.0f);const float event_time=changed[0].elapsed;
+    auto& world=((WWorld*)event.worlds.contents)[0];wadd(world,1,ws(at_event,wm(velocity,event_time)),wv(.35f,.35f,.35f),velocity);
+    int command_tick=0,motor_tick=0;constexpr float delta_threshold=1e-4f;
+    for(int tick=1;tick<=20;tick++) {
+        paired_step();float command_delta=0,motor_delta=0;
+        for(uint j=0;j<4;j++){command_delta=std::max(command_delta,std::fabs(baseline[0].previous_nav[j]-changed[0].previous_nav[j]));motor_delta=std::max(motor_delta,std::fabs(baseline[0].motors[j]-changed[0].motors[j]));}
+        if(command_tick==0 && command_delta>delta_threshold)command_tick=tick;
+        if(motor_tick==0 && motor_delta>delta_threshold)motor_tick=tick;
+        if(command_tick && motor_tick)break;
+        require(changed[0].episodes==0 && baseline[0].episodes==0,"episode ended before measurable reaction");
+    }
+    std::cout<<"reaction sensor_frames="<<sensor_delay<<" command_steps="<<command_delay<<" applied_command_upper_ms="<<command_tick*50<<" motor_upper_ms="<<motor_tick*50<<" resolution_ms=50 delta_threshold="<<delta_threshold<<" detected="<<bool(command_tick&&motor_tick)<<"\n";
+}
+
 int main(int argc,char** argv){@autoreleasepool{try{
     std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0,argc>14?std::stof(argv[14]):0,argc>15?std::stof(argv[15]):0,argc>16?std::stof(argv[16]):0,argc>17?std::stoul(argv[17]):0,argc>18?std::stoul(argv[18]):4);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}

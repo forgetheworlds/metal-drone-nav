@@ -211,6 +211,30 @@ Eval modes: 1 random, 2 goal direction, 4 full learned mean; guided 13 geometry 
 
 ---
 
+## Train under measured sensing and disturbance conditions
+
+Additional train arguments after GEOMETRY_MEMORY are SENSOR_DELAY, WIND_ACCEL, DEPTH_NOISE, DROPOUT, COMMAND_DELAY and SELECTION_MODE. Defaults preserve the clean training path. The delays and corruption fields already exist in the simulator/checkpoint; training now exposes them directly. Selection mode17 evaluates the guided inference variant under the same conditions on held-out seed700001. New runs also retain their starting policy as a validation baseline. Resume uses additional rollout count.
+
+```sh
+./build/metal_nav_guided train 1000 7 results/guided-stress.bin results/guided-table-memory.bin.best 1.5 4 .04 .0003 .0001 1 1 2 .5 .05 .1 1 17
+```
+
+This trains with100ms sensing lag,50ms command lag,0.5m/s² disturbance,0.05m range noise and10% pixel dropout. It is a candidate curriculum; the packaged policy changes only after independent validation.
+
+## Controlled threats and reaction time
+
+```sh
+python3 evaluation.py --threats
+./build/metal_nav_guided threat-eval results/guided-table-memory.bin.best 17 0 2 1 800001
+./build/metal_nav_guided reaction-latency results/guided-table-memory.bin.best 2 1
+```
+
+Threat arguments are checkpoint,mode,kind(0 approaching /1 crossing),threat speed,nominal TTC,seed,optional sensor and command delays. The vehicle starts flying at1.5m/s; the threat is a0.35m sphere. TTC is the nominal straight-line encounter parameter, not the measured policy trajectory. All motion, sensing and collision checks remain in Metal after scene setup. Goal-script and geometry-only baselines establish whether the scene requires avoidance.
+
+`reaction-latency` clones a warmed episode into two identical runs. It verifies matching motor outputs before inserting an approaching sphere into one run, then measures the first applied-command and motor difference above1e-4. This diagnostic reports simulated latency upper bounds at50ms observation resolution. The measured bounds are50ms without delay and200ms with100ms sensing plus50ms command delay. They exclude real sensor/transport timing and do not prove evasion success.
+
+Training family9 rehearses50% single doors,25% tables/counters and25% broad families0–6. Two-door family8 remains held out. This addresses the measured loss of table skills in a door-only curriculum.
+
 ## Compact policy interface
 
 `assets/navigation.bin` is the selected actor export. [`deployment.hpp`](deployment.hpp) loads it and produces a body FLU velocity vector plus yaw rate. It has **no Metal dependency, critic, optimizer or motor output** — it is the deployable slice. The caller supplies 184 floats:

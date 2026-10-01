@@ -103,3 +103,23 @@ Serial memory clearance repeatedly transformed up to640points for85candidate dir
 ## Finish the usable vertical slice
 
 The user asked to focus on the end outcome instead of open-ended experiments. Stop new architecture/tuning probes. Preserve a compact actor-only export, exact contracts, selected checkpoint, final held-out scores, optimized runtime, reference provenance and reproducible commands. Distinguish the verified simulation research milestone from future real sensor/vehicle validation.
+
+## Disturbance exposure targets the measured delay failure
+
+Training previously exposed clean sensor/controller timing while robustness was only evaluated afterward. Expose the existing checkpointed sensor/command delay, wind-force acceleration, depth noise and pixel dropout in the train CLI. Validate model selection under the same conditions rather than selecting solely on clean episodes. The PPO likelihood, simulator, controller and physics are unchanged. Retain the starting model in a new run's selection set.
+
+A1000-rollout broad-family warm start from the table-memory best,100ms sensor lag,50ms command lag,0.5m/s² acceleration,0.05m noise,10% pixel dropout: fresh held-door combined success70.31%→77.34%;command-delay-only76.56%→84.38%. Mixed clean89.84%→92.97%;table combined89.06%→92.19%. It also hurts clean held-door transfer89.06%→85.94%, and92.19%→82.81% on the second seed. Preserve both candidates, do not replace the packaged model yet. Exact matrix:results/stress-evaluation.csv. Next curriculum focuses on single doors while the two-door composition remains held out.
+
+## Door skill transfer and rehearsal
+
+A1000-rollout single-door curriculum under the same disturbances improves fresh held two-door clean success89.06%→95.31% and92.19%→94.53% on the second seed;command-delay success76.56%→90.63%;combined70.31%→83.59%. However,table clean96.88%→58.59%,combined89.06%→39.84%. This is a tradeoff, not an acceptable replacement. Keep the original export. Add a training-only rehearsal mixture:50% doors,25% tables,25% broad0–6,with family8 always held out. Warm start from the broad stress candidate so table skills are present initially.
+
+## Dynamic coverage reveals a harder failure boundary
+
+Controlled flying-start sphere encounters are generated on the host once; sensing/collision/physics/controller/policy remain GPU. Vehicle initialvx1.5m/s,sphere radius.35m,goal4m.24cases:approach/crossing,speed.5/2m/s,nominal straight-line TTC.5/1s,modes17/13/2,128 seeded variations each. Goal-script collision100% in every case confirms the challenge forces avoidance. The original selected learned policy succeeds100% on slow approach with1s nominal TTC and82.03% on2m/s approach with1s TTC,but0% on2m/s approach at.5s andfast crossing cases. Geometry-only is also weak. Prior high moving-sphere generator scores did not establish fast-threat evasion. Exact matrix:results/threat-evaluation.csv. Next learning work must include these encounters and genuine temporal ablations.
+
+## Causal modeled reaction latency
+
+Warm a1-environment guided episode,clone allstate/history/policy buffers,andconfirm identical motors before inserting a1m/s approaching sphere2m ahead into only one copy. Compare applied navigation fractions and motor outputs after each50ms navtick,threshold1e-4. No-delay response is detected by50ms;100ms sensor+50ms command delay response is detected by200ms. These are simulation upper bounds with50ms readout resolution;actual RAPTOR still updates100Hz. They establish causal response and modeled queue delay,not real sensor/transport latency or successful avoidance.
+
+Rehearsal1000 outcome: combined held-door70.31%→93.75%,command-only76.56%→95.31%,clean held-door89.06%→89.06%. However,table clean96.88%→78.13%,combined89.06%→76.56%;fresh mixed89.84%→87.50%. This successfullyaddresses the measured delay failure butstilldoesnotproduceonepolicyretainingallskills. Keep the original export and everycandidate. Next workshouldmixcleananddisturbedtrainingconditionsandtrainfastthreats,withper-familyvalidationguardingagainstaverageshidinglosses.
