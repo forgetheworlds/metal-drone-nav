@@ -67,3 +67,15 @@ Replace the parameter-by-sample gradient tensor with hidden deltas and batch-red
 PPO reaches100% validation open-goal success from scratch at150 rollouts. Continued training becomes faster but can miss some goals, so save both latest exact-resume state and best validation checkpoint. Select best by success, then time-to-goal. Final evaluation uses fresh seeds rather than the repeated selection set. Keep one training.tsv result history for all runs.
 
 Next stage warm-starts actor/critic parameters from open training, resets optimizer and exploration, and trains with random boxes. This remains pure PPO. Put obstacles at least1m before the goal and1.2m from the start to keep those states valid; the old minimum-span formula could place a box over a3m goal. This changes scene generation openly rather than hiding impossible episodes.
+
+## Do not infer performance from fewer arrays
+
+Rejected scalar device-pointer observation variant: valid isolated tests show no win; reused local observation storage is faster than repeated device reads. Two mixed pointer/fused timing attempts also used stale shader snapshots/overlapped work and are discarded. Adopt the parity-checked8x8 fused forward alone and then use that same kernel to precompute collection means.
+
+Rejected RAPTOR GRU rewrite: six gate accumulators instead of96-float arrays passes official/trajectory parity but three matched SimAdvance medians5.52→5.95ms (+7.9%); full collection12.69→13.20ms. Group32 also did not beat64. Restore original. Apple9 dynamic caching means a smaller source-level live array is not automatically faster.
+
+## Observation / generalization experiment
+
+The raw actor learned local box avoidance (81.25%fresh vs47.66%goal-script) but generalized badly to a new doorway distribution. Add broader single-door/table training while holding two-door compositionfamily8 out. Family4 now has offsets up to±0.6m; family8 has two independent offset apertures and a verified waypoint path. Record actual failed rates rather than declaring reward growth success.
+
+Compare raw661 and min-pooled181 actors from scratch on the SAME broad mixed0..6 dataset, speed1.5,goal4m,128×32,two PPO epochs. Pooled: each2x2 depth cell takes minimumrange;80current+80previous+21ego. Full320-ray sensing and physics stay unchanged. This is labeled feature compression/architecture ablation, not matched-workload speedup. Both fixed binaries pass existing CPU/Metal/reference checks and pooled learning smoke; now test actual learning. Separate checkpoint dimension checks prevent cross-architecture loading.

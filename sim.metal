@@ -10,6 +10,7 @@ struct SimConfig {
     uint n, tick, mode, family, substeps, sensor_period, sensor_delay, command_delay, max_steps, seed, eval;
     float speed, distance, wind, depth_noise, dropout;
 };
+constant uint SIM_DEPTH_FEATURES = (PPO_ACTOR_OBS - 21) / 2;
 inline void sim_rotation(thread const float* q, thread float* r) {
     float w=q[0],x=q[1],y=q[2],z=q[3];
     r[0]=1-2*(y*y+z*z);r[1]=2*(x*y-w*z);r[2]=2*(x*z+w*y);
@@ -19,7 +20,8 @@ inline void sim_rotation(thread const float* q, thread float* r) {
 inline float sim_normal(thread uint& rng) { float u=max(wurand(rng),1e-7f),v=wurand(rng);return sqrt(-2*log(u))*cos(6.28318530718f*v); }
 inline void sim_reset_one(device RLPhysicsState& s,device SimRun& run,device WWorld& world,device float* sensors,device float* commands,device const float* weights,constant RLPhysicsParams& p,constant SimConfig& cfg,uint n,bool first) {
     uint rng=first?(cfg.seed+n*747796405u+2891336453u):run.rng;
-    wgenerate(world,wrng(rng),cfg.family,cfg.distance);
+    uint episode_family=cfg.family;if(episode_family==7){episode_family=wrng(rng)%7;}
+    wgenerate(world,wrng(rng),episode_family,cfg.distance);
     world.wind[0]=cfg.wind;world.wind[1]=0;world.wind[2]=0;
     for(uint j=0;j<3;j++){s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;run.desired_velocity[j]=0;run.reference_position[j]=s.position[j];}
     s.orientation_wxyz[0]=1;for(uint j=1;j<4;j++)s.orientation_wxyz[j]=0;
@@ -46,30 +48,47 @@ kernel void sim_depth(device const RLPhysicsState* states [[buffer(0)]],device S
 }
 inline void sim_critic_obs(thread const RLPhysicsState& s,device const WWorld& w,device const SimRun& run,thread float* obs) {
     for(uint j=0;j<32;j++)obs[j]=0;
-    for(uint j=0;j<3;j++){obs[j]=(w.goal[j]-s.position[j])/10;obs[j+3]=s.linear_velocity[j]/4;obs[j+6]=s.angular_velocity_body[j]/4;obs[j+13]=s.position[j]/10;obs[j+16]=w.wind[j];}
+    for(uint j=0;j<3;j++){obs[j]=(w.goal[j]-s.position[j])/10;obs[j+3]=s.linear_velocity[j]/4;obs[j+6]=s.angular_velocity_body[j]/4;obs[j+13]=s.position[j]/10;obs[j+16]=(run.reference_position[j]-s.position[j])*2;}
     for(uint j=0;j<4;j++)obs[9+j]=s.orientation_wxyz[j];
+    obs[30]=w.wind[0];obs[31]=w.wind[1];
     obs[19]=wclearance(w,wv(s.position[0],s.position[1],s.position[2]),run.elapsed)/5;obs[20]=float(run.steps)/200;
     for(uint j=0;j<min(w.count,3u);j++){WVec c=wc(w.obstacles[j],run.elapsed);obs[21+j*3]=(c.x-s.position[0])/10;obs[22+j*3]=(c.y-s.position[1])/10;obs[23+j*3]=(c.z-s.position[2])/10;}
 }
 kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device const SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* sensors [[buffer(3)]],device float* obs [[buffer(4)]],device float* critic_obs [[buffer(5)]],constant RLPhysicsParams& p [[buffer(6)]],constant SimConfig& cfg [[buffer(7)]],uint n [[thread_position_in_grid]]) {
     if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);
     uint available=runs[n].steps/cfg.sensor_period,frame=available>cfg.sensor_delay?available-cfg.sensor_delay:0,prev=frame>0?frame-1:0;
-    uint row=(cfg.tick*cfg.n+n)*661,crow=(cfg.tick*cfg.n+n)*32;
-    for(uint k=0;k<320;k++){obs[row+k]=sensors[(n*8+frame%8)*320+k]/12;obs[row+320+k]=sensors[(n*8+prev%8)*320+k]/12;}
-    float3 delta=float3(worlds[n].goal[0]-s.position[0],worlds[n].goal[1]-s.position[1],worlds[n].goal[2]-s.position[2]);float distance=max(length(delta),1e-6f);
-    for(uint j=0;j<3;j++) {
-        obs[row+640+j]=(r[j]*delta.x+r[3+j]*delta.y+r[6+j]*delta.z)/distance;
-        obs[row+644+j]=(r[j]*s.linear_velocity[0]+r[3+j]*s.linear_velocity[1]+r[6+j]*s.linear_velocity[2])/4;
-        obs[row+647+j]=s.angular_velocity_body[j]/4;obs[row+650+j]=r[6+j];
+    uint row=(cfg.tick*cfg.n+n)*PPO_ACTOR_OBS,crow=(cfg.tick*cfg.n+n)*32;
+    for(uint k=0;k<SIM_DEPTH_FEATURES;k++) {
+        float current=12.0f,previous=12.0f;
+        if(SIM_DEPTH_FEATURES==320) {
+            current=sensors[(n*8+frame%8)*320+k];
+            previous=sensors[(n*8+prev%8)*320+k];
+        } else {
+            const uint y=(k/10)*2,x=(k%10)*2;
+            for(uint dy=0;dy<2;dy++)for(uint dx=0;dx<2;dx++) {
+                const uint pixel=(y+dy)*20+x+dx;
+                current=min(current,sensors[(n*8+frame%8)*320+pixel]);
+                previous=min(previous,sensors[(n*8+prev%8)*320+pixel]);
+            }
+        }
+        obs[row+k]=available>=cfg.sensor_delay?current/12.0f:1.0f;
+        obs[row+SIM_DEPTH_FEATURES+k]=available>=cfg.sensor_delay?previous/12.0f:1.0f;
     }
-    obs[row+643]=min(distance/10,1.5f);for(uint j=0;j<4;j++)obs[row+653+j]=runs[n].previous_nav[j];
-    obs[row+657]=float(runs[n].steps-frame*cfg.sensor_period)*p.dt*cfg.substeps;float ref[3]={runs[n].reference_position[0]-s.position[0],runs[n].reference_position[1]-s.position[1],runs[n].reference_position[2]-s.position[2]};for(uint j=0;j<3;j++)obs[row+658+j]=clamp((r[j]*ref[0]+r[3+j]*ref[1]+r[6+j]*ref[2])*2,-1.0f,1.0f);
+    float3 delta=float3(worlds[n].goal[0]-s.position[0],worlds[n].goal[1]-s.position[1],worlds[n].goal[2]-s.position[2]);float distance=max(length(delta),1e-6f);
+    const uint context=row+2*SIM_DEPTH_FEATURES;
+    for(uint j=0;j<3;j++) {
+        obs[context+j]=(r[j]*delta.x+r[3+j]*delta.y+r[6+j]*delta.z)/distance;
+        obs[context+4+j]=(r[j]*s.linear_velocity[0]+r[3+j]*s.linear_velocity[1]+r[6+j]*s.linear_velocity[2])/4;
+        obs[context+7+j]=s.angular_velocity_body[j]/4;obs[context+10+j]=r[6+j];
+    }
+    obs[context+3]=min(distance/10,1.5f);for(uint j=0;j<4;j++)obs[context+13+j]=runs[n].previous_nav[j];
+    obs[context+17]=float(runs[n].steps-frame*cfg.sensor_period)*p.dt*cfg.substeps;float ref[3]={runs[n].reference_position[0]-s.position[0],runs[n].reference_position[1]-s.position[1],runs[n].reference_position[2]-s.position[2]};for(uint j=0;j<3;j++)obs[context+18+j]=clamp((r[j]*ref[0]+r[3+j]*ref[1]+r[6+j]*ref[2])*2,-1.0f,1.0f);
     float co[32];sim_critic_obs(s,worlds[n],runs[n],co);for(uint j=0;j<32;j++)critic_obs[crow+j]=co[j];
 }
 kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* observations [[buffer(3)]],device const float* critic_obs [[buffer(4)]],device const float* actor [[buffer(5)]],device const float* critic [[buffer(6)]],device float* actions [[buffer(7)]],device float* logp [[buffer(8)]],device float* values [[buffer(9)]],device float* commands [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {
-    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float obs[661],co[32],hidden[64],mean[4],a[4];
-    for(uint j=0;j<661;j++)obs[j]=observations[row*661+j];for(uint j=0;j<32;j++)co[j]=critic_obs[row*32+j];
-    ppo_actor_mean(actor,obs,hidden,mean);values[row]=ppo_critic_value(critic,co,hidden);
+    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float co[32],hidden[64],mean[4],a[4];
+    for(uint j=0;j<32;j++)co[j]=critic_obs[row*32+j];for(uint j=0;j<4;j++)mean[j]=actions[row*4+j];
+    values[row]=ppo_critic_value(critic,co,hidden);
     uint rng=runs[n].rng;float lp=0;for(uint j=0;j<4;j++) {
         a[j]=mean[j]+(cfg.mode==0?exp(actor[PPO_ACTOR_LOG_STD+j])*sim_normal(rng):0);
         if(cfg.mode==1)a[j]=sim_normal(rng);
@@ -84,7 +103,7 @@ kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* r
         for(uint j=0;j<4;j++)commands[(n*8+runs[n].steps%8)*4+j]=a[j];
     }
     uint applied=runs[n].steps>cfg.command_delay?runs[n].steps-cfg.command_delay:0;
-    for(uint j=0;j<4;j++)runs[n].previous_nav[j]=commands[(n*8+applied%8)*4+j];
+    for(uint j=0;j<4;j++)runs[n].previous_nav[j]=runs[n].steps<cfg.command_delay?0:commands[(n*8+applied%8)*4+j];
     RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);float v[3]={runs[n].previous_nav[0]*cfg.speed,runs[n].previous_nav[1]*cfg.speed,runs[n].previous_nav[2]*cfg.speed*0.5f};
     for(uint j=0;j<3;j++)runs[n].desired_velocity[j]=r[j*3]*v[0]+r[j*3+1]*v[1]+r[j*3+2]*v[2];runs[n].yaw+=runs[n].previous_nav[3]*p.dt*cfg.substeps*0.5f;
 }
@@ -101,6 +120,7 @@ kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRu
         float r[9];sim_rotation(q,r);for(uint j=0;j<9;j++)obs[3+j]=r[j];obs[12]=clamp(c*dv[0]+si*dv[1],-1.0f,1.0f);obs[13]=clamp(-si*dv[0]+c*dv[1],-1.0f,1.0f);obs[14]=clamp(dv[2],-1.0f,1.0f);
         for(uint j=0;j<3;j++)obs[15+j]=s.angular_velocity_body[j];for(uint j=0;j<4;j++)obs[18+j]=motors[j];
         raptor_forward(weights,obs,h,motors);raptor_clip_action(motors);RLPhysicsState next;rl_physics_step(s,motors,wind,p,next);
+        bool valid=true;for(uint j=0;j<3;j++)valid=valid&&isfinite(next.position[j])&&isfinite(next.linear_velocity[j])&&isfinite(next.angular_velocity_body[j]);for(uint j=0;j<4;j++)valid=valid&&isfinite(next.orientation_wxyz[j])&&isfinite(next.rpm[j]);if(!valid){collision=true;break;}
         runs[n].path+=distance(float3(s.position[0],s.position[1],s.position[2]),float3(next.position[0],next.position[1],next.position[2]));s=next;runs[n].elapsed+=p.dt;
         float clearance=wclearance(worlds[n],wv(s.position[0],s.position[1],s.position[2]),runs[n].elapsed);runs[n].min_clearance=min(runs[n].min_clearance,clearance);runs[n].peak_speed=max(runs[n].peak_speed,length(float3(s.linear_velocity[0],s.linear_velocity[1],s.linear_velocity[2])));
         if(clearance<=0 || !isfinite(s.position[0]) || !isfinite(s.position[1]) || !isfinite(s.position[2])) {collision=true;break;}

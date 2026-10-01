@@ -48,3 +48,24 @@ Three worker probes: before1.6624/1.6556/1.6558s; after0.3055/0.2942/0.2947s. Me
 ## Real learning, open curriculum
 
 Pure PPO, no expert/teacher. At rollout150 (614,400 transitions), validation success first reaches100% over128 unseen open episodes. It repeatedly reaches100% through rollout250; later faster policies can miss goals, so the newest checkpoint is not automatically the best. At rollout380 latest success82.8%, collisions0%, remaining cases time out. Time-to-goal~2.53s for successful latest episodes. A fresh final test seed and clutter training are next. Do not count open-world learning as obstacle-avoidance success.
+
+## M3 measured forward and reduction work
+
+Actual hardware encoder timestamps: original actor collection114–126ms, PPO actor forward~95ms, serial norm~84ms per complete128×32rollout. SIMD norm reduced norm to~5ms; fused8x8 forward in trainer alone0.217→0.124s; using the same fused kernel for collection reaches~0.026s. Scalar-actor fallback in the same current graph:0.210s at rollout3 vsSIMD0.0257s, initial losses agree to printed precision. No sensor/physics/PPO work is removed. Optional `profile` records611+ actual timestamp intervals. M3 has encoder-stage sampling; dispatch-boundary sampling is unsupported.
+
+## Optimized CPU reference comparison
+
+ReleaseFP32, identical box worlds,320rays/history, actual RAPTOR/native5ticks per nav,128/512/2048/8192envs,32horizon,two PPO epochs,batch256. Three consecutive full rollouts; setup/evaluation excluded from both. CPU uses Accelerate SGEMM and GCD for parallel geometry/physics; GPU timings include host encoding/wait in wall result.
+
+| N | GPU wall3rollouts s | CPU wall3rollouts s | CPU/GPU |
+|---:|---:|---:|---:|
+| 128 | 0.0822 | 0.0811 | ~0.99 |
+| 512 | 0.1881 | 0.3097 | 1.65 |
+| 2048 | 0.6754 | 1.2297 | 1.82 |
+| 8192 | 2.7073 | 5.0162 | 1.85 |
+
+Commands: `./build/metal_nav gpu-bench N 3 1` and `./build/metal_nav cpu-bench 3 N 1`. Small-batchCPU is competitive. A CPU scratch-size error affected early N>256 attempts; corrected to max(N,256), those earlier times are discarded. First-rollout math/forward agrees within test bounds; accumulation order can change later learning traces.
+
+## Fresh-seed learning evidence
+
+Box-trained best checkpoint,128 freshseed800001 episodes at speed1/goal3m: learned81.25%success/18.75%collision; goal script47.66%/52.34%; random0%success. Mixed five-family curriculum at speed1.5/goal4m:1500rollouts in52.2s; first best validation81.25% at380rollouts/13.55s. Fresh mixed75.78% vsgoal script65.63%. Blind-depth box test47.66%. Generalization failure: unseen doorway6.25%, table/counter44.53%. The policy is useful but not robust; the goal remains active.

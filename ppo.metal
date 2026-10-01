@@ -59,6 +59,11 @@ inline void ppo_actor_mean(device const float* params, thread const float* obs,
     }
 }
 
+// Scalar reference that reads observations directly from device storage. Use
+// this form in inference/rollout kernels so they do not reserve a 661-float
+// thread-local observation array merely to call the actor.
+
+
 inline float ppo_critic_value(device const float* params, thread const float* obs,
                               thread float* hidden) {
     for (uint h = 0; h < PPO_HIDDEN; ++h) {
@@ -87,6 +92,87 @@ kernel void ppo_actor_forward(device const float* observations [[buffer(0)]],
     ppo_actor_mean(params, obs, hidden, mean);
     for (uint h = 0; h < PPO_HIDDEN; ++h) hidden_out[n * PPO_HIDDEN + h] = hidden[h];
     for (uint a = 0; a < PPO_ACTIONS; ++a) means[n * PPO_ACTIONS + a] = mean[a];
+}
+
+
+
+// Batched FP32 SIMD-group matmul for the actor's first layer. Each SIMD group
+// computes one [8 samples, 8 hidden units] tile of observations[B,661] times
+// W1-transpose[661,64]. The final four observation features are zero-masked.
+
+
+
+
+// Fused batched actor forward. Eight SIMD groups produce all 64 hidden units
+// for eight observations, then the threadgroup applies the 4-unit output head
+// while the hidden tile is still local. This avoids the 661-float observation
+// copy, a second dispatch, and a global hidden-to-head round trip.
+kernel void ppo_actor_forward_simd_fused(device const float* observations [[buffer(0)]],
+                                         device const float* params [[buffer(1)]],
+                                         device float* hidden_out [[buffer(2)]],
+                                         device float* means [[buffer(3)]],
+                                         constant uint& batch_size [[buffer(4)]],
+                                         uint tid [[thread_index_in_threadgroup]],
+                                         uint sg [[simdgroup_index_in_threadgroup]],
+                                         uint3 group_position [[threadgroup_position_in_grid]]) {
+    constexpr uint tile = 8;
+    constexpr uint simdgroups_per_threadgroup = 8;
+    const uint sample_base = group_position.x * tile;
+    threadgroup float tile_a[64];
+    threadgroup float tile_b[simdgroups_per_threadgroup * 64];
+    threadgroup float tile_c[simdgroups_per_threadgroup * 64];
+    threadgroup float tile_h[simdgroups_per_threadgroup * 64];
+    simdgroup_float8x8 acc(0.0f);
+
+    for (uint k_base = 0; k_base < PPO_ACTOR_OBS; k_base += tile) {
+        for (uint cell = tid; cell < 64; cell += 256) {
+            const uint row = cell / tile;
+            const uint col = cell % tile;
+            const uint sample = sample_base + row;
+            const uint feature = k_base + col;
+            tile_a[cell] = sample < batch_size && feature < PPO_ACTOR_OBS
+                         ? observations[sample * PPO_ACTOR_OBS + feature] : 0.0f;
+        }
+        for (uint index = tid; index < simdgroups_per_threadgroup * 64; index += 256) {
+            const uint target_sg = index / 64;
+            const uint cell = index % 64;
+            const uint feature = k_base + cell / tile;
+            const uint hidden = target_sg * tile + cell % tile;
+            tile_b[index] = feature < PPO_ACTOR_OBS && hidden < PPO_HIDDEN
+                          ? params[hidden * PPO_ACTOR_OBS + feature] : 0.0f;
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        simdgroup_float8x8 a, b;
+        simdgroup_load(a, tile_a, 8);
+        simdgroup_load(b, tile_b + sg * 64, 8);
+        simdgroup_multiply_accumulate(acc, a, b, acc);
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+
+    simdgroup_store(acc, tile_c + sg * 64, 8);
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint index = tid; index < simdgroups_per_threadgroup * 64; index += 256) {
+        const uint hidden_tile = index / 64;
+        const uint cell = index % 64;
+        const uint sample_local = cell / tile;
+        const uint hidden = hidden_tile * tile + cell % tile;
+        const uint sample = sample_base + sample_local;
+        const float activation = tanh(tile_c[index] + params[PPO_ACTOR_B1 + hidden]);
+        tile_h[sample_local * PPO_HIDDEN + hidden] = activation;
+        if (sample < batch_size) hidden_out[sample * PPO_HIDDEN + hidden] = activation;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    if (tid < tile * PPO_ACTIONS) {
+        const uint sample_local = tid / PPO_ACTIONS;
+        const uint action = tid % PPO_ACTIONS;
+        const uint sample = sample_base + sample_local;
+        float mean = params[PPO_ACTOR_B2 + action];
+        const uint row = PPO_ACTOR_W2 + action * PPO_HIDDEN;
+        for (uint h = 0; h < PPO_HIDDEN; ++h)
+            mean += params[row + h] * tile_h[sample_local * PPO_HIDDEN + h];
+        if (sample < batch_size) means[sample * PPO_ACTIONS + action] = mean;
+    }
 }
 
 kernel void ppo_critic_forward(device const float* observations [[buffer(0)]],
@@ -339,6 +425,103 @@ kernel void ppo_actor_grad_direct(device const float* observations [[buffer(0)]]
     }
     grad[p] = sum;
 }
+
+// The direct first-layer matrix product uses row-major [sample, hidden_delta]
+// and [sample, feature] buffers. Four SIMD groups cooperate per threadgroup;
+// each group accumulates one 8x8 [hidden, feature] tile over sample chunks.
+// The input feature tail is masked at 661; parameter storage stays row-major.
+kernel void ppo_actor_grad_tiled(device const float* observations [[buffer(0)]],
+                                device const float* hidden_delta [[buffer(1)]],
+                                device float* grad [[buffer(2)]],
+                                constant uint& batch_size [[buffer(3)]],
+                                uint tid [[thread_index_in_threadgroup]],
+                                uint sg [[simdgroup_index_in_threadgroup]],
+                                uint3 group_position [[threadgroup_position_in_grid]]) {
+    constexpr uint tile = 8;
+    constexpr uint input_tiles = (PPO_ACTOR_OBS + tile - 1) / tile;
+    constexpr uint simdgroups_per_threadgroup = 4;
+    const uint group = group_position.x;
+    const uint output_tile = group * simdgroups_per_threadgroup + sg;
+
+    threadgroup float tile_a[simdgroups_per_threadgroup * 64];
+    threadgroup float tile_b[simdgroups_per_threadgroup * 64];
+    threadgroup float tile_c[simdgroups_per_threadgroup * 64];
+    simdgroup_float8x8 acc(0.0f);
+
+    for (uint k_base = 0; k_base < batch_size; k_base += tile) {
+        for (uint index = tid; index < simdgroups_per_threadgroup * 64; index += 128) {
+            const uint target_sg = index / 64;
+            const uint cell = index % 64;
+            const uint row = cell / tile;
+            const uint col = cell % tile;
+            const uint target_tile = group * simdgroups_per_threadgroup + target_sg;
+            const uint target_hidden_base = (target_tile / input_tiles) * tile;
+            const uint target_input_base = (target_tile % input_tiles) * tile;
+            const uint sample = k_base + col;
+            const uint hidden_index = target_hidden_base + row;
+            tile_a[index] = (sample < batch_size && hidden_index < PPO_HIDDEN)
+                          ? hidden_delta[sample * PPO_HIDDEN + hidden_index] : 0.0f;
+            const uint input_index = target_input_base + col;
+            const uint observation_sample = k_base + row;
+            tile_b[index] = (observation_sample < batch_size && input_index < PPO_ACTOR_OBS)
+                          ? observations[observation_sample * PPO_ACTOR_OBS + input_index] : 0.0f;
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+
+        simdgroup_float8x8 a, b;
+        simdgroup_load(a, tile_a + sg * 64, 8);
+        simdgroup_load(b, tile_b + sg * 64, 8);
+        simdgroup_multiply_accumulate(acc, a, b, acc);
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+
+    simdgroup_store(acc, tile_c + sg * 64, 8);
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint index = tid; index < simdgroups_per_threadgroup * 64; index += 128) {
+        const uint local_sg = index / 64;
+        const uint cell = index % 64;
+        const uint row = cell / tile;
+        const uint col = cell % tile;
+        const uint output_tile_index = group * simdgroups_per_threadgroup + local_sg;
+        const uint h_tile = output_tile_index / input_tiles;
+        const uint i_tile = output_tile_index % input_tiles;
+        const uint h = h_tile * tile + row;
+        const uint i = i_tile * tile + col;
+        if (h < PPO_HIDDEN && i < PPO_ACTOR_OBS)
+            grad[h * PPO_ACTOR_OBS + i] = tile_c[index];
+    }
+}
+
+// Compute W2, b2, and log-standard-deviation gradients. The tiled kernel above
+// owns W1, so the trainer can write the head into the matching parameter slice.
+kernel void ppo_actor_grad_head(device const float* hidden [[buffer(0)]],
+                               device const float* hidden_delta [[buffer(1)]],
+                               device const float* d_means [[buffer(2)]],
+                               device const float* d_log_stds [[buffer(3)]],
+                               device float* grad [[buffer(4)]],
+                               constant uint& batch_size [[buffer(5)]],
+                               uint q [[thread_position_in_grid]]) {
+    constexpr uint head_count = PPO_ACTOR_PARAMS - PPO_ACTOR_B1;
+    if (q >= head_count) return;
+    float sum = 0.0f;
+    if (q < PPO_HIDDEN) {
+        for (uint n = 0; n < batch_size; ++n) sum += hidden_delta[n * PPO_HIDDEN + q];
+    } else if (q < PPO_HIDDEN + PPO_ACTIONS * PPO_HIDDEN) {
+        const uint w2q = q - PPO_HIDDEN;
+        const uint a = w2q / PPO_HIDDEN;
+        const uint h = w2q % PPO_HIDDEN;
+        for (uint n = 0; n < batch_size; ++n)
+            sum += d_means[n * PPO_ACTIONS + a] * hidden[n * PPO_HIDDEN + h];
+    } else if (q < PPO_HIDDEN + PPO_ACTIONS * PPO_HIDDEN + PPO_ACTIONS) {
+        const uint a = q - PPO_HIDDEN - PPO_ACTIONS * PPO_HIDDEN;
+        for (uint n = 0; n < batch_size; ++n) sum += d_means[n * PPO_ACTIONS + a];
+    } else {
+        const uint a = q - PPO_HIDDEN - PPO_ACTIONS * PPO_HIDDEN - PPO_ACTIONS;
+        for (uint n = 0; n < batch_size; ++n) sum += d_log_stds[n * PPO_ACTIONS + a];
+    }
+    grad[PPO_ACTOR_B1 + q] = sum;
+}
+
 
 kernel void ppo_critic_hidden_delta(device const float* params [[buffer(0)]],
                                     device const float* d_values [[buffer(1)]],

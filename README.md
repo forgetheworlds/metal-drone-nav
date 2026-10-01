@@ -25,6 +25,10 @@ No Python, PyTorch, MLX or tensor runtime is used in the training hot loop.
 
 `train ITERATIONS FAMILY CHECKPOINT WARMSTART` starts a new curriculum stage from actor/critic parameters and resets optimizer/exploration. Latest checkpoint resumes all state; `CHECKPOINT.best` keeps the best validation policy. One `results/training.tsv` records evaluation history. `eval CHECKPOINT MODE FAMILY SEED SPEED DISTANCE` evaluates first episodes on a fresh seed; modes4 learned mean,1 random,2 goal-direction script.
 
+Builds: `metal_nav` raw661-input actor, `metal_nav_pooled`181-input actor with2x2 minimum pooling over the same fullsensor. Families4 doorway,5 table/counter,6 mixed geometry,7 broad mix0..6,8 held two-door composition. Optional train arguments after warmstart: SPEED DISTANCE. Eval also accepts SENSOR_DELAY(frames), WIND_ACCEL(m/s²), DEPTH_NOISE(m), DROPOUT(fraction), COMMAND_DELAY(navticks). Delay ranges≤6sensorframes/≤7commands.
+
+`gpu-bench N R FAMILY` and `cpu-bench R N FAMILY` compare complete GPU and optimizedCPU workloads. `profile` uses M3 hardware timestamps. Set `METAL_NAV_SCALAR_ACTOR=1` for the scalar GPU inference reference. A faster kernel is retained only after correctness and complete-workload measurement.
+
 References are pinned outside the build. To regenerate the cold assets:
 
 ```sh
