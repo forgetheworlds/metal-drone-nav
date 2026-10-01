@@ -3,7 +3,7 @@ using namespace metal;
 
 // Keep these values and flattened parameter offsets in sync with ppo.hpp.
 #ifndef FIXED_PPO_ACTOR_OBS_DIM
-#define FIXED_PPO_ACTOR_OBS_DIM 660
+#define FIXED_PPO_ACTOR_OBS_DIM 661
 #endif
 #ifndef FIXED_PPO_CRITIC_OBS_DIM
 #define FIXED_PPO_CRITIC_OBS_DIM 32

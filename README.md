@@ -11,6 +11,8 @@ cmake --build build -j 4
 ./build/metal_nav test
 ./build/metal_nav sim
 ./build/metal_nav bench-depth
+./build/metal_nav bench-loop
+./build/metal_nav train 50 0 results/open.bin
 ```
 
 Metal kernels compile at runtime through `MTLDevice`. Full Xcode is not required for the verified path. FP32, safe arithmetic, and precise floating-point functions are used for parity.
@@ -18,6 +20,8 @@ Metal kernels compile at runtime through `MTLDevice`. Full Xcode is not required
 No Python, PyTorch, MLX or tensor runtime is used in the training hot loop.
 
 `test` checks analytic geometry, official RAPTOR outputs, official L2F physics fixtures, the PX4 target adapter, PPO operators and an integrated 160-control-step CPU/GPU trajectory. `sim` measures the simple goal-direction controller on four scene families with one completed episode per held-out seed.
+
+`train ITERATIONS FAMILY CHECKPOINT` trains and resumes exact GPU state. Families:0 open,1 boxes,2 poles,3 moving spheres. Checkpoints are saved atomically every10 rollouts. The current trained policy does not yet meet the held-out navigation goal.
 
 References are pinned outside the build. To regenerate the cold assets:
 

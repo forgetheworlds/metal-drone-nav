@@ -4,7 +4,7 @@ struct SimRun {
     uint rng, steps;
     float path, elapsed, peak_speed, min_clearance, initial_distance;
     uint successes, collisions, timeouts, episodes;
-    float success_time, total_path, total_elapsed, final_progress;
+    float success_time, total_path, total_elapsed, final_progress, reference_position[3];
 };
 struct SimConfig {
     uint n, tick, mode, family, substeps, sensor_period, sensor_delay, command_delay, max_steps, seed, eval;
@@ -21,7 +21,7 @@ inline void sim_reset_one(device RLPhysicsState& s,device SimRun& run,device WWo
     uint rng=first?(cfg.seed+n*747796405u+2891336453u):run.rng;
     wgenerate(world,wrng(rng),cfg.family,cfg.distance);
     world.wind[0]=cfg.wind;world.wind[1]=0;world.wind[2]=0;
-    for(uint j=0;j<3;j++){s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;run.desired_velocity[j]=0;}
+    for(uint j=0;j<3;j++){s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;run.desired_velocity[j]=0;run.reference_position[j]=s.position[j];}
     s.orientation_wxyz[0]=1;for(uint j=1;j<4;j++)s.orientation_wxyz[j]=0;
     float target=p.mass*9.81f/4,c0=p.rotor_thrust_coefficients[0],c1=p.rotor_thrust_coefficients[1],c2=p.rotor_thrust_coefficients[2];
     float hover=clamp((-c1+sqrt(c1*c1-4*c2*(c0-target)))/(2*c2),p.action_min,p.action_max);
@@ -54,7 +54,7 @@ inline void sim_critic_obs(thread const RLPhysicsState& s,device const WWorld& w
 kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device const SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* sensors [[buffer(3)]],device float* obs [[buffer(4)]],device float* critic_obs [[buffer(5)]],constant RLPhysicsParams& p [[buffer(6)]],constant SimConfig& cfg [[buffer(7)]],uint n [[thread_position_in_grid]]) {
     if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);
     uint available=runs[n].steps/cfg.sensor_period,frame=available>cfg.sensor_delay?available-cfg.sensor_delay:0,prev=frame>0?frame-1:0;
-    uint row=(cfg.tick*cfg.n+n)*660,crow=(cfg.tick*cfg.n+n)*32;
+    uint row=(cfg.tick*cfg.n+n)*661,crow=(cfg.tick*cfg.n+n)*32;
     for(uint k=0;k<320;k++){obs[row+k]=sensors[(n*8+frame%8)*320+k]/12;obs[row+320+k]=sensors[(n*8+prev%8)*320+k]/12;}
     float3 delta=float3(worlds[n].goal[0]-s.position[0],worlds[n].goal[1]-s.position[1],worlds[n].goal[2]-s.position[2]);float distance=max(length(delta),1e-6f);
     for(uint j=0;j<3;j++) {
@@ -63,12 +63,12 @@ kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device
         obs[row+647+j]=s.angular_velocity_body[j]/4;obs[row+650+j]=r[6+j];
     }
     obs[row+643]=min(distance/10,1.5f);for(uint j=0;j<4;j++)obs[row+653+j]=runs[n].previous_nav[j];
-    obs[row+657]=float(runs[n].steps-frame*cfg.sensor_period)*p.dt*cfg.substeps;obs[row+658]=obs[row+659]=0;
+    obs[row+657]=float(runs[n].steps-frame*cfg.sensor_period)*p.dt*cfg.substeps;float ref[3]={runs[n].reference_position[0]-s.position[0],runs[n].reference_position[1]-s.position[1],runs[n].reference_position[2]-s.position[2]};for(uint j=0;j<3;j++)obs[row+658+j]=clamp((r[j]*ref[0]+r[3+j]*ref[1]+r[6+j]*ref[2])*2,-1.0f,1.0f);
     float co[32];sim_critic_obs(s,worlds[n],runs[n],co);for(uint j=0;j<32;j++)critic_obs[crow+j]=co[j];
 }
 kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* observations [[buffer(3)]],device const float* critic_obs [[buffer(4)]],device const float* actor [[buffer(5)]],device const float* critic [[buffer(6)]],device float* actions [[buffer(7)]],device float* logp [[buffer(8)]],device float* values [[buffer(9)]],device float* commands [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {
-    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float obs[660],co[32],hidden[64],mean[4],a[4];
-    for(uint j=0;j<660;j++)obs[j]=observations[row*660+j];for(uint j=0;j<32;j++)co[j]=critic_obs[row*32+j];
+    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float obs[661],co[32],hidden[64],mean[4],a[4];
+    for(uint j=0;j<661;j++)obs[j]=observations[row*661+j];for(uint j=0;j<32;j++)co[j]=critic_obs[row*32+j];
     ppo_actor_mean(actor,obs,hidden,mean);values[row]=ppo_critic_value(critic,co,hidden);
     uint rng=runs[n].rng;float lp=0;for(uint j=0;j<4;j++) {
         a[j]=mean[j]+(cfg.mode==0?exp(actor[PPO_ACTOR_LOG_STD+j])*sim_normal(rng):0);
@@ -94,7 +94,8 @@ kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRu
     float wind[3]={worlds[n].wind[0]*p.mass,worlds[n].wind[1]*p.mass,worlds[n].wind[2]*p.mass};
     for(uint step=0;step<cfg.substeps;step++) {
         float obs[22],v[3];for(uint j=0;j<3;j++)v[j]=runs[n].desired_velocity[j];
-        float dp[3]={-v[0]*0.5f,-v[1]*0.5f,-v[2]*0.5f},dv[3]={s.linear_velocity[0]-v[0],s.linear_velocity[1]-v[1],s.linear_velocity[2]-v[2]};
+        for(uint j=0;j<3;j++)runs[n].reference_position[j]+=v[j]*p.dt;
+        float dp[3]={s.position[0]-runs[n].reference_position[0],s.position[1]-runs[n].reference_position[1],s.position[2]-runs[n].reference_position[2]},dv[3]={s.linear_velocity[0]-v[0],s.linear_velocity[1]-v[1],s.linear_velocity[2]-v[2]};
         obs[0]=clamp(c*dp[0]+si*dp[1],-.5f,.5f);obs[1]=clamp(-si*dp[0]+c*dp[1],-.5f,.5f);obs[2]=clamp(dp[2],-.5f,.5f);
         float ch=cos(yaw*.5f),sh=sin(yaw*.5f),q[4]={ch*s.orientation_wxyz[0]+sh*s.orientation_wxyz[3],ch*s.orientation_wxyz[1]+sh*s.orientation_wxyz[2],ch*s.orientation_wxyz[2]-sh*s.orientation_wxyz[1],ch*s.orientation_wxyz[3]-sh*s.orientation_wxyz[0]};
         float r[9];sim_rotation(q,r);for(uint j=0;j<9;j++)obs[3+j]=r[j];obs[12]=clamp(c*dv[0]+si*dv[1],-1.0f,1.0f);obs[13]=clamp(-si*dv[0]+c*dv[1],-1.0f,1.0f);obs[14]=clamp(dv[2],-1.0f,1.0f);

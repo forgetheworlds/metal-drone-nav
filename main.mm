@@ -329,7 +329,8 @@ static void ppo_tests(Metal& m) {
     const float start_error=toy_error();
     for(uint32_t step=1;step<=36;++step){
         const float* means=(float*)toy_means_b.contents;
-        for(uint32_t n=0;n<B;++n)toy_oldlp[n]=gaussian_log_prob(toy_actions.data()+n*action_dim,means+n*action_dim,toy.values.data()+actor_log_std_offset);
+        std::memcpy(toy_log_std_b.contents,(const float*)toy_ap_b.contents+actor_log_std_offset,action_dim*4);
+        for(uint32_t n=0;n<B;++n)toy_oldlp[n]=gaussian_log_prob(toy_actions.data()+n*action_dim,means+n*action_dim,(const float*)toy_ap_b.contents+actor_log_std_offset);
         std::memcpy(toy_oldlp_b.contents,toy_oldlp.data(),B*4);
         toy_optimizer.step=step;std::memcpy(toy_opt_b.contents,&toy_optimizer,sizeof(toy_optimizer));
         cb=[m.queue commandBuffer];
@@ -349,15 +350,15 @@ struct SimRun {
     uint32_t rng,steps;
     float path,elapsed,peak_speed,min_clearance,initial_distance;
     uint32_t successes,collisions,timeouts,episodes;
-    float success_time,total_path,total_elapsed,final_progress;
+    float success_time,total_path,total_elapsed,final_progress,reference_position[3];
 };
 struct SimConfig {
     uint32_t n=128,tick=0,mode=0,family=0,substeps=5,sensor_period=1,sensor_delay=0,command_delay=0,max_steps=200,seed=42,eval=0;
     float speed=2,distance=4,wind=0,depth_noise=0,dropout=0;
 };
-static_assert(sizeof(SimRun)==172 && sizeof(SimConfig)==64,"sim layout mismatch");
+static_assert(sizeof(SimRun)==184 && sizeof(SimConfig)==64,"sim layout mismatch");
 using BufferBinding=std::pair<id<MTLBuffer>,size_t>;
-static void encode(Metal& m,id<MTLCommandBuffer> cb,const char* name,size_t count,std::initializer_list<BufferBinding> bindings,size_t group=128) {
+[[maybe_unused]] static void encode(Metal& m,id<MTLCommandBuffer> cb,const char* name,size_t count,std::initializer_list<BufferBinding> bindings,size_t group=128) {
     auto p=m.pipeline(name);auto e=[cb computeCommandEncoder];[e setComputePipelineState:p];uint j=0;for(auto binding:bindings)[e setBuffer:binding.first offset:binding.second atIndex:j++];
     [e dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(std::min(group,size_t(p.maxTotalThreadsPerThreadgroup)),1,1)];[e endEncoding];
 }
@@ -376,7 +377,7 @@ struct Sim {
         for(size_t i=0;i<4;i++)a.values[fixed_ppo::actor_log_std_offset+i]=-1.0f;
         for(size_t i=0;i<fixed_ppo::critic_b1_offset;i++)c.values[i]=normal()*0.15f;
         for(size_t i=fixed_ppo::critic_w2_offset;i<fixed_ppo::critic_b2_offset;i++)c.values[i]=normal()*0.1f;
-        actor=m.buffer(sizeof(a),&a);critic=m.buffer(sizeof(c),&c);obs=m.buffer(rows*660*4);co=m.buffer(rows*32*4);actions=m.buffer(rows*4*4);logp=m.buffer(rows*4);values=m.buffer(rows*4);rewards=m.buffer(rows*4);next_values=m.buffer(rows*4);terminated=m.buffer(rows);truncated=m.buffer(rows);advantages=m.buffer(rows*4);returns=m.buffer(rows*4);
+        actor=m.buffer(sizeof(a),&a);critic=m.buffer(sizeof(c),&c);obs=m.buffer(rows*661*4);co=m.buffer(rows*32*4);actions=m.buffer(rows*4*4);logp=m.buffer(rows*4);values=m.buffer(rows*4);rewards=m.buffer(rows*4);next_values=m.buffer(rows*4);terminated=m.buffer(rows);truncated=m.buffer(rows);advantages=m.buffer(rows*4);returns=m.buffer(rows*4);
         for(uint t=0;t<horizon;t++){cfg.tick=t;configs.push_back(m.buffer(sizeof(cfg),&cfg));}cfg.tick=0;
         reset_p=m.pipeline("sim_reset");depth_p=m.pipeline("sim_depth");observe_p=m.pipeline("sim_observe");act_p=m.pipeline("sim_act");advance_p=m.pipeline("sim_advance");reset();
     }
@@ -388,8 +389,8 @@ struct Sim {
         std::cout<<label<<" episodes="<<ep<<" success="<<(ep?double(success)/ep:0)<<" collision="<<(ep?double(collision)/ep:0)<<" timeout="<<(ep?double(timeout)/ep:0)<<" progress="<<(ep?progress/ep:0)<<" mean_goal_time="<<(success?time/success:0)<<" mean_speed="<<(total?path/total:0)<<" peak_speed="<<peak<<" min_clearance="<<clearance<<" wall_s="<<wall<<"\n";
     }
 };
-static void sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr) {
-    SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=700001;cfg.distance=4;
+static void sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr,float speed=1,float distance=3,uint32_t seed=700001) {
+    SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=seed;cfg.distance=distance;cfg.speed=speed;
     Sim sim(m,cfg,32);if(actor)std::memcpy(sim.actor.contents,actor,fixed_ppo::actor_param_count*4);
     double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,cfg.max_steps);double gpu=m.finish(cb);sim.report("eval family="+std::to_string(family)+" mode="+std::to_string(mode),seconds()-start);std::cout<<"eval_GPU_s="<<gpu<<"\n";
     const auto* r=(const SimRun*)sim.runs.contents;for(uint i=0;i<cfg.n;i++)require(r[i].episodes==1,"eval must finish exactly one episode per seed");
@@ -407,7 +408,7 @@ static void closed_loop_tests(Metal& m) {
         float velocity[3];for(uint j=0;j<3;j++)velocity[j]=rotation[j*3]*body[0]+rotation[j*3+1]*body[1]+rotation[j*3+2]*body[2];
         const float qtarget[4]={1,0,0,0},wind[3]={0,0,0};
         for(uint sub=0;sub<cfg.substeps;sub++) {
-            float target[3],obs[22];for(uint j=0;j<3;j++)target[j]=s.position[j]+velocity[j]*.5f;
+            float target[3],obs[22];for(uint j=0;j<3;j++){run.reference_position[j]+=velocity[j]*params.dt;target[j]=run.reference_position[j];}
             raptor_pack_observation(s.position,s.orientation_wxyz,s.linear_velocity,s.angular_velocity_body,target,qtarget,velocity,run.motors,obs);
             raptor_forward(weights,obs,run.hidden,run.motors);raptor_clip_action(run.motors);RLPhysicsState next;rl_physics_step(s,run.motors,wind,params,next);s=next;
         }
@@ -417,8 +418,335 @@ static void closed_loop_tests(Metal& m) {
     require(error<5e-4f&&hidden_error<5e-4f,"closed-loop CPU/GPU trajectory mismatch");std::cout<<"closed loop PASS N=32 native_steps=160 state_error="<<error<<" hidden_error="<<hidden_error<<" GPU_s="<<gpu<<"\n";
 }
 
+static volatile float raptor_benchmark_sink = 0.0f;
+static std::vector<float> read_raptor_fixture_observations() {
+    std::ifstream f(std::string(SOURCE_DIR)+"/assets/raptor.bin", std::ios::binary);
+    require(bool(f), "RAPTOR benchmark fixture open");
+    f.seekg(16 + sizeof(RaptorWeights));
+    char header[20]; f.read(header, sizeof(header));
+    require(f && std::memcmp(header, "RPFIX1\0\0", 8)==0, "RAPTOR benchmark fixture header");
+    std::vector<float> obs(16 * 22);
+    f.read(reinterpret_cast<char*>(obs.data()), obs.size()*sizeof(float));
+    require(bool(f), "RAPTOR benchmark observation read");
+    return obs;
+}
+static void raptor_benchmark(Metal& m) {
+    const RaptorWeights weights = load_raptor();
+    const std::vector<float> fixture_obs = read_raptor_fixture_observations();
+    auto wb = m.buffer(sizeof(weights), &weights);
+    auto ob = m.buffer(fixture_obs.size()*sizeof(float), fixture_obs.data());
+    const auto pipeline = m.pipeline("raptor_fixture");
+    std::cout << "N,gpu_kernel_ms,gpu_native_inferences_per_s,cpu_single_thread_ms,cpu_native_inferences_per_s,cpu_over_gpu_device_ratio\n";
+    for (size_t n : {size_t(1),size_t(32),size_t(128),size_t(512),size_t(2048),size_t(8192),size_t(32768)}) {
+        auto ab = m.buffer(n*16*4*sizeof(float));
+        auto hb = m.buffer(n*16*sizeof(float));
+        for (int i=0;i<4;i++) {
+            auto cb=[m.queue commandBuffer];
+            m.dispatch(cb,pipeline,n,{wb,ob,ab,hb});
+            m.finish(cb);
+        }
+        std::vector<double> gpu_times;
+        for (int i=0;i<7;i++) {
+            auto cb=[m.queue commandBuffer];
+            m.dispatch(cb,pipeline,n,{wb,ob,ab,hb});
+            gpu_times.push_back(m.finish(cb));
+        }
+        std::sort(gpu_times.begin(),gpu_times.end());
+        const double gpu_s=gpu_times.front();
+        const size_t native_inferences=n*16;
+        float cpu_actions[4],cpu_hidden[16],checksum=0;
+        auto cpu_run=[&]() {
+            checksum=0;
+            for (size_t env=0;env<n;env++) {
+                raptor_reset(weights,cpu_hidden);
+                for (size_t t=0;t<16;t++) {
+                    raptor_forward(weights,fixture_obs.data()+t*22,cpu_hidden,cpu_actions);
+                    checksum += cpu_actions[(t+env)&3] + cpu_hidden[(t+env)&15];
+                }
+            }
+            raptor_benchmark_sink=checksum;
+        };
+        for (int i=0;i<4;i++) cpu_run();
+        std::vector<double> cpu_times;
+        for (int i=0;i<7;i++) {
+            const double start=seconds();cpu_run();cpu_times.push_back(seconds()-start);
+        }
+        std::sort(cpu_times.begin(),cpu_times.end());
+        const double cpu_s=cpu_times.front();
+        const double gpu_ips=double(native_inferences)/gpu_s;
+        const double cpu_ips=double(native_inferences)/cpu_s;
+        std::cout<<n<<","<<gpu_s*1000<<","<<gpu_ips<<","<<cpu_s*1000<<","<<cpu_ips<<","<<cpu_s/gpu_s<<"\n";
+        (void)raptor_benchmark_sink;
+    }
+}
+
+static void loop_benchmark(Metal& m) {
+    std::cout<<"N,batch_gpu_ms,batch_wall_ms,sync_each_wall_ms,nav_transitions_per_sec\n";
+    for(uint n:{1u,32u,128u,512u,2048u,8192u,32768u}) {
+        SimConfig cfg;cfg.n=n;cfg.family=1;cfg.mode=0;cfg.distance=4;cfg.speed=1;
+        Sim sim(m,cfg,8);double batch=1e9,wall=1e9,sync=1e9;
+        for(uint repeat=0;repeat<3;repeat++) {
+            sim.reset();double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb);double g=m.finish(cb);batch=std::min(batch,g);wall=std::min(wall,seconds()-start);
+            sim.reset();start=seconds();for(uint t=0;t<8;t++){cb=[m.queue commandBuffer];auto c=sim.configs[t];m.dispatch(cb,sim.depth_p,n*320,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.physics,c});m.dispatch(cb,sim.observe_p,n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.obs,sim.co,sim.physics,c},64);m.dispatch(cb,sim.act_p,n,{sim.states,sim.runs,sim.worlds,sim.obs,sim.co,sim.actor,sim.critic,sim.actions,sim.logp,sim.values,sim.commands,sim.physics,c},64);m.dispatch(cb,sim.advance_p,n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.commands,sim.raptor,sim.critic,sim.rewards,sim.next_values,sim.terminated,sim.truncated,sim.physics,c},64);m.finish(cb);}sync=std::min(sync,seconds()-start);
+        }
+        std::cout<<n<<","<<batch*1000<<","<<wall*1000<<","<<sync*1000<<","<<double(n)*8/wall<<"\n";
+    }
+}
+
+#include <random>
+#include <cstdio>
+#include <cstdint>
+#include <filesystem>
+#include <limits>
+
+// Host trainer for the fixed PPO kernels in ppo.metal. Append after Sim and
+// sim_evaluate are defined. All rollout, loss, gradient, and optimizer work
+// stays on Metal; one command-buffer sync completes each rollout and update.
+static const char* PPO_TRAINER_MSL = R"MSL(
+kernel void ppo_grad_scale_factor(device const float* grad [[buffer(0)]],
+                                  device float* factor [[buffer(1)]],
+                                  constant uint& count [[buffer(2)]],
+                                  constant float& max_norm [[buffer(3)]],
+                                  uint tid [[thread_position_in_grid]]) {
+    if (tid != 0) return;
+    float sum = 0.0f;
+    for (uint i = 0; i < count; ++i) sum += grad[i] * grad[i];
+    const float norm = sqrt(sum + 1.0e-20f);
+    factor[0] = min(1.0f, max_norm / norm);
+}
+kernel void ppo_apply_grad_scale(device float* grad [[buffer(0)]],
+                                 device const float* factor [[buffer(1)]],
+                                 constant uint& count [[buffer(2)]],
+                                 uint i [[thread_position_in_grid]]) {
+    if (i < count) grad[i] *= factor[0];
+}
+kernel void ppo_clip_log_std(device float* actor [[buffer(0)]],
+                             constant uint& count [[buffer(1)]],
+                             constant float& lo [[buffer(2)]],
+                             constant float& hi [[buffer(3)]],
+                             uint i [[thread_position_in_grid]]) {
+    if (i < count) actor[PPO_ACTOR_LOG_STD + i] = clamp(actor[PPO_ACTOR_LOG_STD + i], lo, hi);
+}
+kernel void ppo_metrics_batch(device const float* losses [[buffer(0)]],
+                              device float* metrics [[buffer(1)]],
+                              constant uint& batch_size [[buffer(2)]],
+                              uint tid [[thread_position_in_grid]]) {
+    if (tid != 0) return;
+    float sums[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    for (uint n = 0; n < batch_size; ++n)
+        for (uint k = 0; k < 4; ++k) sums[k] += losses[n * 4 + k];
+    sums[3] /= float(batch_size);
+    for (uint k = 0; k < 4; ++k) metrics[k] = sums[k];
+}
+kernel void ppo_metrics_mean(device const float* metrics [[buffer(0)]],
+                             device float* mean [[buffer(1)]],
+                             constant uint& update_count [[buffer(2)]],
+                             uint tid [[thread_position_in_grid]]) {
+    if (tid != 0) return;
+    for (uint k = 0; k < 4; ++k) mean[k] = 0.0f;
+    if (update_count == 0) return;
+    for (uint n = 0; n < update_count; ++n)
+        for (uint k = 0; k < 4; ++k) mean[k] += metrics[n * 4 + k];
+    for (uint k = 0; k < 4; ++k) mean[k] /= float(update_count);
+}
+)MSL";
+
+struct PpoAdamHostConfig { float learning_rate, beta1, beta2, epsilon, weight_decay; uint32_t step; };
+static_assert(sizeof(PpoAdamHostConfig) == 24, "PPO Adam config layout mismatch");
+struct PpoCheckpointHeader {
+    char magic[8];
+    uint32_t version, actor_count, critic_count, horizon, n, family;
+    uint32_t base_seed, completed_rollouts;
+    uint64_t optimizer_step;
+    SimConfig config;
+};
+static_assert(sizeof(PpoCheckpointHeader) == 112, "PPO checkpoint header layout mismatch");
+
+struct PPOTrainer {
+    Sim& sim;
+    Metal& metal;
+    uint32_t minibatch = 256;
+    uint32_t rows, minibatches, updates_per_rollout;
+    uint64_t optimizer_step = 0;
+    uint32_t completed_rollouts = 0;
+    std::vector<uint32_t> starts;
+    id<MTLBuffer> actor_hidden, actor_means, critic_hidden, predicted_values;
+    id<MTLBuffer> d_means, d_log_stds, d_values, losses;
+    id<MTLBuffer> actor_partial, actor_grad, critic_partial, critic_grad;
+    id<MTLBuffer> actor_m, actor_v, critic_m, critic_v;
+    id<MTLBuffer> actor_scale, critic_scale, metric_rows, metric_mean;
+    id<MTLBuffer> rows_b, envs_b, horizon_b, gamma_b, lambda_b, gae_epsilon_b;
+    id<MTLBuffer> clip_b, value_coef_b, entropy_coef_b, actor_count_b, critic_count_b;
+    id<MTLBuffer> actor_max_norm_b, critic_max_norm_b, logstd_count_b, logstd_lo_b, logstd_hi_b;
+    id<MTLBuffer> metric_count_b;
+    std::vector<id<MTLBuffer>> batch_size_buffers, adam_configs;
+    id<MTLComputePipelineState> gae_p, normalize_p, actor_forward_p, critic_forward_p;
+    id<MTLComputePipelineState> loss_grad_p, actor_backward_p, critic_backward_p, reduce_p;
+    id<MTLComputePipelineState> norm_factor_p, scale_grad_p, adam_p, clip_logstd_p;
+    id<MTLComputePipelineState> metric_batch_p, metric_mean_p;
+
+    static id<MTLBuffer> scalar(Metal& m, uint32_t value) { return m.buffer(sizeof(value), &value); }
+    static id<MTLBuffer> scalar(Metal& m, float value) { return m.buffer(sizeof(value), &value); }
+    void dispatch(id<MTLCommandBuffer> cb, id<MTLComputePipelineState> p, size_t count,
+                  std::initializer_list<BufferBinding> bindings, size_t group=128) {
+        auto e=[cb computeCommandEncoder]; [e setComputePipelineState:p]; uint j=0;
+        for(auto b:bindings) [e setBuffer:b.first offset:b.second atIndex:j++];
+        [e dispatchThreads:MTLSizeMake(count,1,1)
+        threadsPerThreadgroup:MTLSizeMake(std::min(group,size_t(p.maxTotalThreadsPerThreadgroup)),1,1)];
+        [e endEncoding];
+    }
+    PPOTrainer(Sim& s):sim(s),metal(s.m) {
+        rows=sim.cfg.n*sim.horizon;
+        require(rows>0,"PPO requires at least one rollout row");
+        minibatches=(rows+minibatch-1)/minibatch;
+        updates_per_rollout=2*minibatches;
+        starts.reserve(minibatches);for(uint32_t s0=0;s0<rows;s0+=minibatch)starts.push_back(s0);
+        actor_hidden=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
+        actor_means=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
+        critic_hidden=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
+        predicted_values=metal.buffer(size_t(minibatch)*4);
+        d_means=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
+        d_log_stds=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
+        d_values=metal.buffer(size_t(minibatch)*4);
+        losses=metal.buffer(size_t(minibatch)*4*4);
+        actor_partial=metal.buffer(fixed_ppo::actor_param_count*size_t(minibatch)*4);
+        actor_grad=metal.buffer(fixed_ppo::actor_param_count*4);
+        critic_partial=metal.buffer(fixed_ppo::critic_param_count*size_t(minibatch)*4);
+        critic_grad=metal.buffer(fixed_ppo::critic_param_count*4);
+        actor_m=metal.buffer(fixed_ppo::actor_param_count*4); actor_v=metal.buffer(fixed_ppo::actor_param_count*4);
+        critic_m=metal.buffer(fixed_ppo::critic_param_count*4); critic_v=metal.buffer(fixed_ppo::critic_param_count*4);
+        actor_scale=metal.buffer(4); critic_scale=metal.buffer(4);
+        metric_rows=metal.buffer(size_t(updates_per_rollout)*4*4); metric_mean=metal.buffer(4*4);
+        rows_b=scalar(metal,rows); envs_b=scalar(metal,sim.cfg.n); horizon_b=scalar(metal,sim.horizon);
+        gamma_b=scalar(metal,.99f); lambda_b=scalar(metal,.95f); gae_epsilon_b=scalar(metal,1.0e-8f);
+        clip_b=scalar(metal,.2f); value_coef_b=scalar(metal,.5f); entropy_coef_b=scalar(metal,.005f);
+        actor_count_b=scalar(metal,uint32_t(fixed_ppo::actor_param_count));
+        critic_count_b=scalar(metal,uint32_t(fixed_ppo::critic_param_count));
+        actor_max_norm_b=scalar(metal,.5f); critic_max_norm_b=scalar(metal,.5f);
+        logstd_count_b=scalar(metal,uint32_t(fixed_ppo::action_dim)); logstd_lo_b=scalar(metal,-2.0f); logstd_hi_b=scalar(metal,.5f);
+        metric_count_b=scalar(metal,updates_per_rollout);
+        for(uint32_t b=0;b<=minibatch;b++) batch_size_buffers.push_back(scalar(metal,b));
+        for(uint32_t i=0;i<updates_per_rollout;i++) adam_configs.push_back(metal.buffer(sizeof(PpoAdamHostConfig)));
+        gae_p=metal.pipeline("ppo_gae"); normalize_p=metal.pipeline("ppo_normalize_advantages");
+        actor_forward_p=metal.pipeline("ppo_actor_forward"); critic_forward_p=metal.pipeline("ppo_critic_forward");
+        loss_grad_p=metal.pipeline("ppo_sample_loss_grad"); actor_backward_p=metal.pipeline("ppo_actor_backward");
+        critic_backward_p=metal.pipeline("ppo_critic_backward"); reduce_p=metal.pipeline("ppo_reduce_grads");
+        norm_factor_p=metal.pipeline("ppo_grad_scale_factor"); scale_grad_p=metal.pipeline("ppo_apply_grad_scale");
+        adam_p=metal.pipeline("ppo_adam_update"); clip_logstd_p=metal.pipeline("ppo_clip_log_std");
+        metric_batch_p=metal.pipeline("ppo_metrics_batch"); metric_mean_p=metal.pipeline("ppo_metrics_mean");
+        std::memset(actor_m.contents,0,fixed_ppo::actor_param_count*4);std::memset(actor_v.contents,0,fixed_ppo::actor_param_count*4);
+        std::memset(critic_m.contents,0,fixed_ppo::critic_param_count*4);std::memset(critic_v.contents,0,fixed_ppo::critic_param_count*4);
+    }
+    void load_checkpoint(const std::string& path,uint32_t family,uint32_t horizon,uint32_t n,uint32_t seed) {
+        std::ifstream f(path,std::ios::binary); if(!f)return;
+        PpoCheckpointHeader h{}; f.read(reinterpret_cast<char*>(&h),sizeof(h));
+        require(f && std::memcmp(h.magic,"PPOFIX1",7)==0 && h.version==3,"invalid PPO checkpoint header");
+        require(h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"PPO checkpoint dimensions mismatch");
+        require(h.family==family && h.horizon==horizon && h.n==n && h.base_seed==seed,"PPO checkpoint config mismatch");
+        require(h.config.family==sim.cfg.family && h.config.n==sim.cfg.n && h.config.substeps==sim.cfg.substeps &&
+                h.config.sensor_period==sim.cfg.sensor_period && h.config.sensor_delay==sim.cfg.sensor_delay &&
+                h.config.command_delay==sim.cfg.command_delay && h.config.max_steps==sim.cfg.max_steps &&
+                h.config.mode==sim.cfg.mode && h.config.speed==sim.cfg.speed && h.config.distance==sim.cfg.distance &&
+                h.config.wind==sim.cfg.wind && h.config.depth_noise==sim.cfg.depth_noise && h.config.dropout==sim.cfg.dropout,
+                "PPO checkpoint simulator settings mismatch");
+        auto readbuf=[&](id<MTLBuffer> b,size_t count){f.read((char*)b.contents,count*4);require(bool(f),"truncated PPO checkpoint");};
+        readbuf(sim.actor,fixed_ppo::actor_param_count); readbuf(sim.critic,fixed_ppo::critic_param_count);
+        readbuf(actor_m,fixed_ppo::actor_param_count); readbuf(actor_v,fixed_ppo::actor_param_count);
+        readbuf(critic_m,fixed_ppo::critic_param_count); readbuf(critic_v,fixed_ppo::critic_param_count);
+        auto readbytes=[&](id<MTLBuffer> b){f.read((char*)b.contents,b.length);require(bool(f),"truncated PPO simulator checkpoint");};
+        readbytes(sim.states);readbytes(sim.runs);readbytes(sim.worlds);readbytes(sim.sensors);readbytes(sim.commands);
+        sim.set_config(h.config);
+        char extra; require(!f.read(&extra,1),"PPO checkpoint has trailing data");
+        optimizer_step=h.optimizer_step;completed_rollouts=h.completed_rollouts;
+        require(optimizer_step<=uint64_t(std::numeric_limits<uint32_t>::max()),"PPO checkpoint Adam step is too large");
+        std::cout<<"PPO resume rollouts="<<h.completed_rollouts<<" optimizer_step="<<optimizer_step<<"\n";
+    }
+    void save_checkpoint(const std::string& path,uint32_t family,uint32_t seed,uint32_t completed_rollouts) {
+        if(path.empty())return;
+        const std::filesystem::path checkpoint_path(path);
+        if(checkpoint_path.has_parent_path())std::filesystem::create_directories(checkpoint_path.parent_path());
+        PpoCheckpointHeader h{};std::memcpy(h.magic,"PPOFIX1",7);h.version=3;
+        h.actor_count=fixed_ppo::actor_param_count;h.critic_count=fixed_ppo::critic_param_count;
+        h.horizon=sim.horizon;h.n=sim.cfg.n;h.family=family;h.base_seed=seed;h.completed_rollouts=completed_rollouts;
+        h.optimizer_step=optimizer_step;h.config=sim.cfg;h.config.tick=0;
+        const std::string temp=path+".tmp";std::ofstream f(temp,std::ios::binary|std::ios::trunc);
+        require(bool(f),"cannot write PPO checkpoint: "+temp); f.write(reinterpret_cast<const char*>(&h),sizeof(h));
+        auto writebuf=[&](id<MTLBuffer> b,size_t count){f.write((const char*)b.contents,count*4);};
+        writebuf(sim.actor,fixed_ppo::actor_param_count);writebuf(sim.critic,fixed_ppo::critic_param_count);
+        writebuf(actor_m,fixed_ppo::actor_param_count);writebuf(actor_v,fixed_ppo::actor_param_count);
+        writebuf(critic_m,fixed_ppo::critic_param_count);writebuf(critic_v,fixed_ppo::critic_param_count);
+        auto writebytes=[&](id<MTLBuffer> b){f.write((const char*)b.contents,b.length);};
+        writebytes(sim.states);writebytes(sim.runs);writebytes(sim.worlds);writebytes(sim.sensors);writebytes(sim.commands);
+        f.flush();require(bool(f),"PPO checkpoint write failed: "+temp);f.close();
+        require(std::rename(temp.c_str(),path.c_str())==0,"cannot replace PPO checkpoint: "+path);
+    }
+    void rollout_update(id<MTLCommandBuffer> cb,uint32_t rollout_index) {
+        dispatch(cb,gae_p,sim.cfg.n,{{sim.rewards,0},{sim.values,0},{sim.next_values,0},{sim.terminated,0},{sim.truncated,0},
+                 {sim.advantages,0},{sim.returns,0},{horizon_b,0},{envs_b,0},{gamma_b,0},{lambda_b,0}},64);
+        dispatch(cb,normalize_p,1,{{sim.advantages,0},{rows_b,0},{gae_epsilon_b,0}},1);
+        std::mt19937 rng(0x9e3779b9u+rollout_index*0x85ebca6bu);std::shuffle(starts.begin(),starts.end(),rng);
+        uint32_t update=0;
+        for(uint32_t epoch=0;epoch<2;epoch++) {
+            if(epoch==1)std::shuffle(starts.begin(),starts.end(),rng);
+            for(uint32_t begin:starts) {
+                const uint32_t b=std::min(minibatch,rows-begin);const size_t obs_offset=size_t(begin)*fixed_ppo::actor_obs_dim*4;
+                const size_t co_offset=size_t(begin)*fixed_ppo::critic_obs_dim*4;
+                const size_t action_offset=size_t(begin)*fixed_ppo::action_dim*4, row_offset=size_t(begin)*4;
+                const auto bb=batch_size_buffers[b];
+                dispatch(cb,actor_forward_p,b,{{sim.obs,obs_offset},{sim.actor,0},{actor_hidden,0},{actor_means,0},{bb,0}},64);
+                dispatch(cb,critic_forward_p,b,{{sim.co,co_offset},{sim.critic,0},{critic_hidden,0},{predicted_values,0},{bb,0}},64);
+                dispatch(cb,loss_grad_p,b,{{sim.actions,action_offset},{actor_means,0},{sim.actor,fixed_ppo::actor_log_std_offset*4},
+                    {sim.logp,row_offset},{predicted_values,0},{sim.values,row_offset},{sim.advantages,row_offset},{sim.returns,row_offset},
+                    {d_means,0},{d_log_stds,0},{d_values,0},{losses,0},{bb,0},{clip_b,0},{value_coef_b,0},{entropy_coef_b,0}},64);
+                dispatch(cb,metric_batch_p,1,{{losses,0},{metric_rows,size_t(update)*4*4},{bb,0}},1);
+                dispatch(cb,actor_backward_p,b,{{sim.obs,obs_offset},{actor_hidden,0},{sim.actor,0},{d_means,0},{d_log_stds,0},{actor_partial,0},{bb,0}},32);
+                dispatch(cb,critic_backward_p,b,{{sim.co,co_offset},{critic_hidden,0},{sim.critic,0},{d_values,0},{critic_partial,0},{bb,0}},64);
+                dispatch(cb,reduce_p,fixed_ppo::actor_param_count,{{actor_partial,0},{actor_grad,0},{actor_count_b,0},{bb,0}},128);
+                dispatch(cb,reduce_p,fixed_ppo::critic_param_count,{{critic_partial,0},{critic_grad,0},{critic_count_b,0},{bb,0}},128);
+                require(optimizer_step<uint64_t(std::numeric_limits<uint32_t>::max()),"PPO Adam step overflow");
+                const uint32_t step=uint32_t(++optimizer_step);
+                PpoAdamHostConfig ac{3.0e-4f,.9f,.999f,1.0e-8f,0.0f,step};
+                std::memcpy(adam_configs[update].contents,&ac,sizeof(ac));
+                dispatch(cb,norm_factor_p,1,{{actor_grad,0},{actor_scale,0},{actor_count_b,0},{actor_max_norm_b,0}},1);
+                dispatch(cb,scale_grad_p,fixed_ppo::actor_param_count,{{actor_grad,0},{actor_scale,0},{actor_count_b,0}},128);
+                dispatch(cb,norm_factor_p,1,{{critic_grad,0},{critic_scale,0},{critic_count_b,0},{critic_max_norm_b,0}},1);
+                dispatch(cb,scale_grad_p,fixed_ppo::critic_param_count,{{critic_grad,0},{critic_scale,0},{critic_count_b,0}},128);
+                dispatch(cb,adam_p,fixed_ppo::actor_param_count,{{sim.actor,0},{actor_grad,0},{actor_m,0},{actor_v,0},{actor_count_b,0},{adam_configs[update],0}},128);
+                dispatch(cb,adam_p,fixed_ppo::critic_param_count,{{sim.critic,0},{critic_grad,0},{critic_m,0},{critic_v,0},{critic_count_b,0},{adam_configs[update],0}},128);
+                dispatch(cb,clip_logstd_p,fixed_ppo::action_dim,{{sim.actor,0},{logstd_count_b,0},{logstd_lo_b,0},{logstd_hi_b,0}},4);
+                ++update;
+            }
+        }
+        require(update==updates_per_rollout,"PPO update count mismatch");
+        dispatch(cb,metric_mean_p,1,{{metric_rows,0},{metric_mean,0},{metric_count_b,0}},1);
+    }
+};
+
+static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint) {
+    require(iterations>0,"train_navigation needs at least one rollout");
+    m.compile(base_source()+PPO_TRAINER_MSL);
+    constexpr uint32_t n=128,horizon=32,base_seed=42;
+    SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=3.0f;cfg.speed=1.0f;cfg.max_steps=200;
+    Sim sim(m,cfg,horizon);PPOTrainer trainer(sim);trainer.load_checkpoint(checkpoint,family,horizon,n,base_seed);
+    const uint32_t start_rollout=trainer.completed_rollouts;
+    const uint32_t finish_rollout=start_rollout+iterations;
+    std::cout<<"PPO training device="<<m.device.name.UTF8String<<" family="<<family<<" envs="<<n<<" horizon="<<horizon<<" speed="<<cfg.speed<<" distance="<<cfg.distance<<"\n";
+    for(uint32_t r=start_rollout;r<finish_rollout;r++) {
+        auto cb=[m.queue commandBuffer];sim.collect(cb,horizon);trainer.rollout_update(cb,r);
+        const double gpu=m.finish(cb);
+        const float* met=(const float*)trainer.metric_mean.contents;
+        if((r+1)%10==0 || r+1==finish_rollout) {
+            std::cout<<"train rollout="<<(r+1)<<" policy_loss="<<met[0]<<" value_loss="<<met[1]<<" entropy_loss="<<met[2]<<" ratio="<<met[3]<<" optimizer_step="<<trainer.optimizer_step<<" gpu_s="<<gpu<<"\n";
+            sim.report("train",0.0);
+            sim_evaluate(m,family,4,(const float*)sim.actor.contents);
+            trainer.completed_rollouts=r+1;trainer.save_checkpoint(checkpoint,family,base_seed,r+1);
+        }
+    }
+    trainer.completed_rollouts=finish_rollout;trainer.save_checkpoint(checkpoint,family,base_seed,finish_rollout);
+}
+
 int main(int argc,char** argv){@autoreleasepool{try{
     Metal m;m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";std::string command=argc>1?argv[1]:"test";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin");else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}
