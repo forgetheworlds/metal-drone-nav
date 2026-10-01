@@ -12,4 +12,6 @@ Current work: obtain pinned upstream references; prove runtime compilation; agre
 
 Completion gates: official RAPTOR parity; upstream physics parity; independent ray/collision tests; GPU-resident rollouts; tested PPO gradients and updates; held-out goal/avoidance improvement; matched end-to-end optimization.
 
-No performance or learning claims have passed yet.
+Verified: runtime Metal compilation; shared CPU/MSL box/sphere/cylinder rays; independent collision clearance; deterministic moving geometry; 40,960 ray and 128 clearance parity cases. Depth benchmark ladder reaches 32,768 environments. See BENCHMARKS.md.
+
+Next: integrate official RAPTOR fixtures and upstream physics fixtures, then closed-loop simulation. No learning-quality claim has passed yet.
