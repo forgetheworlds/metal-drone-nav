@@ -233,6 +233,16 @@ Eval modes: 1 random, 2 goal direction, 4 full learned mean; guided 13 geometry 
 
 The binary stores a versioned little-endian header, 12104 FP32 actor parameters and a source-checkpoint hash. Output velocity is capped at the recorded 1.5 m/s intent and yaw rate at 0.5 rad/s. RAPTOR owns motor control. Its adapter must integrate the velocity reference at 100 Hz and maintain recurrence. **An actual sensor front-end and flight-controller connection still need integration and validation.**
 
+Use the packaged policy without a training checkpoint:
+
+```sh
+./build/metal_nav_guided eval-policy assets/navigation.bin 8 800001
+./build/metal_nav_guided policy-bench assets/navigation.bin
+./build/metal_nav_guided export results/guided-table-memory.bin.best assets/navigation.bin
+```
+
+`policy-bench` reports batch-1 CPU actor time only. Export parity is checked against the training actor. On the measured M3 build, the file is 48,496 bytes, actor parity error is zero over eight probes, and actor-only inference is about 5.28 microseconds. Sensor processing, geometry preparation and RAPTOR are excluded.
+
 The actor sees two pooled range frames, goal/ego/control context and 3 geometry prior latents. A short depth/estimated-pose ring supplies local memory so the vehicle does not return into geometry that has left the forward sensor view. Native RAPTOR/physics runs at 100 Hz; navigation/depth at 20 Hz.
 
 ---

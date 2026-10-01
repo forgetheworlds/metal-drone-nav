@@ -88,3 +88,9 @@ Held two-door mode17, one factor at a time:100ms sensor delay85.16%;constant0.5m
 All28 eval processes used~5.03s total host time,~2.87s reported GPU time. Evaluation timing is separate from training timing. The full guided memory update in the table curriculum is~28.4ms; the original~64× matched optimization ratio uses the raw661 workload, not this changed actor/memory graph.
 
 Selected checkpoint SHA-256: `fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9`.
+
+## Packaged policy verification
+
+Commit eec01c4 includes the actor-only asset and loader. `./build/metal_nav_guided export results/guided-table-memory.bin.best assets/navigation.bin`:48,496 bytes,184 observations,12,104 FP32 parameters,mode17,1.5m/s,source FNV64 `1d991b0048dec80a`. Eight observation probes match the fixed PPO CPU actor exactly (maximum error0). `./build/metal_nav_guided eval-policy assets/navigation.bin 8 800001` reproduces checkpoint episode results:89.0625%success,10.9375%collision,0%timeout,2.83684s successful goal time.
+
+`./build/metal_nav_guided policy-bench assets/navigation.bin`:10,000 sequential CPU evaluations at batch1,5.28245us average on M3. Inputs change and previous-command features update each iteration. This excludes depth acquisition, geometry-memory preparation, RAPTOR and physical command response. It does not establish end-to-end reaction latency.
