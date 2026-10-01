@@ -10,6 +10,24 @@ struct SimConfig {
     uint n, tick, mode, family, substeps, sensor_period, sensor_delay, command_delay, max_steps, seed, eval;
     float speed, distance, wind, depth_noise, dropout, risk_coef, entropy_coef, learning_rate;uint velocity_contract,geometry_memory;
 };
+inline bool sim_clean_training_env(constant SimConfig& cfg,uint n) {
+    return cfg.eval==0 && (cfg.family==12 || cfg.family==13) && (n%2==0);
+}
+inline uint sim_sensor_delay(constant SimConfig& cfg,uint n) {
+    return sim_clean_training_env(cfg,n)?0:cfg.sensor_delay;
+}
+inline uint sim_command_delay(constant SimConfig& cfg,uint n) {
+    return sim_clean_training_env(cfg,n)?0:cfg.command_delay;
+}
+inline float sim_wind_param(constant SimConfig& cfg,uint n) {
+    return sim_clean_training_env(cfg,n)?0.0f:cfg.wind;
+}
+inline float sim_depth_noise(constant SimConfig& cfg,uint n) {
+    return sim_clean_training_env(cfg,n)?0.0f:cfg.depth_noise;
+}
+inline float sim_depth_dropout(constant SimConfig& cfg,uint n) {
+    return sim_clean_training_env(cfg,n)?0.0f:cfg.dropout;
+}
 constant uint SIM_DEPTH_FEATURES = (PPO_ACTOR_OBS - (PPO_ACTOR_OBS==184?24:21)) / 2;
 inline void sim_rotation(thread const float* q, thread float* r) {
     float w=q[0],x=q[1],y=q[2],z=q[3];
@@ -22,13 +40,18 @@ inline void sim_reset_one(device RLPhysicsState& s,device SimRun& run,device WWo
     uint rng=first?(cfg.seed+n*747796405u+2891336453u):run.rng;
     uint episode_family=wtraining_family(cfg.family,rng);
     wgenerate(world,wrng(rng),episode_family,cfg.distance);
-    world.wind[0]=cfg.wind;world.wind[1]=0;world.wind[2]=0;
+    world.wind[0]=sim_wind_param(cfg,n);world.wind[1]=0;world.wind[2]=0;
     for(uint j=0;j<3;j++){s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;run.desired_velocity[j]=0;run.reference_position[j]=s.position[j];}
     s.orientation_wxyz[0]=1;for(uint j=1;j<4;j++)s.orientation_wxyz[j]=0;
     float target=p.mass*9.81f/4,c0=p.rotor_thrust_coefficients[0],c1=p.rotor_thrust_coefficients[1],c2=p.rotor_thrust_coefficients[2];
     float hover=clamp((-c1+sqrt(c1*c1-4*c2*(c0-target)))/(2*c2),p.action_min,p.action_max);
     float hidden[16];raptor_reset(weights,hidden);for(uint j=0;j<16;j++)run.hidden[j]=hidden[j];
     for(uint j=0;j<4;j++){s.rpm[j]=hover;run.motors[j]=0;run.previous_nav[j]=0;}
+    if(world.family==10 || world.family==11) {
+        s.linear_velocity[0]=cfg.speed;
+        run.desired_velocity[0]=cfg.speed;
+        run.previous_nav[0]=1.0f;
+    }
     for(uint j=0;j<8*320;j++)sensors[n*8*320+j]=12;
     for(uint j=0;j<8*4;j++)commands[n*8*4+j]=0;
     run.yaw=0;run.rng=rng;run.steps=0;run.path=run.elapsed=run.peak_speed=0;run.min_clearance=12;run.initial_distance=length(float3(world.goal[0],world.goal[1],world.goal[2]-1.5f));
@@ -43,7 +66,8 @@ kernel void sim_depth(device const RLPhysicsState* states [[buffer(0)]],device S
     WVec d=wv(r[0]*ray.x+r[1]*ray.y+r[2]*ray.z,r[3]*ray.x+r[4]*ray.y+r[5]*ray.z,r[6]*ray.x+r[7]*ray.y+r[8]*ray.z);
     float depth=wray(worlds[n],wv(s.position[0],s.position[1],s.position[2]),d,runs[n].elapsed);
     uint rng=runs[n].rng+k*1664525u+runs[n].steps*1013904223u;
-    depth=clamp(depth+cfg.depth_noise*sim_normal(rng),0.0f,12.0f);if(wurand(rng)<cfg.dropout)depth=12;
+    const float noise=sim_depth_noise(cfg,n),dropout=sim_depth_dropout(cfg,n);
+    depth=clamp(depth+noise*sim_normal(rng),0.0f,12.0f);if(wurand(rng)<dropout)depth=12;
     uint frame=(runs[n].steps/cfg.sensor_period)%8;if(k==0){for(uint j=0;j<3;j++)poses[(n*8+frame)*12+j]=s.position[j];for(uint j=0;j<9;j++)poses[(n*8+frame)*12+3+j]=r[j];}sensors[(n*8+frame)*320+k]=depth;
 }
 inline void sim_critic_obs(thread const RLPhysicsState& s,device const WWorld& w,device const SimRun& run,thread float* obs) {
@@ -56,7 +80,8 @@ inline void sim_critic_obs(thread const RLPhysicsState& s,device const WWorld& w
 }
 kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device const SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* sensors [[buffer(3)]],device float* obs [[buffer(4)]],device float* critic_obs [[buffer(5)]],constant RLPhysicsParams& p [[buffer(6)]],constant SimConfig& cfg [[buffer(7)]],device float* poses [[buffer(8)]],device const float* memory_clearances [[buffer(9)]],uint n [[thread_position_in_grid]]) {
     if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);
-    uint available=runs[n].steps/cfg.sensor_period,frame=available>cfg.sensor_delay?available-cfg.sensor_delay:0,prev=frame>0?frame-1:0;
+    const uint sensor_delay=sim_sensor_delay(cfg,n);
+    uint available=runs[n].steps/cfg.sensor_period,frame=available>sensor_delay?available-sensor_delay:0,prev=frame>0?frame-1:0;
     uint row=(cfg.tick*cfg.n+n)*PPO_ACTOR_OBS,crow=(cfg.tick*cfg.n+n)*32;
     for(uint k=0;k<SIM_DEPTH_FEATURES;k++) {
         float current=12.0f,previous=12.0f;
@@ -71,9 +96,11 @@ kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device
                 previous=min(previous,sensors[(n*8+prev%8)*320+pixel]);
             }
         }
-        obs[row+k]=available>=cfg.sensor_delay?current/12.0f:1.0f;
-        obs[row+SIM_DEPTH_FEATURES+k]=available>=cfg.sensor_delay?previous/12.0f:1.0f;
+        obs[row+k]=available>=sensor_delay?current/12.0f:1.0f;
+        obs[row+SIM_DEPTH_FEATURES+k]=available>=sensor_delay?previous/12.0f:1.0f;
     }
+    // Evaluation ablation: remove the actor's previous-depth channel.
+    if(cfg.mode==18)for(uint k=0;k<SIM_DEPTH_FEATURES;k++)obs[row+SIM_DEPTH_FEATURES+k]=obs[row+k];
     float3 delta=float3(worlds[n].goal[0]-s.position[0],worlds[n].goal[1]-s.position[1],worlds[n].goal[2]-s.position[2]);float distance=max(length(delta),1e-6f);
     const uint context=row+2*SIM_DEPTH_FEATURES;
     for(uint j=0;j<3;j++) {
@@ -83,14 +110,14 @@ kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device
     }
     obs[context+3]=min(distance/10,1.5f);for(uint j=0;j<4;j++)obs[context+13+j]=runs[n].previous_nav[j];
     obs[context+17]=float(runs[n].steps-frame*cfg.sensor_period)*p.dt*cfg.substeps;float ref[3]={runs[n].reference_position[0]-s.position[0],runs[n].reference_position[1]-s.position[1],runs[n].reference_position[2]-s.position[2]};for(uint j=0;j<3;j++)obs[context+18+j]=clamp((r[j]*ref[0]+r[3+j]*ref[1]+r[6+j]*ref[2])*2,-1.0f,1.0f);
-    if(PPO_ACTOR_OBS==184){float cur[80],prev[80],goal[3],vel[3],hint[3];for(uint j=0;j<80;j++){cur[j]=obs[row+j]*12;prev[j]=obs[row+80+j]*12;}for(uint j=0;j<3;j++){goal[j]=obs[context+j];vel[j]=obs[context+4+j]*4;}if(cfg.geometry_memory){float pose[12];for(uint j=0;j<3;j++)pose[j]=s.position[j];for(uint j=0;j<9;j++)pose[j+3]=r[j];uint valid=available>=cfg.sensor_delay?min(frame+1,8-cfg.sensor_delay):0;nav_guidance_memory(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,sensors+n*8*320,poses+n*8*12,pose,frame,valid,hint,memory_clearances+n*85);}else nav_guidance(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,hint);for(uint j=0;j<3;j++)obs[row+PPO_ACTOR_OBS-3+j]=hint[j];}
+    if(PPO_ACTOR_OBS==184){float cur[80],prev[80],goal[3],vel[3],hint[3];for(uint j=0;j<80;j++){cur[j]=obs[row+j]*12;prev[j]=obs[row+80+j]*12;}for(uint j=0;j<3;j++){goal[j]=obs[context+j];vel[j]=obs[context+4+j]*4;}if(cfg.geometry_memory){float pose[12];for(uint j=0;j<3;j++)pose[j]=s.position[j];for(uint j=0;j<9;j++)pose[j+3]=r[j];uint valid=available>=sensor_delay?min(frame+1,8-sensor_delay):0;nav_guidance_memory(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,sensors+n*8*320,poses+n*8*12,pose,frame,valid,hint,memory_clearances+n*85);}else nav_guidance(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,hint);for(uint j=0;j<3;j++)obs[row+PPO_ACTOR_OBS-3+j]=hint[j];}
     float co[32];sim_critic_obs(s,worlds[n],runs[n],co);for(uint j=0;j<32;j++)critic_obs[crow+j]=co[j];
 }
 kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* observations [[buffer(3)]],device const float* critic_obs [[buffer(4)]],device const float* actor [[buffer(5)]],device const float* critic [[buffer(6)]],device float* actions [[buffer(7)]],device float* logp [[buffer(8)]],device float* values [[buffer(9)]],device float* commands [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {
     if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float co[32],hidden[64],mean[4],a[4];
     for(uint j=0;j<32;j++)co[j]=critic_obs[row*32+j];for(uint j=0;j<4;j++)mean[j]=actions[row*4+j];
     values[row]=ppo_critic_value(critic,co,hidden);
-    if(PPO_ACTOR_OBS==184 && cfg.mode>=9 && cfg.mode<=17){float scale=(cfg.mode==9||cfg.mode==13)?0.0f:((cfg.mode==10||cfg.mode==14||cfg.mode==16)?0.25f:(cfg.mode==15?1.0f:0.5f));if(cfg.mode==17){float overhead=0;for(uint k=0;k<20;k++)overhead+=observations[row*PPO_ACTOR_OBS+k]*12>2.5f;scale=.25f+.75f*(overhead/20.0f);}if(cfg.mode==12){float near=12;for(uint k=0;k<80;k++)near=min(near,observations[row*PPO_ACTOR_OBS+k]*12);scale=clamp((near-.3f)/2,0.2f,1.0f);}for(uint j=0;j<3;j++){float prior=observations[row*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3+j];mean[j]=prior+scale*(mean[j]-prior);}mean[3]*=scale;if(cfg.mode==16){uint context=row*PPO_ACTOR_OBS+160;float yaw=atan2(observations[context+1],observations[context]);mean[3]+=nav_atanh(clamp(yaw*1.5f,-.85f,.85f));}}
+    if(PPO_ACTOR_OBS==184 && cfg.mode>=9 && cfg.mode<=19){float scale=(cfg.mode==9||cfg.mode==13)?0.0f:((cfg.mode==10||cfg.mode==14||cfg.mode==16)?0.25f:(cfg.mode==15?1.0f:0.5f));if(cfg.mode>=17){float overhead=0;for(uint k=0;k<20;k++)overhead+=observations[row*PPO_ACTOR_OBS+k]*12>2.5f;scale=.25f+.75f*(overhead/20.0f);}if(cfg.mode==12){float near=12;for(uint k=0;k<80;k++)near=min(near,observations[row*PPO_ACTOR_OBS+k]*12);scale=clamp((near-.3f)/2,0.2f,1.0f);}for(uint j=0;j<3;j++){float prior=observations[row*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3+j];mean[j]=prior+scale*(mean[j]-prior);}mean[3]*=scale;if(cfg.mode==16){uint context=row*PPO_ACTOR_OBS+160;float yaw=atan2(observations[context+1],observations[context]);mean[3]+=nav_atanh(clamp(yaw*1.5f,-.85f,.85f));}}
     uint rng=runs[n].rng;float lp=0;for(uint j=0;j<4;j++) {
         a[j]=mean[j]+(cfg.mode==0?exp(actor[PPO_ACTOR_LOG_STD+j])*sim_normal(rng):0);
         if(cfg.mode==1)a[j]=sim_normal(rng);
@@ -104,10 +131,13 @@ kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* r
         a[0]=(r[0]*d.x+r[3]*d.y+r[6]*d.z)/cfg.speed;a[1]=(r[1]*d.x+r[4]*d.y+r[7]*d.z)/cfg.speed;a[2]=(r[2]*d.x+r[5]*d.y+r[8]*d.z)/cfg.speed;a[3]=0;
         for(uint j=0;j<4;j++)commands[(n*8+runs[n].steps%8)*4+j]=a[j];
     }
-    uint applied=runs[n].steps>cfg.command_delay?runs[n].steps-cfg.command_delay:0;
-    for(uint j=0;j<4;j++)runs[n].previous_nav[j]=runs[n].steps<cfg.command_delay?0:commands[(n*8+applied%8)*4+j];
+    const uint command_delay=sim_command_delay(cfg,n);
+    uint applied=runs[n].steps>command_delay?runs[n].steps-command_delay:0;
+    for(uint j=0;j<4;j++)runs[n].previous_nav[j]=runs[n].steps<command_delay?0:commands[(n*8+applied%8)*4+j];
     RLPhysicsState s=states[n];float r[9];sim_rotation(s.orientation_wxyz,r);float v[3]={runs[n].previous_nav[0]*cfg.speed,runs[n].previous_nav[1]*cfg.speed,runs[n].previous_nav[2]*cfg.speed*(cfg.velocity_contract==0?0.5f:1.0f)};
     if(cfg.velocity_contract==1){float scale=min(1.0f,cfg.speed/max(length(float3(v[0],v[1],v[2])),1e-8f));for(uint j=0;j<3;j++)v[j]*=scale;}
+    // Fixed-speed eval ablation: scale the already-converted executed intent only.
+    if(cfg.mode==19){float magnitude=length(float3(v[0],v[1],v[2]));if(magnitude>1e-8f){float scale=cfg.speed/magnitude;for(uint j=0;j<3;j++)v[j]*=scale;}}
     for(uint j=0;j<3;j++)runs[n].desired_velocity[j]=r[j*3]*v[0]+r[j*3+1]*v[1]+r[j*3+2]*v[2];runs[n].yaw+=runs[n].previous_nav[3]*p.dt*cfg.substeps*0.5f;
 }
 kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],device const float* critic [[buffer(6)]],device float* rewards [[buffer(7)]],device float* next_values [[buffer(8)]],device uchar* terminated [[buffer(9)]],device uchar* truncated [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {

@@ -188,10 +188,101 @@ WF void wgenerate_mixed(WP WWorld& w,WT uint& rng,float distance) {
     const float low_box_y=wroute_y(w,low_box_x,distance)-0.88f;
     wadd_box(w,wv(low_box_x,low_box_y,0.48f),wv(0.34f,0.30f,0.48f));
 }
+WF void wgenerate_threat_sphere(WP WWorld& w,uint seed,uint family) {
+    const float drone_speed=1.5f;
+    uint rng=seed^0x9e3779b9u;if(rng==0)rng=1;
+    const float lateral=(wurand(rng)-0.5f)*0.20f;
+    const float vertical=(wurand(rng)-0.5f)*0.16f;
+    const uint speed_choice=wrng(rng)%3;
+    const float threat_speed=speed_choice==0?0.5f:(speed_choice==1?1.0f:2.0f);
+    const float nominal_ttc=0.7f+0.8f*wurand(rng);
+    const float combined_radius=0.18f+0.35f;
+    WVec center,velocity=wv(0,0,0);
+    if(family==10){
+        center=wv((drone_speed+threat_speed)*nominal_ttc+combined_radius,lateral,1.5f+vertical);
+        velocity.x=-threat_speed;
+    }
+    else {
+        center=wv(drone_speed*nominal_ttc,-threat_speed*nominal_ttc+lateral,1.5f+vertical);
+        velocity.y=threat_speed;
+    }
+    w.goal[0]=4.0f;w.goal[1]=0.0f;w.goal[2]=1.5f;
+    wadd(w,1,center,wv(0.35f,0.35f,0.35f),velocity);
+}
+// Spatial challenge families use only the existing fixed AABB world layout.
+// Their route checks and split seeds live in challenge_bank.py.
+WF float wchallenge_distance(float distance) { return fmin(fmax(distance,3.0f),10.0f); }
+WF void wgenerate_bent_hallway(WP WWorld& w,WT uint& rng,float distance) {
+    const float difficulty=wurand(rng);
+    const float span=wchallenge_distance(distance);
+    w.goal[0]=span*(0.90f+0.10f*wurand(rng));
+    w.goal[1]=(wurand(rng)-0.5f)*1.20f;
+    w.goal[2]=1.10f+0.80f*wurand(rng);
+    const float wall_x=w.goal[0]*(0.24f+0.04f*wurand(rng));
+    const float gap_x=w.goal[0]*(0.70f+0.08f*difficulty);
+    const float lane_width=1.80f-0.80f*difficulty;
+    const float lane_edge=5.0f-lane_width;
+    const float wall_y=(-5.0f+lane_edge)*0.5f;
+    const float wall_half_y=(lane_edge+5.0f)*0.5f;
+    wadd_box(w,wv(wall_x,wall_y,2.5f),wv(0.15f,wall_half_y,2.5f));
+    wadd_box(w,wv((wall_x+gap_x)*0.5f,lane_edge+0.03f,2.5f),
+             wv((gap_x-wall_x)*0.5f+0.15f,0.15f,2.5f));
+}
+WF void wgenerate_connected_rooms(WP WWorld& w,WT uint& rng,float distance) {
+    const float difficulty=wurand(rng);
+    const float span=wchallenge_distance(distance);
+    w.goal[0]=span*(0.90f+0.10f*wurand(rng));
+    w.goal[1]=(wurand(rng)-0.5f)*1.20f;
+    w.goal[2]=1.10f+0.80f*wurand(rng);
+    const float wall_1=w.goal[0]*(0.16f+0.02f*wurand(rng));
+    const float wall_2=w.goal[0]*0.85f;
+    const float gap_1=-(0.60f+0.80f*difficulty);
+    const float gap_2= +(0.60f+0.80f*difficulty);
+    const float gap_half=0.85f-0.30f*difficulty;
+    const float gap_z=1.50f;
+    const float gap_half_z=0.85f-0.10f*difficulty;
+    wadd_doorway(w,wall_1,gap_1,gap_z,gap_half,gap_half_z);
+    wadd_doorway(w,wall_2,gap_2,gap_z,gap_half,gap_half_z);
+
+    const float table_x=w.goal[0]*0.50f;
+    const float table_y=(wurand(rng)-0.5f)*0.20f;
+    const float table_half_x=fmin(0.45f,w.goal[0]*0.06f);
+    const float table_half_y=0.60f+0.20f*difficulty;
+    const float table_top=1.45f+0.25f*difficulty;
+    wadd_table(w,table_x,table_y,table_half_x,table_half_y,table_top);
+
+    // Room furniture outside the witness lane creates visible composition.
+    wadd_box(w,wv(w.goal[0]*0.38f,3.75f,0.55f),wv(0.22f,0.35f,0.55f));
+    wadd_box(w,wv(w.goal[0]*0.50f,-3.80f,0.80f),wv(0.25f,0.35f,0.80f));
+    wadd_box(w,wv(w.goal[0]*0.62f,3.70f,0.50f),wv(0.22f,0.40f,0.50f));
+}
+WF void wgenerate_vertical_choices(WP WWorld& w,WT uint& rng,float distance) {
+    const float difficulty=wurand(rng);
+    const float span=wchallenge_distance(distance);
+    w.goal[0]=span*(0.90f+0.10f*wurand(rng));
+    w.goal[1]=(wurand(rng)-0.5f)*1.20f;
+    w.goal[2]=1.10f+0.80f*wurand(rng);
+    const float low_x=w.goal[0]*(0.14f+0.02f*(1.0f-difficulty));
+    const float overhead_x=w.goal[0]*(0.46f+0.02f*difficulty);
+    const float choice_x=w.goal[0]*(0.76f+0.02f*difficulty);
+    const float low_top=1.50f+0.25f*difficulty;
+    const float overhead_bottom=2.80f-0.20f*difficulty;
+    const float choice_half_z=0.10f+0.05f*difficulty;
+
+    // A floor-mounted beam can only be crossed above its top.
+    wadd_box(w,wv(low_x,0,low_top*0.5f),wv(0.12f,5.0f,low_top*0.5f));
+    // A ceiling-mounted overhang can only be crossed below its underside.
+    const float overhead_half_z=(5.0f-overhead_bottom)*0.5f;
+    wadd_box(w,wv(overhead_x,0,overhead_bottom+overhead_half_z),
+             wv(0.12f,5.0f,overhead_half_z));
+    // The final thin slab leaves two valid vertical lanes: below or above.
+    wadd_box(w,wv(choice_x,0,2.0f+choice_half_z),wv(0.10f,5.0f,choice_half_z));
+}
 // Training-only rehearsal mixture. Held two-door family8 is never sampled.
 WF uint wtraining_family(uint family,WT uint& rng) {
     if(family==7)return wrng(rng)%7;
-    if(family==9){uint choice=wrng(rng)%4;return choice<2?4:(choice==2?5:wrng(rng)%7);}
+    if(family==9||family==12){uint choice=wrng(rng)%4;return choice<2?4:(choice==2?5:wrng(rng)%7);}
+    if(family==13){uint choice=wrng(rng)%6;if(choice<2)return 4;if(choice==2)return 5;if(choice==3)return wrng(rng)%7;return choice==4?10:11;}
     return family;
 }
 WF void wgenerate(WP WWorld& w,uint seed,uint family,float distance) {
@@ -202,6 +293,10 @@ WF void wgenerate(WP WWorld& w,uint seed,uint family,float distance) {
     if(family==5) { w.count=0; wgenerate_table_or_counter(w,rng,distance); return; }
     if(family==6) { w.count=0; wgenerate_mixed(w,rng,distance); return; }
     if(family==8) { w.count=0; wgenerate_two_doorways(w,rng,distance); return; }
+    if(family==10||family==11) { w.count=0; wgenerate_threat_sphere(w,seed,family); return; }
+    if(family==14) { w.count=0; wgenerate_bent_hallway(w,rng,distance); return; }
+    if(family==15) { w.count=0; wgenerate_connected_rooms(w,rng,distance); return; }
+    if(family==16) { w.count=0; wgenerate_vertical_choices(w,rng,distance); return; }
     for(uint i=0;i<16;i++) {
         WP WObstacle& o=w.obstacles[i]; o.kind=family==2?2:(family==3?1:0);
         o.center[0]=1.2f+wurand(rng)*fmax(0.1f,distance-2.2f);

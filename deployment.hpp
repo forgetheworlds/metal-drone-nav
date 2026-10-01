@@ -54,6 +54,9 @@ static_assert(sizeof(Metadata)==56,"NAV metadata fields must stay 56 bytes");
 struct NavigationAction {
     float body_velocity_mps[3]={0,0,0};
     float yaw_rate_rps=0;
+    // The trained observation stores applied tanh commands before speed projection.
+    // Retain them for the next observation; they are not motor commands.
+    float normalized_intent[4]={0,0,0,0};
 };
 
 inline uint64_t fnv1a64_file(const std::string& path,bool& ok) {
@@ -180,6 +183,8 @@ public:
         for(uint32_t j=0;j<3;j++)mean[j]=observation[181+j]+scale*(mean[j]-observation[181+j]);
         mean[3]*=scale;
         float velocity[3]={std::tanh(mean[0]),std::tanh(mean[1]),std::tanh(mean[2])};
+        for(uint32_t j=0;j<3;j++)command.normalized_intent[j]=velocity[j];
+        command.normalized_intent[3]=std::tanh(mean[3]);
         const float norm=std::sqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1]+velocity[2]*velocity[2]);
         const float speed_scale=norm>1.0f?1.0f/norm:1.0f;
         for(uint32_t j=0;j<3;j++)command.body_velocity_mps[j]=velocity[j]*speed_scale*metadata_.max_speed_mps;

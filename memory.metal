@@ -23,11 +23,14 @@ kernel void nav_memory_build_points(device const RLPhysicsState* states [[buffer
     const uint row = cell / 10;
     const uint col = cell % 10;
     const uint available = runs[n].steps / cfg.sensor_period;
-    const uint latest = available > cfg.sensor_delay ? available - cfg.sensor_delay : 0;
-    const uint valid = available >= cfg.sensor_delay ? min(latest + 1, NAV_MEMORY_FRAMES - cfg.sensor_delay) : 0;
+    const uint sensor_delay = sim_sensor_delay(cfg,n);
+    const uint latest = available > sensor_delay ? available - sensor_delay : 0;
+    const uint valid = available >= sensor_delay ? min(latest + 1, NAV_MEMORY_FRAMES - sensor_delay) : 0;
+    // Mode 18 tests temporal depth while keeping geometry guidance enabled.
+    const uint memory_valid = cfg.mode == 18 ? min(valid, 1u) : valid;
     const uint out = (n * NAV_MEMORY_POINTS + local) * 4;
 
-    if (back >= valid) {
+    if (back >= memory_valid) {
         points[out + 0] = 0.0f;
         points[out + 1] = 0.0f;
         points[out + 2] = 0.0f;

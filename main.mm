@@ -459,11 +459,40 @@ struct Sim {
     }
 };
 struct EvalScore { double success=0,collision=0,timeout=1,goal_time=1e9; };
-static EvalScore sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr,float speed=1,float distance=3,uint32_t seed=700001,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t velocity_contract=1,uint32_t memory=0) {
-    SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=seed;cfg.distance=distance;cfg.speed=speed;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;cfg.velocity_contract=velocity_contract;cfg.geometry_memory=memory||mode>=13;require(sensor_delay<=6 && command_delay<=7,"delay rings support <=6 sensor frames and <=7 command steps");
+static EvalScore sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr,float speed=1,float distance=3,uint32_t seed=700001,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t velocity_contract=1,uint32_t memory=0,uint32_t max_steps=0) {
+    require((family!=10 && family!=11 && family!=13) || (std::fabs(speed-1.5f)<1e-6f && std::fabs(distance-4.0f)<1e-6f),"flying-threat evaluation requires1.5m/s and4m goal");
+    require(max_steps==0 || (max_steps>=1 && max_steps<=2000),"evaluation episode length unsupported");
+    SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=seed;cfg.distance=distance;cfg.speed=speed;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;cfg.velocity_contract=velocity_contract;cfg.geometry_memory=memory||mode>=13;cfg.max_steps=max_steps?max_steps:((family>=14 && family<=16)?400:200);require(sensor_delay<=6 && command_delay<=7,"delay rings support <=6 sensor frames and <=7 command steps");
+    if(mode==18||mode==19){require(actor!=nullptr&&fixed_ppo::actor_obs_dim==184,"modes 18/19 require a trained 184D guided checkpoint");std::cout<<"EVAL_ABLATION mode="<<mode<<(mode==18?" current-depth-only, newest-frame geometry memory":" fixed-speed, mode-17 guided direction and yaw")<<"; same checkpoint versus mode17; inference ablation, not a matched retrain\n";}
+    std::cout<<"eval_budget_s="<<cfg.max_steps*.05f<<" speed_intent_cap="<<cfg.speed<<"\n";
     Sim sim(m,cfg,32);if(actor)std::memcpy(sim.actor.contents,actor,fixed_ppo::actor_param_count*4);
     double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,cfg.max_steps);double gpu=m.finish(cb);sim.report("eval family="+std::to_string(family)+" mode="+std::to_string(mode),seconds()-start);std::cout<<"eval_GPU_s="<<gpu<<"\n";
     const auto* r=(const SimRun*)sim.runs.contents;double success=0,collision=0,timeout=0,time=0;for(uint i=0;i<cfg.n;i++){require(r[i].episodes==1,"eval must finish exactly one episode per seed");success+=r[i].successes;collision+=r[i].collisions;timeout+=r[i].timeouts;time+=r[i].success_time;}return {success/cfg.n,collision/cfg.n,timeout/cfg.n,success?time/success:1e9};
+}
+
+static void mixed_domain_tests(Metal& m) {
+    float worst=0;
+    for(uint32_t family:{12u,13u})for(uint32_t eval:{0u,1u}) {
+        SimConfig cfg;cfg.n=16;cfg.family=family;cfg.eval=eval;cfg.speed=1.5f;cfg.distance=4;cfg.geometry_memory=1;cfg.sensor_delay=2;cfg.command_delay=1;cfg.wind=.5f;cfg.depth_noise=.05f;cfg.dropout=.1f;
+        Sim sim(m,cfg,1);cpu_reference::Trainer cpu(cfg,1,load_raptor(),rl_physics_crazyflie_default());
+        auto cb=[m.queue commandBuffer];auto c=sim.configs[0];
+        m.dispatch(cb,sim.depth_p,cfg.n*320,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.physics,c,sim.poses});
+        m.dispatch(cb,sim.memory_points_p,cfg.n*640,{sim.states,sim.runs,sim.sensors,sim.poses,sim.memory_points,sim.physics,c});
+        m.dispatch(cb,sim.memory_candidates_p,cfg.n*85,{sim.states,sim.worlds,sim.memory_points,sim.memory_clearances,c});
+        m.dispatch(cb,sim.observe_p,cfg.n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.obs,sim.co,sim.physics,c,sim.poses,sim.memory_clearances},64);m.finish(cb);
+        const auto* worlds=(const WWorld*)sim.worlds.contents;const auto* states=(const RLPhysicsState*)sim.states.contents;const float* observations=(const float*)sim.obs.contents;
+        const auto cpu_initial_states=cpu.states;const auto cpu_initial_worlds=cpu.worlds;
+        cpu.run(1); // The horizon1 rollout retains the pre-advance observation row.
+        for(uint32_t n=0;n<cfg.n;n++) {
+            const float expected_wind=(eval==0 && n%2==0)?0:cfg.wind;
+            require(worlds[n].wind[0]==expected_wind && cpu_initial_worlds[n].wind[0]==expected_wind,"mixed-domain wind selection");
+            const float expected_v=(worlds[n].family==10||worlds[n].family==11)?cfg.speed:0;
+            require(states[n].linear_velocity[0]==expected_v && cpu_initial_states[n].linear_velocity[0]==expected_v,"flying-threat reset velocity");
+            for(uint32_t k=0;k<fixed_ppo::actor_obs_dim;k++)worst=std::max(worst,std::fabs(observations[n*fixed_ppo::actor_obs_dim+k]-cpu.observations[n*fixed_ppo::actor_obs_dim+k]));
+        }
+    }
+    require(worst<3e-5f,"mixed-domain CPU/GPU observations differ");
+    std::cout<<"mixed domains PASS clean/stress and flying reset CPU/GPU observation_error="<<worst<<"\n";
 }
 
 static void closed_loop_tests(Metal& m) {
@@ -917,28 +946,51 @@ struct PPOTrainer {
     }
 };
 
-static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint,const std::string& warmstart="",float speed=1,float distance=3,float risk=0,float entropy=-1,float learning_rate=.0003f,uint32_t velocity_contract=1,uint32_t memory=0,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t evaluation_mode=4) {
+static EvalScore evaluate_training_policy(Metal& m,const SimConfig& cfg,uint32_t mode,const float* actor) {
+    if(cfg.family!=12 && cfg.family!=13)return sim_evaluate(m,cfg.family,mode,actor,cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
+    std::vector<uint32_t> families={4,5,7};if(cfg.family==13){families.push_back(10);families.push_back(11);}
+    EvalScore result{1,0,0,0};uint32_t profiles=0;
+    for(uint32_t family:families)for(bool stressed:{false,true}) {
+        const auto score=sim_evaluate(m,family,mode,actor,cfg.speed,cfg.distance,700001,stressed?cfg.sensor_delay:0,stressed?cfg.wind:0,stressed?cfg.depth_noise:0,stressed?cfg.dropout:0,stressed?cfg.command_delay:0,cfg.velocity_contract,cfg.geometry_memory);
+        result.success=std::min(result.success,score.success);result.collision=std::max(result.collision,score.collision);result.timeout=std::max(result.timeout,score.timeout);result.goal_time+=score.goal_time;profiles++;
+    }
+    result.goal_time/=profiles;
+    std::cout<<"selection profiles="<<profiles<<" minimum_success="<<result.success<<" worst_collision="<<result.collision<<" mode="<<mode<<"\n";
+    return result;
+}
+
+static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint,const std::string& warmstart="",float speed=1,float distance=3,float risk=0,float entropy=-1,float learning_rate=.0003f,uint32_t velocity_contract=1,uint32_t memory=0,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t evaluation_mode=4,float warmstart_log_std=-1) {
     require(iterations>0,"train_navigation needs at least one rollout");
+    require(std::isfinite(warmstart_log_std) && warmstart_log_std>=-2 && warmstart_log_std<=.5f,"warmstart log std outside supported range");
+    require((family!=10 && family!=11 && family!=13) || (std::fabs(speed-1.5f)<1e-6f && std::fabs(distance-4.0f)<1e-6f),"flying-threat families require 1.5m/s and a4m goal");
     require(sensor_delay<=6 && command_delay<=7,"training delay exceeds the sensor/command rings");
     require(std::isfinite(speed) && speed>0 && std::isfinite(distance) && distance>1 && std::isfinite(wind) && std::isfinite(noise) && noise>=0 && std::isfinite(dropout) && dropout>=0 && dropout<=1,"invalid training scene/corruption parameters");
     require(evaluation_mode==4 || (fixed_ppo::actor_obs_dim==184 && evaluation_mode==17),"training selection supports learned mean4 or guided mode17");
     m.compile(base_source()+PPO_TRAINER_MSL);
-    constexpr uint32_t n=128,horizon=32,base_seed=42;
-    SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=distance;cfg.speed=speed;cfg.max_steps=200;cfg.risk_coef=risk;cfg.entropy_coef=entropy>=0?entropy:(family==7?.002f:.005f);cfg.learning_rate=learning_rate;cfg.velocity_contract=velocity_contract;cfg.geometry_memory=memory;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;
+    constexpr uint32_t horizon=32,base_seed=42;
+    uint32_t n=128;
+    if(const char* value=std::getenv("METAL_NAV_TRAIN_ENVS")) {
+        size_t parsed=0;const auto requested=std::stoul(value,&parsed);
+        require(parsed==std::strlen(value) && requested>0 && requested<=32768,"METAL_NAV_TRAIN_ENVS must be1..32768");n=uint32_t(requested);
+    } else if(!checkpoint.empty() && std::filesystem::exists(checkpoint)) {
+        std::ifstream file(checkpoint,std::ios::binary);n=read_checkpoint_header(file).n;
+        require(n>0 && n<=32768,"checkpoint environment count unsupported");
+    }
+    SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=distance;cfg.speed=speed;cfg.max_steps=(family>=14 && family<=16)?400:200;cfg.risk_coef=risk;cfg.entropy_coef=entropy>=0?entropy:(family==7?.002f:.005f);cfg.learning_rate=learning_rate;cfg.velocity_contract=velocity_contract;cfg.geometry_memory=memory;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;
     Sim sim(m,cfg,horizon);PPOTrainer trainer(sim);trainer.load_checkpoint(checkpoint,family,horizon,n,base_seed);
     if(!warmstart.empty() && trainer.completed_rollouts==0) {
         std::ifstream f(warmstart,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);
         require(f && (h.version>=3&&h.version<=6) && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
         f.read((char*)sim.actor.contents,fixed_ppo::actor_param_count*4);f.read((char*)sim.critic.contents,fixed_ppo::critic_param_count*4);require(bool(f),"warmstart read failed");
-        for(uint j=0;j<4;j++)((float*)sim.actor.contents)[fixed_ppo::actor_log_std_offset+j]=-1.0f;
-        std::cout<<"warmstart parameters from "<<warmstart<<"; reset optimizer and exploration\n";
+        for(uint j=0;j<4;j++)((float*)sim.actor.contents)[fixed_ppo::actor_log_std_offset+j]=warmstart_log_std;
+        std::cout<<"warmstart parameters from "<<warmstart<<"; reset optimizer, exploration_log_std="<<warmstart_log_std<<"\n";
     }
     EvalScore best;
     if(!checkpoint.empty() && std::filesystem::exists(checkpoint+".best")) {
-        std::ifstream f(checkpoint+".best",std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);std::vector<float> a(fixed_ppo::actor_param_count);f.read((char*)a.data(),a.size()*4);require(f && h.actor_count==fixed_ppo::actor_param_count,"best checkpoint read/dimensions");best=sim_evaluate(m,family,evaluation_mode,a.data(),cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
+        std::ifstream f(checkpoint+".best",std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);std::vector<float> a(fixed_ppo::actor_param_count);f.read((char*)a.data(),a.size()*4);require(f && h.actor_count==fixed_ppo::actor_param_count,"best checkpoint read/dimensions");best=evaluate_training_policy(m,cfg,evaluation_mode,a.data());
     }
     if(!checkpoint.empty() && !std::filesystem::exists(checkpoint+".best")) {
-        best=sim_evaluate(m,family,evaluation_mode,(const float*)sim.actor.contents,cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
+        best=evaluate_training_policy(m,cfg,evaluation_mode,(const float*)sim.actor.contents);
         trainer.save_checkpoint(checkpoint+".best",family,base_seed,trainer.completed_rollouts);
     }
     std::filesystem::create_directories("results");
@@ -951,10 +1003,10 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
         if(m.profiler.available)m.profiler.arm();const double rollout_start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,horizon);trainer.rollout_update(cb,r);
         const double gpu=m.finish(cb);
         const float* met=(const float*)trainer.metric_mean.contents;
-        if((r+1)%10==0 || r+1==finish_rollout) {
+        if((r+1)%((family==12||family==13)?25:10)==0 || r+1==finish_rollout) {
             std::cout<<"train rollout="<<(r+1)<<" policy_loss="<<met[0]<<" value_loss="<<met[1]<<" entropy_loss="<<met[2]<<" ratio="<<met[3]<<" optimizer_step="<<trainer.optimizer_step<<" gpu_s="<<gpu<<"\n";
             sim.report("train",0.0);
-            EvalScore score=sim_evaluate(m,family,evaluation_mode,(const float*)sim.actor.contents,cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
+            EvalScore score=evaluate_training_policy(m,cfg,evaluation_mode,(const float*)sim.actor.contents);
             history<<checkpoint<<'\t'<<r+1<<'\t'<<seconds()-run_start<<'\t'<<gpu<<'\t'<<score.success<<'\t'<<score.collision<<'\t'<<score.timeout<<'\t'<<score.goal_time<<'\n';history.flush();
             if(score.success>best.success || (score.success==best.success && score.goal_time<best.goal_time)) {
                 best=score;trainer.completed_rollouts=r+1;trainer.save_checkpoint(checkpoint+".best",family,base_seed,r+1);
@@ -966,21 +1018,120 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
     trainer.completed_rollouts=finish_rollout;trainer.save_checkpoint(checkpoint,family,base_seed,finish_rollout);
 }
 
-static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode,uint family,uint32_t seed=800001,float speed=1,float distance=3,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0) {
-    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);require(f && (h.version>=3&&h.version<=6) && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay,h.config.velocity_contract,h.config.geometry_memory);
+static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode,uint family,uint32_t seed=800001,float speed=1,float distance=3,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t max_steps=0) {
+    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);require(f && (h.version>=3&&h.version<=6) && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay,h.config.velocity_contract,h.config.geometry_memory,max_steps);
 }
 
-static void trace_checkpoint(Metal& m,const std::string& checkpoint,uint32_t family,uint32_t mode,uint32_t seed) {
-    std::ifstream f(checkpoint,std::ios::binary);auto h=read_checkpoint_header(f);require(h.actor_count==fixed_ppo::actor_param_count,"trace actor dimensions");std::vector<float>actor(h.actor_count);f.read((char*)actor.data(),actor.size()*4);require(bool(f),"trace actor read");
-    SimConfig cfg=h.config;cfg.family=family;cfg.mode=mode;cfg.geometry_memory=h.config.geometry_memory||mode>=13;cfg.eval=1;cfg.seed=seed;Sim sim(m,cfg,cfg.max_steps);std::memcpy(sim.actor.contents,actor.data(),actor.size()*4);
-    auto cb=[m.queue commandBuffer];sim.collect(cb);m.finish(cb);const auto* runs=(const SimRun*)sim.runs.contents;uint32_t n=0;while(n+1<cfg.n && !runs[n].collisions)n++;
-    const auto& world=((const WWorld*)sim.worlds.contents)[n];std::cout<<"trace env="<<n<<" steps="<<runs[n].steps<<" collision="<<runs[n].collisions<<" goal="<<world.goal[0]<<","<<world.goal[1]<<","<<world.goal[2]<<"\n";
-    for(uint32_t j=0;j<world.count;j++){const auto&o=world.obstacles[j];std::cout<<"obstacle "<<j<<" kind="<<o.kind<<" center="<<o.center[0]<<","<<o.center[1]<<","<<o.center[2]<<" extent="<<o.size[0]<<","<<o.size[1]<<","<<o.size[2]<<"\n";}
-    const float* co=(const float*)sim.co.contents,*obs=(const float*)sim.obs.contents,*actions=(const float*)sim.actions.contents;std::ofstream out("results/trace.csv");out<<"t,x,y,z,vx,vy,vz,min_range,ax,ay,az,hintx,hinty,hintz\n";
-    for(uint32_t t=0;t<runs[n].steps;t++){size_t row=size_t(t)*cfg.n+n;float range=12;for(uint32_t k=0;k<(fixed_ppo::actor_obs_dim-24)/2;k++)range=std::min(range,obs[row*fixed_ppo::actor_obs_dim+k]*12);
-        out<<t*.05;for(uint32_t j=0;j<3;j++)out<<","<<co[row*32+13+j]*10;for(uint32_t j=0;j<3;j++)out<<","<<co[row*32+3+j]*4;out<<","<<range;for(uint32_t j=0;j<3;j++)out<<","<<std::tanh(actions[row*4+j]);for(uint32_t j=0;j<3;j++)out<<","<<std::tanh(obs[row*fixed_ppo::actor_obs_dim+fixed_ppo::actor_obs_dim-3+j]);out<<"\n";
+// Depends on Sim, SimRun, SimConfig, PpoCheckpointHeader and
+// read_checkpoint_header above.
+#include "challenge_evaluation.hpp"
+
+static void challenge_bank_cli(Metal& m,int argc,char** argv) {
+    require(argc>=6,"bank-eval CHECKPOINT BANK_JSONL SPLIT OUTPUT_CSV [MODE=17] [SPEED=1.5] [MAX_STEPS=400]");
+    const uint32_t mode=argc>6?uint32_t(std::stoul(argv[6])):17u;
+    const float speed=argc>7?std::stof(argv[7]):1.5f;
+    const uint32_t max_steps=argc>8?uint32_t(std::stoul(argv[8])):400u;
+    challenge_evaluation::run(m,argv[2],argv[3],argv[4],argv[5],mode,speed,max_steps);
+}
+
+static void trace_checkpoint(Metal& metal, const std::string& checkpoint, uint32_t family,
+                             uint32_t mode, uint32_t seed,
+                             const std::string& output_prefix="results/trace",
+                             int32_t selected_environment=-1, bool clean_conditions=false) {
+    std::ifstream file(checkpoint,std::ios::binary);
+    const auto header=read_checkpoint_header(file);
+    require(header.actor_count==fixed_ppo::actor_param_count,"trace actor dimensions");
+    std::vector<float> actor(header.actor_count);
+    file.read(reinterpret_cast<char*>(actor.data()),actor.size()*sizeof(float));
+    require(bool(file),"trace actor read");
+    require(std::all_of(actor.begin(),actor.end(),[](float value){return std::isfinite(value);}),"trace actor contains nonfinite parameters");
+
+    SimConfig config=header.config;
+    config.family=family;config.mode=mode;config.eval=1;config.seed=seed;
+    if(family>=14 && family<=16)config.max_steps=400;
+    if(selected_environment>=0){config.n=1;config.seed=seed+uint32_t(selected_environment)*747796405u;}
+    else config.n=std::min(config.n,128u);
+    config.geometry_memory=header.config.geometry_memory || mode>=13;
+    if(clean_conditions){config.sensor_delay=0;config.command_delay=0;config.wind=0;config.depth_noise=0;config.dropout=0;}
+    Sim simulator(metal,config,config.max_steps);
+    std::memcpy(simulator.actor.contents,actor.data(),actor.size()*sizeof(float));
+    auto commands=[metal.queue commandBuffer];simulator.collect(commands);metal.finish(commands);
+
+    const auto* episodes=static_cast<const SimRun*>(simulator.runs.contents);
+    uint32_t environment=0;
+    if(selected_environment<0)while(environment+1<config.n && !episodes[environment].collisions)environment++;
+    const uint32_t logical_environment=selected_environment>=0?uint32_t(selected_environment):environment;
+    const auto& episode=episodes[environment];
+    const auto& world=static_cast<const WWorld*>(simulator.worlds.contents)[environment];
+    const auto& final_state=static_cast<const RLPhysicsState*>(simulator.states.contents)[environment];
+    const auto& physics=*static_cast<const RLPhysicsParams*>(simulator.physics.contents);
+    const float navigation_dt=physics.dt*config.substeps;
+    const float* privileged=static_cast<const float*>(simulator.co.contents);
+    const float* observations=static_cast<const float*>(simulator.obs.contents);
+    const uint32_t depth_cells=(fixed_ppo::actor_obs_dim-(fixed_ppo::actor_obs_dim==184?24:21))/2;
+    const uint32_t context=depth_cells*2;
+
+    const std::filesystem::path output_path(output_prefix);
+    if(output_path.has_parent_path())std::filesystem::create_directories(output_path.parent_path());
+    std::ofstream metadata(output_prefix+".json");require(bool(metadata),"cannot write episode metadata");
+    auto array=[&](const float* values,size_t count){metadata<<'[';for(size_t i=0;i<count;i++){if(i)metadata<<',';metadata<<values[i];}metadata<<']';};
+    metadata<<std::setprecision(9)<<"{\n\"schema_version\":1,\"checkpoint\":"<<std::quoted(checkpoint)
+            <<",\"family\":"<<family<<",\"episode_family\":"<<world.family<<",\"mode\":"<<mode
+            <<",\"seed\":"<<seed<<",\"environment_index\":"<<logical_environment<<",\"world_seed\":"<<world.seed
+            <<",\"frame\":\"world XYZ, Z up; body FLU; metres and seconds; quaternion wxyz; body-to-world rotation\""
+            <<",\"geometry_use\":\"ground-truth visualization and scoring only; not actor inputs\""
+            <<",\"dt_s\":"<<navigation_dt<<",\"native_dt_s\":"<<physics.dt
+            <<",\"sensor_interval_s\":"<<navigation_dt*config.sensor_period
+            <<",\"sensor_delay_frames\":"<<config.sensor_delay<<",\"command_delay_steps\":"<<config.command_delay
+            <<",\"wind_accel_x\":"<<config.wind<<",\"depth_noise_m\":"<<config.depth_noise<<",\"pixel_dropout\":"<<config.dropout
+            <<",\"depth_rows\":"<<(depth_cells==320?16:8)<<",\"depth_columns\":"<<(depth_cells==320?20:10)
+            <<",\"depth_encoding\":\"row-major ray-range metres; 2x2 minimum pooling for8x10; misses12m\""
+            <<",\"depth_pose_note\":\"capture pose is trace pose at depth_capture_t_s; stale startup frames marked sensor_ready0\""
+            <<",\"room_bounds\":[[-2,14],[-5,5],[0,5]],\"drone_radius_m\":0.18,\"goal\":";
+    array(world.goal,3);
+    metadata<<",\"success\":"<<episode.successes<<",\"collision\":"<<episode.collisions
+            <<",\"timeout\":"<<episode.timeouts<<",\"duration_s\":"<<episode.elapsed
+            <<",\"path_m\":"<<episode.path<<",\"native_min_clearance_m\":"<<episode.min_clearance<<",\"obstacles\":[";
+    for(uint32_t i=0;i<world.count;i++){
+        if(i)metadata<<',';const auto& obstacle=world.obstacles[i];
+        metadata<<"{\"kind\":"<<obstacle.kind<<",\"center_t0\":";array(obstacle.center,3);
+        metadata<<",\"size\":";array(obstacle.size,3);metadata<<",\"velocity\":";array(obstacle.velocity,3);metadata<<'}';
     }
-    const auto& state=((const RLPhysicsState*)sim.states.contents)[n];std::cout<<"final="<<state.position[0]<<","<<state.position[1]<<","<<state.position[2]<<" trace=results/trace.csv\n";
+    metadata<<"],\"obstacle_encoding\":\"kind0 AABB half extents XYZ; kind1 sphere radius size0; kind2 vertical cylinder radius size0, half-height size2; center(t)=center_t0+velocity*t\""
+            <<",\"csv_note\":\"linear velocity,reference andcommands are world XYZ; angular velocity is body XYZ; clearance is instantaneous body SDF,not cumulative minimum; terminal_state is last100Hz state\",\"terminal_state\":{\"position\":";
+    array(final_state.position,3);metadata<<",\"quaternion_wxyz\":";array(final_state.orientation_wxyz,4);
+    metadata<<",\"linear_velocity\":";array(final_state.linear_velocity,3);metadata<<",\"angular_velocity_body\":";array(final_state.angular_velocity_body,3);
+    metadata<<",\"reference\":";array(episode.reference_position,3);metadata<<"}}\n";
+    require(bool(metadata),"episode metadata write failed");
+
+    std::ofstream trace(output_prefix+".csv");require(bool(trace),"cannot write episode trace");
+    trace<<"t_s,x,y,z,qw,qx,qy,qz,vx,vy,vz,wx,wy,wz,ref_x,ref_y,ref_z,cmd_vx,cmd_vy,cmd_vz,cmd_yaw_rate,clearance_m,sensor_ready,depth_capture_t_s";
+    for(uint32_t cell=0;cell<depth_cells;cell++)trace<<",depth_"<<cell;
+    trace<<'\n'<<std::setprecision(9);
+    for(uint32_t tick=0;tick<episode.steps;tick++){
+        const size_t row=size_t(tick)*config.n+environment;
+        const float* state=privileged+row*32;
+        const float* observation=observations+row*fixed_ppo::actor_obs_dim;
+        float applied[4];
+        for(uint32_t axis=0;axis<4;axis++)applied[axis]=tick+1<episode.steps?observations[(row+config.n)*fixed_ppo::actor_obs_dim+context+13+axis]:episode.previous_nav[axis];
+        float velocity[3]={applied[0]*config.speed,applied[1]*config.speed,applied[2]*config.speed*(config.velocity_contract==0?.5f:1.0f)};
+        const float magnitude=std::sqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1]+velocity[2]*velocity[2]);
+        const float scale=config.mode==19?(magnitude>1e-8f?config.speed/magnitude:1.0f):(config.velocity_contract==1?std::min(1.0f,config.speed/std::max(magnitude,1e-8f)):1.0f);
+        for(float& component:velocity)component*=scale;
+        float rotation[9];raptor_quaternion_matrix(state+9,rotation);
+        trace<<tick*navigation_dt;
+        for(uint32_t axis=0;axis<3;axis++)trace<<','<<state[13+axis]*10;
+        for(uint32_t axis=0;axis<4;axis++)trace<<','<<state[9+axis];
+        for(uint32_t axis=0;axis<3;axis++)trace<<','<<state[3+axis]*4;
+        for(uint32_t axis=0;axis<3;axis++)trace<<','<<state[6+axis]*4;
+        for(uint32_t axis=0;axis<3;axis++)trace<<','<<state[13+axis]*10+state[16+axis]*.5f;
+        for(uint32_t axis=0;axis<3;axis++)trace<<','<<rotation[axis*3]*velocity[0]+rotation[axis*3+1]*velocity[1]+rotation[axis*3+2]*velocity[2];
+        trace<<','<<applied[3]*.5f<<','<<state[19]*5<<','<<(tick/config.sensor_period>=config.sensor_delay)<<','<<tick*navigation_dt-observation[context+17];
+        for(uint32_t cell=0;cell<depth_cells;cell++)trace<<','<<observation[cell]*12;
+        trace<<'\n';
+    }
+    require(bool(trace),"episode trace write failed");
+    std::cout<<"episode trace="<<output_prefix<<" environment="<<logical_environment<<" success="<<episode.successes<<" collision="<<episode.collisions<<" timeout="<<episode.timeouts<<" final="<<final_state.position[0]<<','<<final_state.position[1]<<','<<final_state.position[2]<<"\n";
 }
 
 static void gpu_training_benchmark(Metal& m,uint32_t n,uint32_t rollouts,uint32_t family=1) {
@@ -1040,6 +1191,6 @@ static void measure_reaction_latency(Metal& m,const std::string& checkpoint,uint
 
 int main(int argc,char** argv){@autoreleasepool{try{
     std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0,argc>14?std::stof(argv[14]):0,argc>15?std::stof(argv[15]):0,argc>16?std::stof(argv[16]):0,argc>17?std::stoul(argv[17]):0,argc>18?std::stoul(argv[18]):4);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);mixed_domain_tests(m);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="bank-eval")challenge_bank_cli(m,argc,argv);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001,argc>6?argv[6]:"results/trace",argc>7?std::stoi(argv[7]):-1,argc>8?bool(std::stoi(argv[8])):false);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0,argc>14?std::stof(argv[14]):0,argc>15?std::stof(argv[15]):0,argc>16?std::stof(argv[16]):0,argc>17?std::stoul(argv[17]):0,argc>18?std::stoul(argv[18]):4,argc>19?std::stof(argv[19]):-1);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}

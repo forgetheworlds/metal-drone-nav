@@ -208,12 +208,31 @@ private:
     std::vector<float> actor_hidden_delta,actor_grad,critic_hidden_delta,critic_grad;
     std::vector<uint32_t> minibatch_starts;
 
+    bool clean_training_env(uint32_t n) const {
+        return cfg.eval==0 && (cfg.family==12 || cfg.family==13) && (n%2==0);
+    }
+    uint32_t effective_sensor_delay(uint32_t n) const {
+        return clean_training_env(n)?0:cfg.sensor_delay;
+    }
+    uint32_t effective_command_delay(uint32_t n) const {
+        return clean_training_env(n)?0:cfg.command_delay;
+    }
+    float effective_wind(uint32_t n) const {
+        return clean_training_env(n)?0.0f:cfg.wind;
+    }
+    float effective_depth_noise(uint32_t n) const {
+        return clean_training_env(n)?0.0f:cfg.depth_noise;
+    }
+    float effective_dropout(uint32_t n) const {
+        return clean_training_env(n)?0.0f:cfg.dropout;
+    }
+
     void reset_env(uint32_t n,bool first) {
         auto& s=states[n];auto& run=runs[n];
         uint32_t rng=first ? cfg.seed+n*747796405u+2891336453u : run.rng;
         uint32_t episode_family=wtraining_family(cfg.family,rng);
         wgenerate(worlds[n],wrng(rng),episode_family,cfg.distance);
-        worlds[n].wind[0]=cfg.wind;worlds[n].wind[1]=0;worlds[n].wind[2]=0;
+        worlds[n].wind[0]=effective_wind(n);worlds[n].wind[1]=0;worlds[n].wind[2]=0;
         for(int j=0;j<3;j++) {
             s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;
             run.desired_velocity[j]=0;run.reference_position[j]=s.position[j];
@@ -224,6 +243,11 @@ private:
         const float hover=clampf((-c1+std::sqrt(c1*c1-4*c2*(c0-target)))/(2*c2),physics.action_min,physics.action_max);
         raptor_reset(raptor,run.hidden);
         for(int j=0;j<4;j++){s.rpm[j]=hover;run.motors[j]=0;run.previous_nav[j]=0;}
+        if(episode_family==10 || episode_family==11) {
+            s.linear_velocity[0]=cfg.speed;
+            run.desired_velocity[0]=cfg.speed;
+            run.previous_nav[0]=1.0f;
+        }
         std::fill(sensors.begin()+size_t(n)*sensor_frames*sensor_pixels,
                   sensors.begin()+size_t(n+1)*sensor_frames*sensor_pixels,12.0f);
         std::fill(commands.begin()+size_t(n)*sensor_frames*action_dim,
@@ -252,16 +276,18 @@ private:
                                 r[3]*ray.x+r[4]*ray.y+r[5]*ray.z,
                                 r[6]*ray.x+r[7]*ray.y+r[8]*ray.z);
                 float depth=wray(world,wv(s.position[0],s.position[1],s.position[2]),d,run.elapsed);
-                if(cfg.depth_noise!=0 || cfg.dropout!=0) {
+                const float noise=effective_depth_noise(n),dropout=effective_dropout(n);
+                if(noise!=0 || dropout!=0) {
                     uint32_t rng=run.rng+k*1664525u+run.steps*1013904223u;
-                    depth=clampf(depth+cfg.depth_noise*sim_normal(rng),0.0f,12.0f);
-                    if(wurand(rng)<cfg.dropout)depth=12.0f;
+                    depth=clampf(depth+noise*sim_normal(rng),0.0f,12.0f);
+                    if(wurand(rng)<dropout)depth=12.0f;
                 }
                 sensors[(size_t(n)*sensor_frames+frame)*sensor_pixels+k]=depth;
             }
         }
         const uint32_t available=run.steps/cfg.sensor_period;
-        const uint32_t frame=available>cfg.sensor_delay?available-cfg.sensor_delay:0;
+        const uint32_t sensor_delay=effective_sensor_delay(n);
+        const uint32_t frame=available>sensor_delay?available-sensor_delay:0;
         const uint32_t prev=frame>0?frame-1:0;
         const size_t row=(size_t(t)*cfg.n+n)*actor_dim;
         const size_t crow=(size_t(t)*cfg.n+n)*critic_dim;
@@ -278,8 +304,8 @@ private:
                     previous=std::min(previous,sensors[(size_t(n)*sensor_frames+prev%sensor_frames)*sensor_pixels+pixel]);
                 }
             }
-            observations[row+k]=available>=cfg.sensor_delay?current/12.0f:1.0f;
-            observations[row+depth_features+k]=available>=cfg.sensor_delay?previous/12.0f:1.0f;
+            observations[row+k]=available>=sensor_delay?current/12.0f:1.0f;
+            observations[row+depth_features+k]=available>=sensor_delay?previous/12.0f:1.0f;
         }
         float r[9];rotation(s.orientation_wxyz,r);
         const WVec delta=wv(world.goal[0]-s.position[0],world.goal[1]-s.position[1],world.goal[2]-s.position[2]);
@@ -310,8 +336,8 @@ private:
             for(uint32_t j=0;j<9;j++)current_pose[j+3]=r[j];
             const float sensor_dt=float(cfg.sensor_period)*physics.dt*cfg.substeps;
             if(cfg.geometry_memory) {
-                const uint32_t valid_frames=available>=cfg.sensor_delay
-                    ?std::min(frame+1,sensor_frames-cfg.sensor_delay):0;
+                const uint32_t valid_frames=available>=sensor_delay
+                    ?std::min(frame+1,sensor_frames-sensor_delay):0;
                 nav_guidance_memory(cur,prev_range,goal,distance,vel,sensor_dt,
                     sensors.data()+size_t(n)*sensor_frames*sensor_pixels,
                     poses.data()+size_t(n)*sensor_frames*12,current_pose,
@@ -330,6 +356,7 @@ private:
             out[j+16]=(run.reference_position[j]-s.position[j])*2.0f;
         }
         for(uint32_t j=0;j<4;j++)out[9+j]=s.orientation_wxyz[j];
+        out[30]=w.wind[0];out[31]=w.wind[1];
         out[19]=wclearance(w,wv(s.position[0],s.position[1],s.position[2]),run.elapsed)/5.0f;
         out[20]=float(run.steps)/200.0f;
         for(uint32_t j=0;j<std::min(w.count,3u);j++) {
@@ -359,9 +386,10 @@ private:
                 old_logp[row]=fixed_ppo::gaussian_log_prob(actions.data()+row*action_dim,
                     current_actor_means.data()+n*action_dim,actor.values.data()+fixed_ppo::actor_log_std_offset);
                 runs[n].rng=rng;
-                const uint32_t applied=runs[n].steps>cfg.command_delay?runs[n].steps-cfg.command_delay:0;
+                const uint32_t command_delay=effective_command_delay(n);
+                const uint32_t applied=runs[n].steps>command_delay?runs[n].steps-command_delay:0;
                 for(uint32_t a=0;a<action_dim;a++)
-                    runs[n].previous_nav[a]=runs[n].steps<cfg.command_delay?0.0f:
+                    runs[n].previous_nav[a]=runs[n].steps<command_delay?0.0f:
                         commands[(size_t(n)*sensor_frames+applied%sensor_frames)*action_dim+a];
                 float r[9];rotation(states[n].orientation_wxyz,r);
                 float v[3]={runs[n].previous_nav[0]*cfg.speed,

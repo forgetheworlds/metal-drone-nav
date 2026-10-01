@@ -21,8 +21,10 @@ FAMILY_NAMES = {
     5: "table_counter",
     7: "mixed_training_families_0_6",
     8: "held_two_doorways",
+    10: "approaching_threat",
+    11: "crossing_threat",
 }
-MODE_NAMES = {2: "goal_script", 13: "geometry_memory", 17: "guided_memory"}
+MODE_NAMES = {2: "goal_script", 13: "geometry_memory", 17: "guided_memory", 18: "current_depth_only", 19: "fixed_speed_intent"}
 FIELDS = [
     "case_id", "group", "mode", "mode_name", "family", "family_name", "seed",
     "speed_mps", "distance_m", "sensor_delay_frames", "wind_param",
@@ -135,6 +137,27 @@ def build_threat_cases() -> list[dict[str, object]]:
     return cases
 
 
+def build_ablation_cases() -> list[dict[str, object]]:
+    cases = []
+    for family in (5, 7, 8, 10, 11):
+        for stressed in (False, True):
+            for mode in (17, 18, 19):
+                case = {
+                    "case_id": f"ablation_f{family}_m{mode}_stress{int(stressed)}",
+                    "group": "ablation_stressed" if stressed else "ablation_clean",
+                    "mode": mode, "mode_name": MODE_NAMES[mode],
+                    "family": family, "family_name": FAMILY_NAMES[family],
+                    "seed": 800001, "speed_mps": 1.5, "distance_m": 4.0,
+                    "sensor_delay_frames": 2 if stressed else 0,
+                    "wind_param": 0.5 if stressed else 0.0,
+                    "depth_noise_m": 0.05 if stressed else 0.0,
+                    "dropout_probability": 0.1 if stressed else 0.0,
+                    "command_delay_steps": 1 if stressed else 0,
+                }
+                cases.append(case)
+    return cases
+
+
 def parse_metrics(stdout: str) -> tuple[dict[str, str], str, str]:
     eval_match = EVAL_RE.search(stdout)
     gpu_match = GPU_RE.search(stdout)
@@ -212,12 +235,14 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=120.0, help="timeout per evaluation, in seconds")
     parser.add_argument("--dry-run", action="store_true", help="print the planned matrix; do not launch GPU runs")
     parser.add_argument("--resume", action="store_true", help="skip case IDs already present in the output CSV")
-    parser.add_argument("--threats", action="store_true", help="run the 24-case controlled moving-threat matrix")
+    matrices = parser.add_mutually_exclusive_group()
+    matrices.add_argument("--threats", action="store_true", help="run the 24-case controlled moving-threat matrix")
+    matrices.add_argument("--ablations", action="store_true", help="30 inference comparisons: mode17 vs current-depth-only18 and fixed-speed19")
     args = parser.parse_args()
     cli = args.cli if args.cli.is_absolute() else ROOT / args.cli
     checkpoint = args.checkpoint if args.checkpoint.is_absolute() else ROOT / args.checkpoint
     if args.output is None:
-        output = ROOT / ("results/threat-evaluation.csv" if args.threats else "results/evaluation.csv")
+        output = ROOT / ("results/threat-evaluation.csv" if args.threats else "results/ablation-evaluation.csv" if args.ablations else "results/evaluation.csv")
     else:
         output = args.output if args.output.is_absolute() else ROOT / args.output
     if not cli.is_file():
@@ -225,7 +250,7 @@ def main() -> int:
     if not checkpoint.is_file():
         parser.error(f"Checkpoint not found: {checkpoint}")
 
-    cases = build_threat_cases() if args.threats else build_cases()
+    cases = build_threat_cases() if args.threats else build_ablation_cases() if args.ablations else build_cases()
     if args.dry_run:
         print(f"planned_cases={len(cases)} output={output}")
         for case in cases:
