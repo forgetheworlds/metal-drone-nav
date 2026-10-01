@@ -170,6 +170,27 @@ def parse_metrics(stdout: str) -> tuple[dict[str, str], str, str]:
     return lines, eval_match.group(1), gpu_match.group(1)
 
 
+def build_speed_cases() -> list[dict[str, object]]:
+    """Change the command cap, keeping policy weights and scene seeds fixed.
+
+    This is an inference stress test, not a matched speed-training comparison.
+    Report measured vehicle speed separately from the requested command cap.
+    """
+    cases = []
+    for base in build_cases():
+        if base["mode"] != 17 or base["family"] not in (5, 7, 8):
+            continue
+        if base["group"] not in ("baseline", "combined"):
+            continue
+        for cap in (0.75, 1.0, 1.5, 2.0, 3.0):
+            case = dict(base)
+            case["group"] = "speed_clean" if base["group"] == "baseline" else "speed_stressed"
+            case["speed_mps"] = cap
+            case["case_id"] = f"speed_f{base['family']}_v{cap:g}_{case['group']}"
+            cases.append(case)
+    return cases
+
+
 def build_command(cli: Path, checkpoint: Path, case: dict[str, object]) -> list[str]:
     if "threat_kind_id" in case:
         return [
@@ -238,11 +259,12 @@ def main() -> int:
     matrices = parser.add_mutually_exclusive_group()
     matrices.add_argument("--threats", action="store_true", help="run the 24-case controlled moving-threat matrix")
     matrices.add_argument("--ablations", action="store_true", help="30 inference comparisons: mode17 vs current-depth-only18 and fixed-speed19")
+    matrices.add_argument("--speed-sweep", action="store_true", help="25 fixed-policy command-cap comparisons on clean/stressed static scenes")
     args = parser.parse_args()
     cli = args.cli if args.cli.is_absolute() else ROOT / args.cli
     checkpoint = args.checkpoint if args.checkpoint.is_absolute() else ROOT / args.checkpoint
     if args.output is None:
-        output = ROOT / ("results/threat-evaluation.csv" if args.threats else "results/ablation-evaluation.csv" if args.ablations else "results/evaluation.csv")
+        output = ROOT / ("results/threat-evaluation.csv" if args.threats else "results/ablation-evaluation.csv" if args.ablations else "results/speed-evaluation.csv" if args.speed_sweep else "results/evaluation.csv")
     else:
         output = args.output if args.output.is_absolute() else ROOT / args.output
     if not cli.is_file():
@@ -250,7 +272,7 @@ def main() -> int:
     if not checkpoint.is_file():
         parser.error(f"Checkpoint not found: {checkpoint}")
 
-    cases = build_threat_cases() if args.threats else build_ablation_cases() if args.ablations else build_cases()
+    cases = build_threat_cases() if args.threats else build_ablation_cases() if args.ablations else build_speed_cases() if args.speed_sweep else build_cases()
     if args.dry_run:
         print(f"planned_cases={len(cases)} output={output}")
         for case in cases:
