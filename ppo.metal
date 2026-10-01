@@ -184,13 +184,15 @@ kernel void ppo_sample_loss_grad(device const float* actions [[buffer(0)]],
         const float z = diff * inv_std;
         logp += -0.5f * (z * z + 2.0f * log_std[a] + PPO_LOG_TWO_PI);
     }
-    const float log_ratio = ppo_clamp(logp - old_logp[n], -20.0f, 20.0f);
+    const float raw_log_ratio = logp - old_logp[n];
+    const float log_ratio = ppo_clamp(raw_log_ratio, -20.0f, 20.0f);
     const float ratio = exp(log_ratio);
     const float adv = advantages[n];
     const float clipped_ratio = ppo_clamp(ratio, 1.0f - clip_epsilon, 1.0f + clip_epsilon);
     const float chosen = min(ratio * adv, clipped_ratio * adv);
-    const bool policy_active = adv >= 0.0f ? ratio <= 1.0f + clip_epsilon
-                                            : ratio >= 1.0f - clip_epsilon;
+    const bool ratio_in_range = raw_log_ratio >= -20.0f && raw_log_ratio <= 20.0f;
+    const bool policy_active = ratio_in_range && (adv >= 0.0f ? ratio <= 1.0f + clip_epsilon
+                                                              : ratio >= 1.0f - clip_epsilon);
     const float scale = 1.0f / float(max(batch_size, 1u));
     for (uint a = 0; a < PPO_ACTIONS; ++a) {
         const float diff = actions[base + a] - means[base + a];
@@ -281,6 +283,101 @@ kernel void ppo_reduce_grads(device const float* partial_grad [[buffer(0)]],
     float sum = 0.0f;
     const uint base = p * batch_size;
     for (uint n = 0; n < batch_size; ++n) sum += partial_grad[base + n];
+    grad[p] = sum;
+}
+
+// Direct batch-reduced gradients. These avoid a [parameter, sample] scratch
+// tensor, which is 43 MB for the actor at batch 256. Each output parameter is
+// owned by one thread, so there are no floating-point atomics.
+kernel void ppo_actor_hidden_delta(device const float* params [[buffer(0)]],
+                                   device const float* d_means [[buffer(1)]],
+                                   device const float* hidden [[buffer(2)]],
+                                   device float* hidden_delta [[buffer(3)]],
+                                   constant uint& batch_size [[buffer(4)]],
+                                   uint i [[thread_position_in_grid]]) {
+    const uint count = batch_size * PPO_HIDDEN;
+    if (i >= count) return;
+    const uint n = i / PPO_HIDDEN;
+    const uint h = i % PPO_HIDDEN;
+    float delta = 0.0f;
+    for (uint a = 0; a < PPO_ACTIONS; ++a)
+        delta += d_means[n * PPO_ACTIONS + a] * params[PPO_ACTOR_W2 + a * PPO_HIDDEN + h];
+    const float activation = hidden[i];
+    hidden_delta[i] = delta * (1.0f - activation * activation);
+}
+
+kernel void ppo_actor_grad_direct(device const float* observations [[buffer(0)]],
+                                 device const float* hidden [[buffer(1)]],
+                                 device const float* d_means [[buffer(2)]],
+                                 device const float* d_log_stds [[buffer(3)]],
+                                 device const float* hidden_delta [[buffer(4)]],
+                                 device float* grad [[buffer(5)]],
+                                 constant uint& batch_size [[buffer(6)]],
+                                 uint p [[thread_position_in_grid]]) {
+    if (p >= PPO_ACTOR_PARAMS) return;
+    float sum = 0.0f;
+    if (p < PPO_ACTOR_B1) {
+        const uint h = p / PPO_ACTOR_OBS;
+        const uint obs_i = p % PPO_ACTOR_OBS;
+        for (uint n = 0; n < batch_size; ++n)
+            sum += hidden_delta[n * PPO_HIDDEN + h] * observations[n * PPO_ACTOR_OBS + obs_i];
+    } else if (p < PPO_ACTOR_W2) {
+        const uint h = p - PPO_ACTOR_B1;
+        for (uint n = 0; n < batch_size; ++n) sum += hidden_delta[n * PPO_HIDDEN + h];
+    } else if (p < PPO_ACTOR_B2) {
+        const uint q = p - PPO_ACTOR_W2;
+        const uint a = q / PPO_HIDDEN;
+        const uint h = q % PPO_HIDDEN;
+        for (uint n = 0; n < batch_size; ++n)
+            sum += d_means[n * PPO_ACTIONS + a] * hidden[n * PPO_HIDDEN + h];
+    } else if (p < PPO_ACTOR_LOG_STD) {
+        const uint a = p - PPO_ACTOR_B2;
+        for (uint n = 0; n < batch_size; ++n) sum += d_means[n * PPO_ACTIONS + a];
+    } else {
+        const uint a = p - PPO_ACTOR_LOG_STD;
+        for (uint n = 0; n < batch_size; ++n) sum += d_log_stds[n * PPO_ACTIONS + a];
+    }
+    grad[p] = sum;
+}
+
+kernel void ppo_critic_hidden_delta(device const float* params [[buffer(0)]],
+                                    device const float* d_values [[buffer(1)]],
+                                    device const float* hidden [[buffer(2)]],
+                                    device float* hidden_delta [[buffer(3)]],
+                                    constant uint& batch_size [[buffer(4)]],
+                                    uint i [[thread_position_in_grid]]) {
+    const uint count = batch_size * PPO_HIDDEN;
+    if (i >= count) return;
+    const uint n = i / PPO_HIDDEN;
+    const uint h = i % PPO_HIDDEN;
+    const float activation = hidden[i];
+    hidden_delta[i] = d_values[n] * params[PPO_CRITIC_W2 + h]
+                    * (1.0f - activation * activation);
+}
+
+kernel void ppo_critic_grad_direct(device const float* observations [[buffer(0)]],
+                                  device const float* hidden [[buffer(1)]],
+                                  device const float* d_values [[buffer(2)]],
+                                  device const float* hidden_delta [[buffer(3)]],
+                                  device float* grad [[buffer(4)]],
+                                  constant uint& batch_size [[buffer(5)]],
+                                  uint p [[thread_position_in_grid]]) {
+    if (p >= PPO_CRITIC_PARAMS) return;
+    float sum = 0.0f;
+    if (p < PPO_CRITIC_B1) {
+        const uint h = p / PPO_CRITIC_OBS;
+        const uint obs_i = p % PPO_CRITIC_OBS;
+        for (uint n = 0; n < batch_size; ++n)
+            sum += hidden_delta[n * PPO_HIDDEN + h] * observations[n * PPO_CRITIC_OBS + obs_i];
+    } else if (p < PPO_CRITIC_W2) {
+        const uint h = p - PPO_CRITIC_B1;
+        for (uint n = 0; n < batch_size; ++n) sum += hidden_delta[n * PPO_HIDDEN + h];
+    } else if (p < PPO_CRITIC_B2) {
+        const uint h = p - PPO_CRITIC_W2;
+        for (uint n = 0; n < batch_size; ++n) sum += d_values[n] * hidden[n * PPO_HIDDEN + h];
+    } else {
+        for (uint n = 0; n < batch_size; ++n) sum += d_values[n];
+    }
     grad[p] = sum;
 }
 

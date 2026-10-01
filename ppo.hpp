@@ -142,12 +142,14 @@ inline PpoLoss sample_loss_and_grad(const float* action, const float* mean, cons
                                     float entropy_coefficient, float* d_mean,
                                     float* d_log_std, float* d_value) {
     const float logp = gaussian_log_prob(action, mean, log_std);
-    const float log_ratio = clamp(logp - old_logp, -20.0f, 20.0f);
+    const float raw_log_ratio = logp - old_logp;
+    const float log_ratio = clamp(raw_log_ratio, -20.0f, 20.0f);
     const float ratio = std::exp(log_ratio);
     const float clipped = clamp(ratio, 1.0f - clip_epsilon, 1.0f + clip_epsilon);
     const float chosen = std::min(ratio * advantage, clipped * advantage);
-    const bool policy_active = advantage >= 0.0f ? ratio <= 1.0f + clip_epsilon
-                                                  : ratio >= 1.0f - clip_epsilon;
+    const bool ratio_in_range = raw_log_ratio >= -20.0f && raw_log_ratio <= 20.0f;
+    const bool policy_active = ratio_in_range && (advantage >= 0.0f ? ratio <= 1.0f + clip_epsilon
+                                                                    : ratio >= 1.0f - clip_epsilon);
     const float scale = 1.0f / std::max(batch_size, 1.0f);
     PpoLoss loss;
     loss.policy = -chosen * scale;

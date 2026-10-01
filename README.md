@@ -23,6 +23,8 @@ No Python, PyTorch, MLX or tensor runtime is used in the training hot loop.
 
 `train ITERATIONS FAMILY CHECKPOINT` trains and resumes exact GPU state. Families:0 open,1 boxes,2 poles,3 moving spheres. Checkpoints are saved atomically every10 rollouts. The current trained policy does not yet meet the held-out navigation goal.
 
+`train ITERATIONS FAMILY CHECKPOINT WARMSTART` starts a new curriculum stage from actor/critic parameters and resets optimizer/exploration. Latest checkpoint resumes all state; `CHECKPOINT.best` keeps the best validation policy. One `results/training.tsv` records evaluation history. `eval CHECKPOINT MODE FAMILY SEED SPEED DISTANCE` evaluates first episodes on a fresh seed; modes4 learned mean,1 random,2 goal-direction script.
+
 References are pinned outside the build. To regenerate the cold assets:
 
 ```sh

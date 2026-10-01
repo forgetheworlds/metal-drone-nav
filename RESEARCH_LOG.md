@@ -57,3 +57,13 @@ The older PX4 commit0599df2d3fb53869e8a4a20c1b56daabbc9fdd67 pins a±0.2m positi
 ## First actual PPO runs
 
 30 rollouts of4096 samples under the corrected plant: held-out open success20–25%, no collisions; many goals still time out or are missed laterally/vertically. This is not adequate navigation. Continue learning and optimize the full update, rather than add more subsystem tests. Raw old per-sample actor gradients require~43MB per minibatch; direct hidden-delta matrix gradients are the next measured hypothesis.
+
+## Direct gradients retained
+
+Replace the parameter-by-sample gradient tensor with hidden deltas and batch-reduced outer products. Math and PPO workload remain unchanged. Matched complete GPU rollout+update improves from~1.66s to~0.295s. Direct CPU gradient checks and learning traces agree. Retain it. M3_RESEARCH.md records current Apple9 features and further profile-guided probes; do not assume M5 neural acceleration exists on M3.
+
+## Policy selection and clutter curriculum
+
+PPO reaches100% validation open-goal success from scratch at150 rollouts. Continued training becomes faster but can miss some goals, so save both latest exact-resume state and best validation checkpoint. Select best by success, then time-to-goal. Final evaluation uses fresh seeds rather than the repeated selection set. Keep one training.tsv result history for all runs.
+
+Next stage warm-starts actor/critic parameters from open training, resets optimizer and exploration, and trains with random boxes. This remains pure PPO. Put obstacles at least1m before the goal and1.2m from the start to keep those states valid; the old minimum-span formula could place a box over a3m goal. This changes scene generation openly rather than hiding impossible episodes.

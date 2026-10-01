@@ -296,6 +296,14 @@ static void ppo_tests(Metal& m) {
     m.dispatch(cb,m.pipeline("ppo_reduce_grads"),critic_param_count,{capart_b,cg_b,cpcount_b,batch_b});m.finish(cb);
     check((float*)ag_b.contents,cpuag.data(),cpuag.size(),3e-5f,"actor backprop/reduction");
     check((float*)cg_b.contents,cpucg.data(),cpucg.size(),3e-5f,"critic backprop/reduction");
+    auto adelta_b=m.buffer(B*hidden_dim*4),cdelta_b=m.buffer(B*hidden_dim*4),direct_ag=m.buffer(actor_param_count*4),direct_cg=m.buffer(critic_param_count*4);
+    cb=[m.queue commandBuffer];
+    m.dispatch(cb,m.pipeline("ppo_actor_hidden_delta"),B*hidden_dim,{ap_b,dmu_b,ah_b,adelta_b,batch_b});
+    m.dispatch(cb,m.pipeline("ppo_actor_grad_direct"),actor_param_count,{actor_obs_b,ah_b,dmu_b,dstd_b,adelta_b,direct_ag,batch_b});
+    m.dispatch(cb,m.pipeline("ppo_critic_hidden_delta"),B*hidden_dim,{cp_b,dv_b,ch_b,cdelta_b,batch_b});
+    m.dispatch(cb,m.pipeline("ppo_critic_grad_direct"),critic_param_count,{critic_obs_b,ch_b,dv_b,cdelta_b,direct_cg,batch_b});m.finish(cb);
+    check((float*)direct_ag.contents,cpuag.data(),cpuag.size(),3e-5f,"direct actor gradient");
+    check((float*)direct_cg.contents,cpucg.data(),cpucg.size(),3e-5f,"direct critic gradient");
 
     std::vector<float> m1(actor_param_count,0),v1(actor_param_count,0), cpu_m1(actor_param_count,0),cpu_v1(actor_param_count,0);
     ActorParams cpu_ap=ap;
@@ -339,6 +347,7 @@ static void ppo_tests(Metal& m) {
         m.dispatch(cb,m.pipeline("ppo_reduce_grads"),actor_param_count,{toy_part_b,toy_grad_b,toy_params_count_b,batch_b});
         m.dispatch(cb,m.pipeline("ppo_adam_update"),actor_param_count,{toy_ap_b,toy_grad_b,toy_m_b,toy_v_b,toy_params_count_b,toy_opt_b});
         m.dispatch(cb,m.pipeline("ppo_actor_forward"),B,{zobs_b,toy_ap_b,toy_hidden_b,toy_means_b,batch_b});m.finish(cb);
+        std::memcpy(toy_log_std_b.contents,(float*)toy_ap_b.contents+actor_log_std_offset,action_dim*4);
     }
     const float final_error=toy_error();
     require(final_error < start_error * .45f,"Metal PPO toy task did not learn target action: start="+std::to_string(start_error)+" final="+std::to_string(final_error));
@@ -389,11 +398,12 @@ struct Sim {
         std::cout<<label<<" episodes="<<ep<<" success="<<(ep?double(success)/ep:0)<<" collision="<<(ep?double(collision)/ep:0)<<" timeout="<<(ep?double(timeout)/ep:0)<<" progress="<<(ep?progress/ep:0)<<" mean_goal_time="<<(success?time/success:0)<<" mean_speed="<<(total?path/total:0)<<" peak_speed="<<peak<<" min_clearance="<<clearance<<" wall_s="<<wall<<"\n";
     }
 };
-static void sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr,float speed=1,float distance=3,uint32_t seed=700001) {
+struct EvalScore { double success=0,collision=0,timeout=1,goal_time=1e9; };
+static EvalScore sim_evaluate(Metal& m,uint family,uint mode,const float* actor=nullptr,float speed=1,float distance=3,uint32_t seed=700001) {
     SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=seed;cfg.distance=distance;cfg.speed=speed;
     Sim sim(m,cfg,32);if(actor)std::memcpy(sim.actor.contents,actor,fixed_ppo::actor_param_count*4);
     double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,cfg.max_steps);double gpu=m.finish(cb);sim.report("eval family="+std::to_string(family)+" mode="+std::to_string(mode),seconds()-start);std::cout<<"eval_GPU_s="<<gpu<<"\n";
-    const auto* r=(const SimRun*)sim.runs.contents;for(uint i=0;i<cfg.n;i++)require(r[i].episodes==1,"eval must finish exactly one episode per seed");
+    const auto* r=(const SimRun*)sim.runs.contents;double success=0,collision=0,timeout=0,time=0;for(uint i=0;i<cfg.n;i++){require(r[i].episodes==1,"eval must finish exactly one episode per seed");success+=r[i].successes;collision+=r[i].collisions;timeout+=r[i].timeouts;time+=r[i].success_time;}return {success/cfg.n,collision/cfg.n,timeout/cfg.n,success?time/success:1e9};
 }
 
 static void closed_loop_tests(Metal& m) {
@@ -572,7 +582,7 @@ struct PPOTrainer {
     std::vector<uint32_t> starts;
     id<MTLBuffer> actor_hidden, actor_means, critic_hidden, predicted_values;
     id<MTLBuffer> d_means, d_log_stds, d_values, losses;
-    id<MTLBuffer> actor_partial, actor_grad, critic_partial, critic_grad;
+    id<MTLBuffer> actor_hidden_delta, actor_grad, critic_hidden_delta, critic_grad;
     id<MTLBuffer> actor_m, actor_v, critic_m, critic_v;
     id<MTLBuffer> actor_scale, critic_scale, metric_rows, metric_mean;
     id<MTLBuffer> rows_b, envs_b, horizon_b, gamma_b, lambda_b, gae_epsilon_b;
@@ -581,7 +591,7 @@ struct PPOTrainer {
     id<MTLBuffer> metric_count_b;
     std::vector<id<MTLBuffer>> batch_size_buffers, adam_configs;
     id<MTLComputePipelineState> gae_p, normalize_p, actor_forward_p, critic_forward_p;
-    id<MTLComputePipelineState> loss_grad_p, actor_backward_p, critic_backward_p, reduce_p;
+    id<MTLComputePipelineState> loss_grad_p, actor_hidden_delta_p, actor_grad_direct_p, critic_hidden_delta_p, critic_grad_direct_p;
     id<MTLComputePipelineState> norm_factor_p, scale_grad_p, adam_p, clip_logstd_p;
     id<MTLComputePipelineState> metric_batch_p, metric_mean_p;
 
@@ -609,9 +619,9 @@ struct PPOTrainer {
         d_log_stds=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
         d_values=metal.buffer(size_t(minibatch)*4);
         losses=metal.buffer(size_t(minibatch)*4*4);
-        actor_partial=metal.buffer(fixed_ppo::actor_param_count*size_t(minibatch)*4);
+        actor_hidden_delta=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
         actor_grad=metal.buffer(fixed_ppo::actor_param_count*4);
-        critic_partial=metal.buffer(fixed_ppo::critic_param_count*size_t(minibatch)*4);
+        critic_hidden_delta=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
         critic_grad=metal.buffer(fixed_ppo::critic_param_count*4);
         actor_m=metal.buffer(fixed_ppo::actor_param_count*4); actor_v=metal.buffer(fixed_ppo::actor_param_count*4);
         critic_m=metal.buffer(fixed_ppo::critic_param_count*4); critic_v=metal.buffer(fixed_ppo::critic_param_count*4);
@@ -629,8 +639,9 @@ struct PPOTrainer {
         for(uint32_t i=0;i<updates_per_rollout;i++) adam_configs.push_back(metal.buffer(sizeof(PpoAdamHostConfig)));
         gae_p=metal.pipeline("ppo_gae"); normalize_p=metal.pipeline("ppo_normalize_advantages");
         actor_forward_p=metal.pipeline("ppo_actor_forward"); critic_forward_p=metal.pipeline("ppo_critic_forward");
-        loss_grad_p=metal.pipeline("ppo_sample_loss_grad"); actor_backward_p=metal.pipeline("ppo_actor_backward");
-        critic_backward_p=metal.pipeline("ppo_critic_backward"); reduce_p=metal.pipeline("ppo_reduce_grads");
+        loss_grad_p=metal.pipeline("ppo_sample_loss_grad"); actor_hidden_delta_p=metal.pipeline("ppo_actor_hidden_delta");
+        actor_grad_direct_p=metal.pipeline("ppo_actor_grad_direct"); critic_hidden_delta_p=metal.pipeline("ppo_critic_hidden_delta");
+        critic_grad_direct_p=metal.pipeline("ppo_critic_grad_direct");
         norm_factor_p=metal.pipeline("ppo_grad_scale_factor"); scale_grad_p=metal.pipeline("ppo_apply_grad_scale");
         adam_p=metal.pipeline("ppo_adam_update"); clip_logstd_p=metal.pipeline("ppo_clip_log_std");
         metric_batch_p=metal.pipeline("ppo_metrics_batch"); metric_mean_p=metal.pipeline("ppo_metrics_mean");
@@ -699,10 +710,10 @@ struct PPOTrainer {
                     {sim.logp,row_offset},{predicted_values,0},{sim.values,row_offset},{sim.advantages,row_offset},{sim.returns,row_offset},
                     {d_means,0},{d_log_stds,0},{d_values,0},{losses,0},{bb,0},{clip_b,0},{value_coef_b,0},{entropy_coef_b,0}},64);
                 dispatch(cb,metric_batch_p,1,{{losses,0},{metric_rows,size_t(update)*4*4},{bb,0}},1);
-                dispatch(cb,actor_backward_p,b,{{sim.obs,obs_offset},{actor_hidden,0},{sim.actor,0},{d_means,0},{d_log_stds,0},{actor_partial,0},{bb,0}},32);
-                dispatch(cb,critic_backward_p,b,{{sim.co,co_offset},{critic_hidden,0},{sim.critic,0},{d_values,0},{critic_partial,0},{bb,0}},64);
-                dispatch(cb,reduce_p,fixed_ppo::actor_param_count,{{actor_partial,0},{actor_grad,0},{actor_count_b,0},{bb,0}},128);
-                dispatch(cb,reduce_p,fixed_ppo::critic_param_count,{{critic_partial,0},{critic_grad,0},{critic_count_b,0},{bb,0}},128);
+                dispatch(cb,actor_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.actor,0},{d_means,0},{actor_hidden,0},{actor_hidden_delta,0},{bb,0}},128);
+                dispatch(cb,actor_grad_direct_p,fixed_ppo::actor_param_count,{{sim.obs,obs_offset},{actor_hidden,0},{d_means,0},{d_log_stds,0},{actor_hidden_delta,0},{actor_grad,0},{bb,0}},128);
+                dispatch(cb,critic_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.critic,0},{d_values,0},{critic_hidden,0},{critic_hidden_delta,0},{bb,0}},128);
+                dispatch(cb,critic_grad_direct_p,fixed_ppo::critic_param_count,{{sim.co,co_offset},{critic_hidden,0},{d_values,0},{critic_hidden_delta,0},{critic_grad,0},{bb,0}},128);
                 require(optimizer_step<uint64_t(std::numeric_limits<uint32_t>::max()),"PPO Adam step overflow");
                 const uint32_t step=uint32_t(++optimizer_step);
                 PpoAdamHostConfig ac{3.0e-4f,.9f,.999f,1.0e-8f,0.0f,step};
@@ -722,31 +733,54 @@ struct PPOTrainer {
     }
 };
 
-static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint) {
+static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const std::string& checkpoint,const std::string& warmstart="") {
     require(iterations>0,"train_navigation needs at least one rollout");
     m.compile(base_source()+PPO_TRAINER_MSL);
     constexpr uint32_t n=128,horizon=32,base_seed=42;
     SimConfig cfg;cfg.n=n;cfg.family=family;cfg.mode=0;cfg.seed=base_seed;cfg.distance=3.0f;cfg.speed=1.0f;cfg.max_steps=200;
     Sim sim(m,cfg,horizon);PPOTrainer trainer(sim);trainer.load_checkpoint(checkpoint,family,horizon,n,base_seed);
+    if(!warmstart.empty() && trainer.completed_rollouts==0) {
+        std::ifstream f(warmstart,std::ios::binary);PpoCheckpointHeader h{};f.read((char*)&h,sizeof(h));
+        require(f && h.version==3 && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
+        f.read((char*)sim.actor.contents,fixed_ppo::actor_param_count*4);f.read((char*)sim.critic.contents,fixed_ppo::critic_param_count*4);require(bool(f),"warmstart read failed");
+        for(uint j=0;j<4;j++)((float*)sim.actor.contents)[fixed_ppo::actor_log_std_offset+j]=-1.0f;
+        std::cout<<"warmstart parameters from "<<warmstart<<"; reset optimizer and exploration\n";
+    }
+    EvalScore best;
+    if(!checkpoint.empty() && std::filesystem::exists(checkpoint+".best")) {
+        std::ifstream f(checkpoint+".best",std::ios::binary);PpoCheckpointHeader h{};f.read((char*)&h,sizeof(h));std::vector<float> a(fixed_ppo::actor_param_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"best checkpoint read");best=sim_evaluate(m,family,4,a.data(),cfg.speed,cfg.distance);
+    }
+    std::filesystem::create_directories("results");
+    std::ofstream history("results/training.tsv",std::ios::app);
+    const double run_start=seconds();
     const uint32_t start_rollout=trainer.completed_rollouts;
     const uint32_t finish_rollout=start_rollout+iterations;
     std::cout<<"PPO training device="<<m.device.name.UTF8String<<" family="<<family<<" envs="<<n<<" horizon="<<horizon<<" speed="<<cfg.speed<<" distance="<<cfg.distance<<"\n";
-    for(uint32_t r=start_rollout;r<finish_rollout;r++) {
-        auto cb=[m.queue commandBuffer];sim.collect(cb,horizon);trainer.rollout_update(cb,r);
+    for(uint32_t r=start_rollout;r<finish_rollout;r++) {@autoreleasepool{
+        const double rollout_start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,horizon);trainer.rollout_update(cb,r);
         const double gpu=m.finish(cb);
         const float* met=(const float*)trainer.metric_mean.contents;
         if((r+1)%10==0 || r+1==finish_rollout) {
             std::cout<<"train rollout="<<(r+1)<<" policy_loss="<<met[0]<<" value_loss="<<met[1]<<" entropy_loss="<<met[2]<<" ratio="<<met[3]<<" optimizer_step="<<trainer.optimizer_step<<" gpu_s="<<gpu<<"\n";
             sim.report("train",0.0);
-            sim_evaluate(m,family,4,(const float*)sim.actor.contents);
+            EvalScore score=sim_evaluate(m,family,4,(const float*)sim.actor.contents,cfg.speed,cfg.distance);
+            history<<checkpoint<<'\t'<<r+1<<'\t'<<seconds()-run_start<<'\t'<<gpu<<'\t'<<score.success<<'\t'<<score.collision<<'\t'<<score.timeout<<'\t'<<score.goal_time<<'\n';history.flush();
+            if(score.success>best.success || (score.success==best.success && score.goal_time<best.goal_time)) {
+                best=score;trainer.completed_rollouts=r+1;trainer.save_checkpoint(checkpoint+".best",family,base_seed,r+1);
+            }
             trainer.completed_rollouts=r+1;trainer.save_checkpoint(checkpoint,family,base_seed,r+1);
         }
-    }
+        (void)rollout_start;
+    }}
     trainer.completed_rollouts=finish_rollout;trainer.save_checkpoint(checkpoint,family,base_seed,finish_rollout);
+}
+
+static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode,uint family,uint32_t seed=800001,float speed=1,float distance=3) {
+    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h{};f.read((char*)&h,sizeof(h));require(f && h.version==3 && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed);
 }
 
 int main(int argc,char** argv){@autoreleasepool{try{
     Metal m;m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";std::string command=argc>1?argv[1]:"test";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin");else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3);else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"");else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}
