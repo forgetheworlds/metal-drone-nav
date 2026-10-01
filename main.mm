@@ -641,6 +641,120 @@ static PpoCheckpointHeader read_checkpoint_header(std::ifstream& file) {
     require(bool(file),"checkpoint header truncated");return h;
 }
 
+// Append after PpoCheckpointHeader and read_checkpoint_header are defined.
+// Export only the selected guided 184-input actor; the returned file has no
+// critic, optimizer, Metal resource, or Objective-C dependency.
+#include "deployment.hpp"
+
+static std::array<float,184> deployment_probe_observation(uint32_t sample) {
+    std::array<float,184> obs{};
+    for(uint32_t i=0;i<160;i++)obs[i]=0.20f+0.01f*float((i*13+sample*7)%70);
+    const uint32_t c=160;
+    const float angle=-0.7f+0.2f*float(sample);
+    obs[c+0]=std::cos(angle);obs[c+1]=std::sin(angle);obs[c+2]=0.1f;
+    obs[c+3]=0.3f+0.04f*float(sample);
+    obs[c+4]=0.1f;obs[c+5]=-0.05f;obs[c+6]=0.02f;
+    obs[c+7]=0.01f;obs[c+8]=-0.02f;obs[c+9]=0.03f;
+    obs[c+10]=0.0f;obs[c+11]=0.0f;obs[c+12]=1.0f;
+    obs[c+13]=0.05f;obs[c+14]=-0.03f;obs[c+15]=0.0f;obs[c+16]=0.02f;
+    obs[c+17]=0.01f;obs[c+18]=0.02f;obs[c+19]=-0.01f;obs[c+20]=0.0f;
+    obs[181]=0.08f;obs[182]=-0.04f;obs[183]=0.02f;
+    return obs;
+}
+
+template<size_t CompiledActorDim>
+static float deployment_fixed_ppo_parity(const float* weights,
+                                         const nav_deployment::NavigationPolicy& policy) {
+    if constexpr(CompiledActorDim==184) {
+        fixed_ppo::ActorParams reference{};
+        std::copy(weights,weights+nav_deployment::actor_weight_count,reference.values.begin());
+        float max_error=0.0f;
+        for(uint32_t sample=0;sample<8;sample++) {
+            const auto obs=deployment_probe_observation(sample);
+            float hidden[fixed_ppo::hidden_dim],mean[fixed_ppo::action_dim];
+            fixed_ppo::actor_forward(obs.data(),reference,hidden,mean);
+            float exported[nav_deployment::action_count];
+            require(policy.raw_mean(obs.data(),exported),"deployment actor inference failed");
+            for(uint32_t a=0;a<nav_deployment::action_count;a++)
+                max_error=std::max(max_error,std::fabs(mean[a]-exported[a]));
+            nav_deployment::NavigationAction command;
+            require(policy.infer(obs.data(),command),"deployment command inference failed");
+            const float speed=std::sqrt(command.body_velocity_mps[0]*command.body_velocity_mps[0]+
+                                        command.body_velocity_mps[1]*command.body_velocity_mps[1]+
+                                        command.body_velocity_mps[2]*command.body_velocity_mps[2]);
+            require(speed<=policy.metadata().max_speed_mps+1.0e-5f &&
+                    std::fabs(command.yaw_rate_rps)<=0.5f+1.0e-6f,
+                    "deployment command exceeded its velocity or yaw limit");
+        }
+        require(max_error<2.0e-5f,"exported actor differs from fixed PPO actor");
+        return max_error;
+    } else {
+        (void)weights;(void)policy;
+        return 0.0f;
+    }
+}
+
+static void export_navigation_checkpoint(const std::string& source_checkpoint,
+                                         const std::string& output_path="assets/navigation.bin") {
+    std::ifstream file(source_checkpoint,std::ios::binary);
+    require(bool(file),"cannot open guided checkpoint: "+source_checkpoint);
+    const PpoCheckpointHeader h=read_checkpoint_header(file);
+    require(h.version==6,"navigation export requires checkpoint version 6");
+    require(h.actor_count==nav_deployment::actor_weight_count,
+            "navigation export requires a 184-input,64-hidden,four-action actor");
+    require(h.config.geometry_memory==1 && h.config.velocity_contract==1,
+            "navigation export requires geometry-memory guidance and spherical velocity contract");
+    require(std::fabs(h.config.speed-1.5f)<1.0e-6f,
+            "navigation export requires the selected 1.5 m/s checkpoint");
+    require(h.config.sensor_period==1 && h.config.substeps==5,
+            "navigation export expects 20 Hz observations and 100 Hz motor control");
+    std::array<float,nav_deployment::actor_weight_count> actor_weights{};
+    file.read(reinterpret_cast<char*>(actor_weights.data()),actor_weights.size()*sizeof(float));
+    require(bool(file),"guided checkpoint actor weights are truncated");
+
+    nav_deployment::Metadata metadata;
+    metadata.max_speed_mps=h.config.speed;
+    const RLPhysicsParams dynamics=rl_physics_crazyflie_default();
+    metadata.navigation_period_s=dynamics.dt*float(h.config.substeps);
+    metadata.native_period_s=dynamics.dt;
+    std::string error;
+    require(nav_deployment::NavigationPolicy::write_file(output_path,actor_weights.data(),
+                actor_weights.size(),metadata,source_checkpoint,&error),error);
+    nav_deployment::NavigationPolicy policy;
+    require(policy.load(output_path,&error),error);
+    const float parity=deployment_fixed_ppo_parity<fixed_ppo::actor_obs_dim>(actor_weights.data(),policy);
+    std::error_code ec;const auto bytes=std::filesystem::file_size(output_path,ec);
+    require(!ec,"cannot stat exported navigation policy");
+    std::cout<<"NAV export="<<output_path<<" source="<<source_checkpoint<<" bytes="<<bytes
+             <<" observations="<<metadata.observation_count<<" weights="<<actor_weights.size()
+             <<" mode="<<metadata.policy_mode<<" speed="<<metadata.max_speed_mps
+             <<" checkpoint_fnv64="<<std::hex<<policy.source_checkpoint_hash()<<std::dec
+             <<" max_actor_error="<<parity<<"\n";
+}
+
+static void benchmark_navigation_policy(const std::string& path) {
+    nav_deployment::NavigationPolicy policy;std::string error;
+    require(policy.load(path,&error),error);
+    auto obs=deployment_probe_observation(0);nav_deployment::NavigationAction action;
+    constexpr uint32_t iterations=10000;double checksum=0,start=seconds();
+    for(uint32_t i=0;i<iterations;i++) {
+        obs[163]=.3f+.0001f*float(i%1000);
+        require(policy.infer(obs.data(),action),"navigation policy inference failed");
+        for(uint32_t j=0;j<3;j++)obs[173+j]=action.body_velocity_mps[j]/policy.metadata().max_speed_mps;
+        checksum+=action.body_velocity_mps[0]+action.yaw_rate_rps;
+    }
+    const double elapsed=seconds()-start;
+    std::cout<<"NAV CPU batch=1 iterations="<<iterations<<" actor_only_us="<<elapsed*1e6/iterations
+             <<" excludes=depth,pose_memory,RAPTOR checksum="<<checksum<<"\n";
+}
+
+static void evaluate_navigation_policy(Metal& m,const std::string& path,uint32_t family,uint32_t seed) {
+    require(fixed_ppo::actor_obs_dim==184,"exported policy evaluation requires the guided binary");
+    nav_deployment::NavigationPolicy policy;std::string error;require(policy.load(path,&error),error);
+    sim_evaluate(m,family,policy.metadata().policy_mode,policy.weights().data(),
+                 policy.metadata().max_speed_mps,4,seed,0,0,0,0,0,1,1);
+}
+
 struct PPOTrainer {
     Sim& sim;
     Metal& metal;
@@ -869,7 +983,7 @@ static void gpu_training_benchmark(Metal& m,uint32_t n,uint32_t rollouts,uint32_
 }
 
 int main(int argc,char** argv){@autoreleasepool{try{
-    std::string command=argc>1?argv[1]:"test";if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
+    std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}

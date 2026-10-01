@@ -30,7 +30,7 @@ Pinned RAPTOR: `2c789dfcf16cc96fe697704492b3bf79dd2cc5a0`; pinned RLtools: `e43a
 
 22 FLU inputs: position3, row-major rotation9, world velocity3, body omega3, previous motors4. Dense22→16 ReLU, GRU16 (reset/update/new gate order), dense16→4. Per-environment learned initial recurrent state. Motors [front-right, back-right, back-left, front-left]. Native update10ms. Raw inference and executor clipping are separate operations. Initial comparison incorrectly compared clipped outputs with raw official oracle outputs; corrected, then official parity passed.
 
-PX4 `15f9af91ee3f8a2ac503864b5e557d7e4a1cb8fd`: transform state errors by inverse target quaternion, clip position±0.5m and velocity±1m/s, encode relative attitude. The velocity-like nav adapter supplies a finite target position `current_position + desired_world_velocity*0.5s`, desired velocity and yaw-only target. The 0.5s preview is our explicit navigation contract; it is not a PX4 default. OFFBOARD source has no NaN-position fallback; all targets stay finite.
+PX4 `15f9af91ee3f8a2ac503864b5e557d7e4a1cb8fd`: transform state errors by inverse target quaternion, clip position±0.5m and velocity±1m/s, encode relative attitude. The initial adapter supplied `current_position + desired_world_velocity*0.5s`. That trajectory-generation hypothesis failed and was replaced by a persistent integrated reference, as recorded below. The target-frame transform and clipping still follow the pinned PX4 source. OFFBOARD source has no NaN-position fallback; all targets stay finite.
 
 Sources: https://github.com/rl-tools/raptor ; https://github.com/rl-tools/px4/blob/15f9af91ee3f8a2ac503864b5e557d7e4a1cb8fd/external_modules/src/modules/rl_tools_policy/RLtoolsPolicy.cpp
 
@@ -42,7 +42,7 @@ Sources: https://github.com/rl-tools/rl-tools/blob/e43ae4bcda4556321a63f4eb5dcc8
 
 ## Fixed PPO path
 
-Actor: 660 deployable inputs, 64 tanh units, four unsquashed Gaussian outputs; tanh is applied only to executed commands so stored raw-action log probabilities are consistent. Critic: 32 privileged inputs, 64 tanh units. Distinct parameter sets prevent privileged actor leakage. GAE bootstraps time limits from pre-reset terminal-state value and stops carry on either termination or truncation. Fixed PPO clip±0.2, MSE value objective, entropy term, parameter-major sample gradients, reduction and Adam. No generic autograd or dynamic tensor API.
+Initial actor:660 deployable inputs (current raw architecture661), 64 tanh units, four unsquashed Gaussian outputs; tanh is applied only to executed commands so stored raw-action log probabilities are consistent. Critic: 32 privileged inputs, 64 tanh units. Distinct parameter sets prevent privileged actor leakage. GAE bootstraps time limits from pre-reset terminal-state value and stops carry on either termination or truncation. Fixed PPO clip±0.2, MSE value objective, entropy term, parameter-major sample gradients, reduction and Adam. No generic autograd or dynamic tensor API.
 
 ## Coherent target trajectory replaces moving preview
 
@@ -91,3 +91,15 @@ Checkpointv5 recordsrisk/entropy/lr/velocitycontract; common reader supportsv3/v
 ## Learned residual over local geometry
 
 The deterministicprior reads80pooledranges/history, goal, egovel, frameinterval; picksgoal-alignedfreecones, bodyradius/brakingmargin and smalltemporalclosingcorrection. Returns atanhXYZfraction≤.8. Guided184actor addspriorlatentsas3features andadds3latents to its learned mean. Both likelihood/backward paths remainweight-correct. Geometric-onlymode9 is an explicitbaseline. Fullresidualimprovesfreshmixed80.47%vsprior67.19%, buthurtsnoveltwo-door75.78%vs85.16%. Quarterresidualinference gives92.19%/94.53%heldtwo-door acrossfreshseeds and89.84%with100ms sensor+50mscommandlag,0.05mnoise,10%dropout. Thisis a measuredpolicy/inferencevariant, not an unlabelledPPOalgorithmchange. Singleoffsetdoor99.22%, dynamiccorrupted89.06%, mixedwind0.5acceleration76.56%. Counter/table34.38% remainsafailure. Do nottreatstrongdoorsasfullnavigationgeneralization.
+
+## Short geometry memory closes the table/counter failure
+
+Trace evidence separated two failures: the vehicle reached a counter before climbing above it, and it returned toward the goal before clearing a corner that had left the forward FOV. The correction uses measured depth plus the estimated pose at capture; it does not read simulator obstacle descriptors. Minimum2x2 ranges retain the actual closest pixel direction. Eight pose/depth slots are transformed into the current body frame. Candidate swept clearance includes body radius, range/age uncertainty and current velocity. Pure lateral/vertical escapes are allowed.
+
+An excessively inflated memory radius closed valid doorways and was rejected. Querying an instantaneous steering direction missed vehicle inertia and was corrected. A table/counter curriculum learned the remaining vertical residual. Ungated full residual gives strong table results but damages held two-door transfer; mode17 overhead-range gating is the selected, labeled inference variant. Final evaluation is saved separately from the training selection seed.
+
+Serial memory clearance repeatedly transformed up to640points for85candidate directions. M3 kernels now transform the points once, then compute candidates in parallel. This preserves the original calculation and episode results. Independent CPU/cache clearance checks at sensor delays0/2/6 give maximum error0. Identical128-environment200-navigation-tick evaluation wall time falls from~3.08s to~0.143s. The derived cache is not checkpoint state; pose/depth rings are persisted in v6.
+
+## Finish the usable vertical slice
+
+The user asked to focus on the end outcome instead of open-ended experiments. Stop new architecture/tuning probes. Preserve a compact actor-only export, exact contracts, selected checkpoint, final held-out scores, optimized runtime, reference provenance and reproducible commands. Distinguish the verified simulation research milestone from future real sensor/vehicle validation.
