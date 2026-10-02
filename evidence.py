@@ -1480,6 +1480,33 @@ def verify_candidate_hashes(continuation: list[dict[str, str]]) -> dict[str, str
     return by_candidate
 
 
+def room_transfer_figure(out: Path) -> list[str]:
+    rows = read_csv(INPUTS / "room-webots-transfer/cases.csv")
+    if len(rows) != 30 or len({row["failure_id"] for row in rows}) != 30:
+        raise ValueError("Room transfer figure requires the complete matched 30-level matrix")
+    groups = ("easy", "medium", "hard", "all")
+    counts = [sum(group == "all" or row["difficulty_band"] == group for row in rows) for group in groups]
+    fig, ax = plt.subplots(figsize=(8.5, 5.0))
+    for offset, column, label, color in ((-.18, "focused_metal_success", "Metal", COLORS["blue"]),
+                                       (.18, "webots_success", "Webots", COLORS["orange"])):
+        successes = [sum(int(row[column]) for row in rows
+                         if group == "all" or row["difficulty_band"] == group) for group in groups]
+        positions = np.arange(len(groups)) + offset
+        ax.bar(positions, [success / count for success, count in zip(successes, counts)],
+               width=.34, label=label, color=color)
+        for x, success, count in zip(positions, successes, counts):
+            ax.text(x, success / count + .025, f"{success}/{count}", ha="center", fontsize=10)
+    ax.set_xticks(np.arange(len(groups)), [group.title() for group in groups])
+    ax.set_ylim(0, 1.18)
+    ax.set_ylabel("Goal-entry success fraction")
+    ax.set_title("Hard rooms expose the simulator transfer gap", loc="left", weight="bold")
+    ax.legend(frameon=False)
+    ax.grid(axis="y", alpha=.2)
+    add_footer(fig, "Same 30 development rooms and policy. 20 s budget; 1.5 m/s requested cap. Webots: 12 contacts, no timeouts. Clean depth and ideal ego sensors; final split untouched.")
+    fig.subplots_adjust(bottom=.23)
+    return save_figure(fig, out, "room-webots-transfer")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="output directory (default: artifacts)")
@@ -1502,6 +1529,7 @@ def main() -> int:
     webots_stable_rows, webots_stable_manifest = load_and_validate_webots_stable_arrival()
 
     outputs: list[str] = []
+    outputs += room_transfer_figure(out)
     outputs += training_figure(training, out)
     outputs += mode_comparison_figure(static_eval, out)
     outputs += transfer_figure(static_eval, continuation, out)
@@ -1688,6 +1716,7 @@ def main() -> int:
             "limitations": webots_stable_manifest["limitations"],
         },
         "figure_sources": {
+            "room-webots-transfer": {"inputs": ["evidence/inputs/room-webots-transfer/cases.csv", "evidence/inputs/room-webots-transfer/proof.json"], "filter": "all 30 paired family-15 development IDs; group by declared difficulty; same selected policy and first-entry rule; final split untouched"},
             "training-broad-validation": {"input": "evidence/inputs/training.tsv", "filter": "checkpoint basename raw-broad.bin or pooled-broad.bin; recorded validation rows; elapsed wall time from training invocation"},
             "static-scene-policy-comparison": {"input": "evidence/inputs/evaluation.csv", "filter": "group=baseline, seed=800001, families 7/8/5/3, modes 17/13/2"},
             "clean-and-stress-transfer": {"inputs": ["evidence/inputs/evaluation.csv", "evidence/inputs/continuation-evaluation.csv"], "filter": "mode=17, seed=800001; clean baseline and combined stress for families 8 and 5; candidates from continuation CSV"},

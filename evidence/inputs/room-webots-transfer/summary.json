@@ -1,0 +1,128 @@
+{
+  "schema": "webots-room-transfer-summary-v1",
+  "family": 15,
+  "split": "dev",
+  "episodes_completed": 30,
+  "episodes_expected": 30,
+  "webots_successes": 18,
+  "webots_contacts": 12,
+  "webots_timeouts": 0,
+  "focused_metal_successes_joined": 25,
+  "webots_transfer_success_over_metal_success": 17,
+  "metal_success_webots_failure": 8,
+  "webots_success_metal_failure": 1,
+  "webots_failure_ids": [
+    "f15-dev-0001-s6958c653-w5e651fdf-mirror-y",
+    "f15-dev-0004-sd401bbed-w5e651fdf",
+    "f15-dev-0007-s9675ffdc-w5e651fdf-mirror-y",
+    "f15-dev-0010-s2c1b1df3-w5e651fdf",
+    "f15-dev-0011-sfd44c7ba-w5e651fdf-mirror-y",
+    "f15-dev-0012-sa9ee9ae1-w5e651fdf",
+    "f15-dev-0015-s3b9dbe94-w5e651fdf-mirror-y",
+    "f15-dev-0019-s3010baf6-w5e651fdf-mirror-y",
+    "f15-dev-0020-sc671a06a-w5e651fdf",
+    "f15-dev-0022-s106697c1-w5e651fdf",
+    "f15-dev-0024-s32762236-w5e651fdf",
+    "f15-dev-0027-s68a1a203-w5e651fdf-mirror-y"
+  ],
+  "contact_failure_ids": [
+    "f15-dev-0001-s6958c653-w5e651fdf-mirror-y",
+    "f15-dev-0004-sd401bbed-w5e651fdf",
+    "f15-dev-0007-s9675ffdc-w5e651fdf-mirror-y",
+    "f15-dev-0010-s2c1b1df3-w5e651fdf",
+    "f15-dev-0011-sfd44c7ba-w5e651fdf-mirror-y",
+    "f15-dev-0012-sa9ee9ae1-w5e651fdf",
+    "f15-dev-0015-s3b9dbe94-w5e651fdf-mirror-y",
+    "f15-dev-0019-s3010baf6-w5e651fdf-mirror-y",
+    "f15-dev-0020-sc671a06a-w5e651fdf",
+    "f15-dev-0022-s106697c1-w5e651fdf",
+    "f15-dev-0024-s32762236-w5e651fdf",
+    "f15-dev-0027-s68a1a203-w5e651fdf-mirror-y"
+  ],
+  "timeout_failure_ids": [],
+  "metal_success_webots_failure_ids": [
+    "f15-dev-0001-s6958c653-w5e651fdf-mirror-y",
+    "f15-dev-0004-sd401bbed-w5e651fdf",
+    "f15-dev-0007-s9675ffdc-w5e651fdf-mirror-y",
+    "f15-dev-0010-s2c1b1df3-w5e651fdf",
+    "f15-dev-0019-s3010baf6-w5e651fdf-mirror-y",
+    "f15-dev-0020-sc671a06a-w5e651fdf",
+    "f15-dev-0022-s106697c1-w5e651fdf",
+    "f15-dev-0024-s32762236-w5e651fdf"
+  ],
+  "webots_success_metal_failure_ids": [
+    "f15-dev-0017-s45b8c541-w5e651fdf-mirror-y"
+  ],
+  "difficulty_distribution": {
+    "easy": {
+      "episodes": 10,
+      "webots_success": 10,
+      "webots_contacts": 0,
+      "webots_timeouts": 0,
+      "focused_metal_success": 9
+    },
+    "medium": {
+      "episodes": 5,
+      "webots_success": 5,
+      "webots_contacts": 0,
+      "webots_timeouts": 0,
+      "focused_metal_success": 5
+    },
+    "hard": {
+      "episodes": 15,
+      "webots_success": 3,
+      "webots_contacts": 12,
+      "webots_timeouts": 0,
+      "focused_metal_success": 11
+    }
+  },
+  "coordinate_transform_distribution": {
+    "identity": {
+      "episodes": 15,
+      "webots_success": 9,
+      "webots_contacts": 6,
+      "webots_timeouts": 0,
+      "focused_metal_success": 14
+    },
+    "mirror_y": {
+      "episodes": 15,
+      "webots_success": 9,
+      "webots_contacts": 6,
+      "webots_timeouts": 0,
+      "focused_metal_success": 11
+    }
+  },
+  "webots_median_success_time_s": 5.345000000000001,
+  "matched_metal_webots_success_count": 17,
+  "matched_success_metal_mean_time_s": 6.264754266470588,
+  "matched_success_webots_mean_time_s": 6.385294117647058,
+  "failure_zones_from_last_sparse_trace_sample_only": {
+    "near_second_partition": 5,
+    "near_first_partition": 6,
+    "near_start_floor_or_other": 1
+  },
+  "last_trace_failure_zone_limit": "Trace cadence is 100Hz for the first 0.8s and 1Hz afterward; zone labels are approximate last-sample regions, not exact contact-point identities.",
+  "measured_webots_start_transient": {
+    "mean_z_at_0_05s_m": 1.49212,
+    "mean_vz_at_0_05s_mps": -0.200758,
+    "mean_z_at_0_20s_m": 1.4538846666666667,
+    "mean_vz_at_0_20s_mps": -0.30897030000000003,
+    "actuator_initialization": "Webots propeller speed starts at zero; Metal reset starts motor state at hover RPM"
+  },
+  "sensor_contract_difference": "Metal casts 16x20 analytic rays from body center at vertical slope 0.75. Webots uses a 20x16, 90-degree RangeFinder at +0.08 m body-forward, converts axial depth to ray range, resamples to slope 0.75 then 2x2-min pools; ideal GPS/IMU/Gyro and zero depth noise/dropout.",
+  "matrix_failures": [],
+  "commands": {
+    "scene_export": "python3 webots/metal_scene.py FAILURE_ID --bank evidence/inputs/challenge-bank-mirrored-v1.jsonl --policy ../assets/navigation-rooms-experimental.bin --max-steps 2000",
+    "webots": "Webots R2025a --port=23456 --minimize --batch --mode=fast --no-rendering; 1ms ODE; 20s episode budget"
+  },
+  "hashes": {
+    "bank_sha256": "e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e",
+    "focused_csv_sha256": "6a4f72d292bca9a75ad3c5893f7cbf5510a18fdef3f96d6d5a78b255611c2574",
+    "policy_sha256": "234c776de8dec15e9fb01bd2d718581356e67426c30c721472f048a1ed7a9282",
+    "webots_runner_sha256": "59a786dc34f8639df624481902e2087313a4e983511878e3dbe03f2f068091c2",
+    "scene_exporter_sha256": "ddfab9caafca5660246e474acf60915eb218fce9655a206423ab955cbcbdd6b0",
+    "controller_source_sha256": "6fbe9d60459eb4c2216ba317ea4fb1773e961b501034581d5599338b069e5ed5",
+    "controller_binary_sha256": "c0bffefae77b0a22b27dfc99cdd2e0e5aeffa2b55d0eb625b72f56fa2f10af4a"
+  },
+  "final_split_evaluated": false
+}
