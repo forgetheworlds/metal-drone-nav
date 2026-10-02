@@ -5,3 +5,6 @@ STATUS.md
 .freebuff/
 __pycache__/
 *.py[cod]
+
+# Offline reconstruction frame caches; preserve only selected media.
+artifacts/videos/*-frames/

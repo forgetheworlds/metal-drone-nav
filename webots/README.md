@@ -57,3 +57,31 @@ The first cylinder-based matrix used the wrong primitive axis and is archived un
 All batch launches use `--minimize --batch` and the RL-only port23456. The runtime also provides a `physics-audit` phase: it warms RAPTOR hover, applies small common motor-command pulses, and compares measured ODE states against a free-running CPU L2F reference. This calibrates numerical/model agreement; it is not hardware validation.
 
 Primary Webots R2025a references: [Propeller](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/propeller.md), [Motor](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/motor.md), [RangeFinder](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/rangefinder.md), [Physics](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/physics.md), [Supervisor](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/supervisor.md), [InertialUnit](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/inertialunit.md).
+
+## Native scene recordings
+
+Normal benchmarks retain `--minimize --batch --mode=fast --no-rendering` and use the dedicated RL port 23456. For the requested native videos, `--record-movie` uses a visible RL window with `--batch --mode=realtime`. Hidden or disabled rendering can produce a black movie even when the physical run succeeds. The runner decodes every movie frame with ffmpeg and rejects more than 0.2 s of near-black output while preserving the physical receipt.
+
+Webots [Supervisor movie recording and image export](https://cyberbotics.com/doc/reference/supervisor?version=R2025a) capture the main 3D scene. They are separate from the onboard RangeFinder. The camera fix follows the [+X-forward Viewpoint convention in R2025a](https://raw.githubusercontent.com/cyberbotics/webots/R2025a/src/webots/nodes/WbViewpoint.cpp). The recording camera follows the real GPS body position with a fixed world offset; it only changes the observer view. It does not move the drone, alter physics or pass obstacle truth to the navigation policy.
+
+Reproduce the doorway stable-arrival recording after building the controller:
+
+```sh
+python3 webots/challenge_generator.py --families doorway --seeds 41001
+python3 webots/benchmark.py --worlds challenge_doorway_41001 --seeds 41001 \
+  --policies ../assets/navigation-arrival-experimental.bin --steps 2000 \
+  --goal-objective hold --record-movie --capture-trajectory --port 23456
+```
+
+Reproduce the selected development room and its first-entry recording:
+
+```sh
+python3 webots/metal_scene.py f15-dev-0000-s5eacfc53-w5e651fdf \
+  --bank evidence/inputs/challenge-bank-mirrored-v1.jsonl \
+  --policy ../assets/navigation-rooms-experimental.bin
+python3 webots/benchmark.py --worlds metal_f15-dev-0000-s5eacfc53-w5e651fdf \
+  --seeds 1588395091 --policies ../assets/navigation-rooms-experimental.bin \
+  --steps 2000 --goal-objective entry --record-movie --capture-trajectory --port 23456
+```
+
+The source package at `evidence/inputs/native-flight-videos/` embeds each exact recording world, raw receipt, scene metadata and renderer log. Its CSVs contain the real 100 Hz ENU position and WXYZ quaternion samples. The checked-in MP4s are byte-for-byte native movie outputs. The blank-frame gate is a watchability check; it cannot validate vehicle CAD, physics fidelity or navigation generalization.

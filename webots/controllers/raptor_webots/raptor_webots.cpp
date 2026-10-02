@@ -13,6 +13,7 @@
 #include "physics_comparison.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -20,6 +21,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -36,6 +38,8 @@ struct Config {
     std::string physics_profile="hover";
     std::string motor_sampling="end";
     std::string goal_objective="entry";
+    std::string movie_file;
+    std::string view_snapshot_file;
     std::string policy="../assets/navigation.bin";
     uint32_t seed=1;
     uint32_t max_steps=800;
@@ -43,6 +47,7 @@ struct Config {
     float distance=4.0f;
     float range_plane_x=2.0f;
     bool sensor_audit=false;
+    bool capture_trajectory=false;
     bool velocity_reference_is_world=false;
     float goal[3]={4,0,1.5f};
     float velocity[3]={0,0,0};
@@ -66,6 +71,8 @@ Config parse_config(const char* custom) {
             else if(key=="profile")c.physics_profile=value;
             else if(key=="motor_sampling")c.motor_sampling=value;
             else if(key=="goal_objective")c.goal_objective=value;
+            else if(key=="movie_file")c.movie_file=value;
+            else if(key=="view_snapshot_file")c.view_snapshot_file=value;
             else if(key=="policy")c.policy=value;
             else if(key=="seed")c.seed=uint32_t(std::strtoul(value.c_str(),nullptr,10));
             else if(key=="max_steps")c.max_steps=uint32_t(std::strtoul(value.c_str(),nullptr,10));
@@ -73,6 +80,7 @@ Config parse_config(const char* custom) {
             else if(key=="distance")parse_float(value,c.distance);
             else if(key=="range_plane_x")parse_float(value,c.range_plane_x);
             else if(key=="sensor_audit")c.sensor_audit=(value=="1"||value=="true");
+            else if(key=="capture_trajectory")c.capture_trajectory=(value=="1"||value=="true");
             else if(key=="velocity_frame")c.velocity_reference_is_world=(value=="world");
             else if(key=="goal") {
                 size_t at=0;
@@ -123,6 +131,48 @@ void rotate_world_to_body(const float r[9],const float w[3],float b[3]) {
     for(int i=0;i<3;i++)b[i]=r[i]*w[0]+r[3+i]*w[1]+r[6+i]*w[2];
 }
 float vector_norm3(const float v[3]) {return std::sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);}
+void update_recording_view(WbFieldRef position_field,WbFieldRef orientation_field,const float target[3]) {
+    const float offset[3]={-1.2f,-1.6f,0.8f};
+    float camera[3]={target[0]+offset[0],target[1]+offset[1],target[2]+offset[2]};
+    float forward[3]={target[0]-camera[0],target[1]-camera[1],target[2]-camera[2]};
+    const float forward_norm=vector_norm3(forward);
+    for(float& value:forward)value/=forward_norm;
+    float left[3]={-forward[1],forward[0],0.0f};
+    const float left_norm=vector_norm3(left);
+    for(float& value:left)value/=left_norm;
+    float up[3]={forward[1]*left[2]-forward[2]*left[1],
+                 forward[2]*left[0]-forward[0]*left[2],
+                 forward[0]*left[1]-forward[1]*left[0]};
+    // R2025a Viewpoint axes are local +X forward, +Y left, +Z up.
+    const float m00=forward[0],m01=left[0],m02=up[0];
+    const float m10=forward[1],m11=left[1],m12=up[1];
+    const float m20=forward[2],m21=left[2],m22=up[2];
+    float qw,qx,qy,qz;const float trace=m00+m11+m22;
+    if(trace>0.0f) {
+        const float s=std::sqrt(trace+1.0f)*2.0f;
+        qw=0.25f*s;qx=(m21-m12)/s;qy=(m02-m20)/s;qz=(m10-m01)/s;
+    } else if(m00>m11&&m00>m22) {
+        const float s=std::sqrt(1.0f+m00-m11-m22)*2.0f;
+        qw=(m21-m12)/s;qx=0.25f*s;qy=(m01+m10)/s;qz=(m02+m20)/s;
+    } else if(m11>m22) {
+        const float s=std::sqrt(1.0f+m11-m00-m22)*2.0f;
+        qw=(m02-m20)/s;qx=(m01+m10)/s;qy=0.25f*s;qz=(m12+m21)/s;
+    } else {
+        const float s=std::sqrt(1.0f+m22-m00-m11)*2.0f;
+        qw=(m10-m01)/s;qx=(m02+m20)/s;qy=(m12+m21)/s;qz=0.25f*s;
+    }
+    const float qnorm=std::sqrt(qw*qw+qx*qx+qy*qy+qz*qz);
+    qw/=qnorm;qx/=qnorm;qy/=qnorm;qz/=qnorm;
+    if(qw<0.0f){qw=-qw;qx=-qx;qy=-qy;qz=-qz;}
+    const float angle=2.0f*std::acos(std::clamp(qw,-1.0f,1.0f));
+    const float sin_half=std::sqrt(std::max(0.0f,1.0f-qw*qw));
+    double position[3]={camera[0],camera[1],camera[2]};
+    double rotation[4]={sin_half>1e-6f?qx/sin_half:0.0,
+                        sin_half>1e-6f?qy/sin_half:0.0,
+                        sin_half>1e-6f?qz/sin_half:1.0,angle};
+    wb_supervisor_field_set_sf_vec3f(position_field,position);
+    wb_supervisor_field_set_sf_rotation(orientation_field,rotation);
+}
 std::unordered_map<std::string,std::string> data_fields(const char* raw) {
     std::unordered_map<std::string,std::string> fields;
     if(!raw)return fields;
@@ -143,6 +193,9 @@ int main(int argc,char** argv) {
     const Config config=parse_config(wb_robot_get_custom_data());
     if(config.goal_objective!="entry"&&config.goal_objective!="hold") {
         std::fprintf(stderr,"goal_objective must be entry or hold\n");wb_robot_cleanup();return 2;
+    }
+    if(!config.movie_file.empty()&&std::filesystem::path(config.movie_file).extension()!=".mp4") {
+        std::fprintf(stderr,"movie_file must use the .mp4 extension\n");wb_robot_cleanup();return 2;
     }
     std::printf("WEBOTS_START phase=%s objective=%s seed=%u step_ms=%d custom=%s\n",config.phase.c_str(),config.goal_objective.c_str(),config.seed,step_ms,wb_robot_get_custom_data()?wb_robot_get_custom_data():"");
     std::fflush(stdout);
@@ -167,7 +220,9 @@ int main(int argc,char** argv) {
     const std::filesystem::path result_dir=root/"results";
     std::filesystem::create_directories(result_dir);
     std::ofstream trace(result_dir/"last-run-trace.csv",std::ios::trunc);
-    trace<<"step,time_s,x,y,z,vx,vy,vz,target_vx,target_vy,target_vz,goal_error\n";
+    trace<<"step,time_s,x,y,z,vx,vy,vz,target_vx,target_vy,target_vz,goal_error";
+    if(config.capture_trajectory)trace<<",q_w,q_x,q_y,q_z,goal_dwell_s,actual_world_speed_mps";
+    trace<<'\n';
     if(config.phase=="geometry-calibrate"){
         std::ofstream geometry(result_dir/"geometry-axis-calibration.json",std::ios::trunc);
         geometry<<"{\"obstacles\":[";
@@ -226,6 +281,7 @@ int main(int argc,char** argv) {
     std::fill(range_ring,range_ring+8*320,kRangeMax);std::fill(pose_ring,pose_ring+8*12,0.0f);
     uint32_t capture_count=0,latest_frame=0,valid_frames=0;
     bool sensor_audit_written=false;
+    bool view_snapshot_written=false;
     const uint32_t max_steps=config.max_steps;
     uint32_t steps=0;int completed=false,success=false,collision=false,timeout=false;
     double path=0.0,tracking_squared=0.0,minimum_sensor_range=kRangeMax;
@@ -237,6 +293,30 @@ int main(int argc,char** argv) {
     uint32_t goal_radius_entry_count=0;
     double goal_radius_entry_first_time_s=-1.0,goal_radius_entry_last_time_s=-1.0;
     float goal_dwell_s=0.0f,final_world_speed_mps=0.0f;
+    const bool movie_requested=!config.movie_file.empty();
+    bool movie_recording=false,movie_failed=false;
+    WbNodeRef recording_view_node=movie_requested?wb_supervisor_node_get_from_def("RLRecordingViewpoint"):nullptr;
+    WbFieldRef recording_view_position=movie_requested?wb_supervisor_node_get_field(recording_view_node,"position"):nullptr;
+    WbFieldRef recording_view_orientation=movie_requested?wb_supervisor_node_get_field(recording_view_node,"orientation"):nullptr;
+    if(movie_requested) {
+        if(!recording_view_node||!recording_view_position||!recording_view_orientation) {
+            std::fprintf(stderr,"recording requires DEF RLRecordingViewpoint with position and orientation fields\n");
+            wb_robot_cleanup();return 2;
+        }
+        const float initial_view_target[3]={0,0,1.5f};
+        update_recording_view(recording_view_position,recording_view_orientation,initial_view_target);
+        if(!wb_supervisor_movie_is_ready()) {
+            std::fprintf(stderr,"Webots movie recorder is busy\n");wb_robot_cleanup();return 2;
+        }
+        wb_supervisor_movie_start_recording(config.movie_file.c_str(),1280,720,0,95,1,false);
+        if(wb_supervisor_movie_failed()) {
+            std::fprintf(stderr,"Webots movie recorder failed to start: %s\n",config.movie_file.c_str());
+            wb_robot_cleanup();return 2;
+        }
+        movie_recording=true;
+        std::printf("WEBOTS_MOVIE_START file=%s resolution=1280x720 acceleration=1\n",config.movie_file.c_str());
+        std::fflush(stdout);
+    }
 
     while(true) {
         const int step_status=wb_robot_step(step_ms);
@@ -252,6 +332,13 @@ int main(int argc,char** argv) {
         const float q[4]={float(imu_xyzw[3]),float(imu_xyzw[0]),float(imu_xyzw[1]),float(imu_xyzw[2])};
         const float body_rates[3]={float(gyro_values[0]),float(gyro_values[1]),float(gyro_values[2])};
         float rotation[9];raptor_quaternion_matrix(q,rotation);
+        if(movie_requested)update_recording_view(recording_view_position,recording_view_orientation,position);
+        if(!view_snapshot_written&&!config.view_snapshot_file.empty()&&steps+1>=100) {
+            wb_supervisor_export_image(config.view_snapshot_file.c_str(),95);
+            view_snapshot_written=true;
+            std::printf("WEBOTS_VIEW_SNAPSHOT file=%s step=%u time_s=%.3f\n",config.view_snapshot_file.c_str(),steps,current_time);
+            std::fflush(stdout);
+        }
         if(config.phase=="physics-audit" && steps>=200) {
             // Audit scoring reads ODE state explicitly. Navigation continues
             // to use sensor APIs; no Supervisor state enters its observation.
@@ -420,10 +507,12 @@ int main(int argc,char** argv) {
             if(inside_goal&&final_world_speed_mps<=0.5f)goal_dwell_s+=step_ms*0.001f;
             else goal_dwell_s=0.0f;
         }
-        if(trace && (steps<80 || steps%100==0)){
+        if(trace && (config.capture_trajectory || steps<80 || steps%100==0)){
             trace<<steps<<','<<current_time<<','<<position[0]<<','<<position[1]<<','<<position[2]<<','
                  <<world_velocity[0]<<','<<world_velocity[1]<<','<<world_velocity[2]<<','
-                 <<target_velocity_world[0]<<','<<target_velocity_world[1]<<','<<target_velocity_world[2]<<','<<goal_error<<'\n';
+                 <<target_velocity_world[0]<<','<<target_velocity_world[1]<<','<<target_velocity_world[2]<<','<<goal_error;
+            if(config.capture_trajectory)trace<<','<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<','<<goal_dwell_s<<','<<final_world_speed_mps;
+            trace<<'\n';
             trace.flush();
         }
         if(config.goal_objective=="entry") {
@@ -437,6 +526,17 @@ int main(int argc,char** argv) {
         if(steps>=max_steps){std::printf("WEBOTS_BREAK event=timeout step=%u\n",steps);timeout=true;completed=true;break;}
     }
     if(config.phase=="physics-audit")physics_comparison.save(config.physics_profile,config.motor_sampling);
+    if(movie_recording) {
+        wb_supervisor_movie_stop_recording();
+        const auto movie_wait_start=std::chrono::steady_clock::now();
+        while(!wb_supervisor_movie_is_ready() &&
+              std::chrono::duration<double>(std::chrono::steady_clock::now()-movie_wait_start).count()<300.0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        movie_failed=wb_supervisor_movie_failed()||!wb_supervisor_movie_is_ready();
+        std::printf("WEBOTS_MOVIE_DONE file=%s failed=%d wait_s=%.2f\n",config.movie_file.c_str(),movie_failed?1:0,
+                    std::chrono::duration<double>(std::chrono::steady_clock::now()-movie_wait_start).count());
+        std::fflush(stdout);
+    }
     std::printf("WEBOTS_LOOP_EXIT steps=%u completed=%d\n",steps,completed?1:0);std::fflush(stdout);
     const double* final_pos=wb_gps_get_values(gps);const float final_error=final_pos?float(std::sqrt(std::pow(goal[0]-final_pos[0],2)+std::pow(goal[1]-final_pos[1],2)+std::pow(goal[2]-final_pos[2],2))):NAN;
     std::ofstream metrics(result_dir/"last-run.json",std::ios::trunc);
@@ -452,7 +552,11 @@ int main(int argc,char** argv) {
            <<",\"goal_objective\":\""<<config.goal_objective<<"\",\"goal_radius_entry_count\":"<<goal_radius_entry_count
            <<",\"goal_radius_entry_first_time_s\":"<<goal_radius_entry_first_time_s
            <<",\"goal_radius_entry_last_time_s\":"<<goal_radius_entry_last_time_s
-           <<",\"goal_dwell_s\":"<<goal_dwell_s<<",\"final_world_speed_mps\":"<<final_world_speed_mps<<"}\n";
+           <<",\"goal_dwell_s\":"<<goal_dwell_s<<",\"final_world_speed_mps\":"<<final_world_speed_mps
+           <<",\"trajectory_trace\":"<<(config.capture_trajectory?"true":"false")
+           <<",\"movie_recording\":"<<(movie_requested?"true":"false")<<",\"movie_failed\":"<<(movie_failed?"true":"false")
+           <<",\"movie_file\":\""<<config.movie_file<<"\",\"view_snapshot_file\":\""<<config.view_snapshot_file
+           <<"\",\"view_snapshot_written\":"<<(view_snapshot_written?"true":"false")<<"}\n";
     metrics.flush();metrics.close();trace.flush();trace.close();
     std::ofstream marker(result_dir/"last-run-exit.marker",std::ios::trunc);
     marker<<"loop_exit steps="<<steps<<" completed="<<(completed?1:0)<<"\n";
@@ -461,7 +565,7 @@ int main(int argc,char** argv) {
         config.phase.c_str(),config.goal_objective.c_str(),config.seed,success?1:0,collision?1:0,timeout?1:0,steps,current_time,path,final_error,
         steps?path/(steps*step_ms*0.001):0,peak_speed,tracking_samples?std::sqrt(tracking_squared/(3.0*tracking_samples)):0,minimum_sensor_range,altitude_min,altitude_max,raptor_loaded?1:0,policy_mode?1:0,nav_updates,goal_radius_entry_count,goal_dwell_s,final_world_speed_mps);
     std::fflush(stdout);
-    wb_supervisor_simulation_quit(0);
+    wb_supervisor_simulation_quit(movie_failed?2:0);
     wb_robot_cleanup();
-    return completed?0:1;
+    return movie_failed?2:(completed?0:1);
 }

@@ -22,7 +22,7 @@ Built on Apple M3 (10 GPU cores, 16 GB unified memory). Numerical parity is chec
 
 ## Current generalization work
 
-Numerical parity does not establish a realistic vehicle or transferable navigation. The richer development bank still exposes major failures: the selected source policies do not solve bent hallways or connected rooms. The final bank split remains untouched.
+Numerical parity does not establish a realistic vehicle or transferable navigation. The richer development bank exposes major failures. The preserved source policies do not solve bent hallways or connected rooms. A later focused PPO experiment reaches 25/30 connected-room development levels; bent hallways remain unsolved. The final bank split remains untouched.
 
 The next pipeline experiment varies start position, 3D goal direction, yaw, initial velocity, mass, inertia, rotor thrust gain and motor lag. Arrival requires distance ≤0.35 m and actual speed ≤0.5 m/s for 0.2 s. The dynamics ranges are declared stress settings, not identified hardware uncertainty. Contact still uses the historical 18 cm sphere; a separate pose-aware mechanical model is an audit, not a changed scoring rule.
 
@@ -41,6 +41,33 @@ A matched Webots test now checks stable arrival for 20 s. The original entered t
 ![Selective retention on legacy tasks](artifacts/arrival-legacy-retention-regression.png)
 
 Common-command pulse tests separated actuator sampling errors from plant errors. Interval-average thrust and a 1 ms ODE step reduced the roll/pitch pose discrepancy to below 0.2 mm on those tests. This aligns two idealized plants; it does not validate missing aerodynamics, hardware thrust or noisy state estimation.
+
+## Focused connected-room experiment
+
+A focused PPO run trains on the 30 connected-room training levels in the mirrored bank. Its selected checkpoint solves **25/30 development rooms**, compared with **0/30** for the arrival policy used to start this phase. Selection occurs at rollout 300 (1.2288 million transitions). Deployment uses the final goal and local depth; it does not receive the stored witness route. [Selected and final evaluations](evidence/inputs/room-training/manifest.json) preserve the exact inputs.
+
+Continued training loses capability. The final checkpoint solves 10/30 rooms, and a lower-learning-rate refinement does not improve the selected result. The selected room policy remains an experiment, not a replacement for the preserved broad-task policies. Development levels have been used for selection; the final bank split remains untouched.
+
+The first development room completes in Metal in 5.2 s and in independent Webots in 5.23 s through the exported room geometry, native depth, RAPTOR and motors. This run tests first entry within 0.35 m of the goal. Its final speed is 1.56 m/s, so it does not demonstrate a stable stop. Doorway stable-arrival evidence uses the separate arrival policy.
+
+## Actual Webots flight recordings
+
+These are the native Webots main-view movies from live simulation. The observer camera follows the real body position. The scene remains opaque and the drone keeps its declared size. The visible airframe uses simple primitives; it is not verified hardware CAD. [Exact worlds, actual receipts, dense traces and hashes](evidence/inputs/native-flight-videos/manifest.json) bind each movie to its own run.
+
+| Scene and policy | Result | Goal rule |
+|---|---|---|
+| Offset doorway · arrival policy | 6.91 s, no contact | Within 0.35 m, speed ≤0.5 m/s for 0.2 s |
+| Two offset doors with a table · room policy | 5.23 s, no contact | First entry within 0.35 m; final speed 1.56 m/s |
+
+[![Native doorway view](artifacts/videos/native-doorway-preview.jpg)](artifacts/videos/native-doorway.mp4)
+
+[Watch the doorway flight](artifacts/videos/native-doorway.mp4).
+
+[![Native connected-room view](artifacts/videos/native-connected-rooms-preview.jpg)](artifacts/videos/native-connected-rooms.mp4)
+
+[Watch the connected-room flight](artifacts/videos/native-connected-rooms.mp4).
+
+These are two selected successful examples. They do not establish a success rate across new rooms, sensor disturbances or hardware. The [recording commands](webots/README.md#native-scene-recordings) reproduce both tasks. A decoded-frame check rejects sustained blank output; manual frame review checks that the drone and obstacles are visible.
 
 ## Headline results
 
