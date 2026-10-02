@@ -1,0 +1,35 @@
+#VRML_SIM R2025a utf8
+EXTERNPROTO "../protos/RaptorCrazyflie.proto"
+WorldInfo {
+  title "RAPTOR A-to-B Independent Webots Benchmark"
+  basicTimeStep 10
+  gravity 9.81
+  coordinateSystem "ENU"
+  physicsDisableTime -1
+}
+Viewpoint {
+  orientation 0.32 0.78 0.53 1.15
+  position 5.8 -7.2 5.0
+  follow "RaptorCrazyflie"
+}
+Background { skyColor [ 0.62 0.77 0.92 ] }
+DirectionalLight { direction -0.4 -0.3 -1 intensity 0.85 }
+Solid {
+  translation 2 0 -0.05
+  children [
+    Shape {
+      appearance PBRAppearance { baseColor 0.72 0.74 0.76 roughness 1 }
+      geometry Box { size 18 12 0.1 }
+    }
+  ]
+  boundingObject Box { size 18 12 0.1 }
+  locked TRUE
+}
+# WEBOTS_OBSTACLES_INSERTION_POINT
+RaptorCrazyflie {
+  translation 0 0 1.5
+  name "RaptorCrazyflie"
+  controller "raptor_webots"
+  supervisor TRUE
+  customData "phase=physics-audit;seed=1;policy=../assets/navigation.bin;speed=1.5;distance=4;goal=4,0,1.5;max_steps=320;profile=collective;motor_sampling=end"
+}

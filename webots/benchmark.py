@@ -62,7 +62,7 @@ def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, p
         for stale in (RESULTS / "last-run.json", RESULTS / "last-run-exit.marker", RESULTS / "last-run-trace.csv"):
             stale.unlink(missing_ok=True)
         process = subprocess.run(
-            [str(webots), f"--port={port}", "--batch", "--mode=fast", "--no-rendering", "--stdout", "--stderr", str(world)],
+            [str(webots), f"--port={port}", "--minimize", "--batch", "--mode=fast", "--no-rendering", "--stdout", "--stderr", str(world)],
             cwd=ROOT,
             capture_output=True,
             text=True,

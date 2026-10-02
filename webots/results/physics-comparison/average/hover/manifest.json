@@ -1,0 +1,29 @@
+{
+  "profile": "hover",
+  "motor_sampling": "average",
+  "reference": "CPU L2F model; Metal numerical parity separately checked",
+  "plant": "Webots ODE and configured Propeller actuators",
+  "same_motor_commands": true,
+  "warmup_s": 2.01,
+  "duration_s": 1.19,
+  "samples": 120,
+  "rms_position_m": 0.00169457679,
+  "max_position_m": 0.003915138871,
+  "rms_velocity_mps": 0.00388874149,
+  "max_velocity_mps": 0.00674185463,
+  "rms_attitude_rad": 0.0007964511184,
+  "max_attitude_rad": 0.002434658353,
+  "rms_body_rate_rps": 2.061649062e-05,
+  "max_body_rate_rps": 4.701932731e-05,
+  "initial_rotor_state": "controller normalized actuator state, not measured RPM",
+  "hardware_validation": false,
+  "hashes": {
+    "controller": "f0e26b02ce8ed1d5f12fe8d9616960dcf13b0988c07d031670278d1d0e9efb81",
+    "controller_source": "fe624d0f85eed1a7eac8673ff9de38f20d7d890e1db4f7483735a0e7ca4a3bf6",
+    "comparison_source": "81638dacb5496bf39840d17864434bd7470be67b63d5480b534902033452b0b5",
+    "physics_model": "58ed923f61b72314610e71b59fe468af02a491d1a8857efc638dc8069c6cfca3",
+    "vehicle": "ea23cf4e1adf13b320f4230e4a6c931cb621eb251742113b164ab0d3c3d27edf",
+    "world": "6208a967f59b78e15cfe8f228ca8bf8015a82802151737501a8a74c537d00c26",
+    "trace": "02443bf6fd7330262544ab63177829c29061a219f6a1f2c1c8a4337f30521a3f"
+  }
+}

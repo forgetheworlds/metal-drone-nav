@@ -1,0 +1,14 @@
+INFO: raptor_webots: Starting controller: /Users/muadhsambul/RL/webots/controllers/raptor_webots/raptor_webots
+WEBOTS_START phase=physics-audit seed=1 step_ms=10 custom=phase=physics-audit;seed=1;policy=../assets/navigation.bin;speed=1.5;distance=4;goal=4,0,1.5;max_steps=320;profile=pitch;motor_sampling=average
+WEBOTS_SENSORS range=20x16 fov=1.571 self=0x600003dcc000
+WEBOTS_MODELS raptor=loaded path=/Users/muadhsambul/RL/webots/../assets/raptor.bin project=/Users/muadhsambul/RL/webots
+WEBOTS_STEP first
+WEBOTS_READ sensors 0,0,1.49946 q=2.01077e-22,-2.83864e-19,0.00258639,0.999997 v=0,0,-0.0981
+WEBOTS_RAPTOR action=0.606952,-0.0627792,0.748479,-0.428998
+WEBOTS_SET motors=-43.3122,43.0009,-43.5874,42.831 throttle=0.80602
+WEBOTS_CONTACT count=0
+WEBOTS_PROGRESS step=100 pz=1.40484 vz=0.201987 error=3.97729
+WEBOTS_PROGRESS step=200 pz=1.45107 vz=-0.00761007 error=3.99326
+WEBOTS_PROGRESS step=300 pz=1.43117 vz=0.0257549 error=3.92542
+INFO: raptor_webots: Terminating.
+UNSUPPORTED (log once): POSSIBLE ISSUE: unit 1 GLD_TEXTURE_INDEX_2D is unloadable and bound to sampler type (Float) - using zero texture because texture unloadable

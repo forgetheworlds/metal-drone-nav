@@ -23,7 +23,7 @@ From `physics.hpp` / `physics.metal`:
 - per-rotor thrust polynomial coefficients `[constant, linear, quadratic]` in
   rotor speed, per-rotor torque constants;
 - **first-order motor lag** with separate rising/falling time constants;
-- rotor **gyroscopic** torque term;
+- **rigid-body gyroscopic** torque term (`omega × J omega`); rotor inertia/gyroscopic coupling is not modeled;
 - gravity; wind enters as a **constant world-frame force vector**;
 - RAPTOR motor commands in [-1, 1], L2F rotor ordering.
 
@@ -39,11 +39,11 @@ L2F is the right target.
 | Missing effect | When it matters | Evidence |
 |---|---|---|
 | **Aerodynamic drag (linear + quadratic)** | Braking, terminal speed, wind response — grows with speed. We push 1.5–7.34 m/s measured | Huang et al., ICRA 2009 (https://ai.stanford.edu/~gabeh/papers/ICRA09_AeroEffects.pdf) — blade flapping and thrust variation with forward velocity; NeuroBEM hybrid aero model cuts model error ~50% vs rigid-body (https://kelia.github.io/publication/neuro-bem/) |
-| **Velocity-dependent thrust** (thrust drops/tilts in forward flight) | Any fast traversal; systematically changes climb at speed | Same sources; note **Webots' propeller model already has this**: `T = t1·|ω|·ω − t2·|ω|·V` (see `webots/README.md`). Our L2F polynomial depends on ω only → the two simulators will disagree at speed by construction |
+| **Velocity-dependent thrust** (thrust drops/tilts in forward flight) | Any fast traversal; systematically changes climb at speed | Same sources; Webots supports `T = t1·|ω|·ω − t2·|ω|·V`, but this project sets every `t2` to zero. Both configured plants currently omit that effect; framework support is not evidence of an enabled physical model |
 | **Ground / wall effect** (rotor proximity enhancement) | Low altitude, near tables, through gaps | Standard quadrotor aero; unmodelled here |
 | **Turbulence / gusts / prop-wash** | Wind is a constant force today; no gusts, no relative-airflow coupling | Our own evaluation already labels wind a "force-equivalent disturbance", not a velocity |
 | **Battery sag / ESC saturation** | Long runs, aggressive climbs | Battery-aware RL, arXiv 2609.37316 (2026): identified load-transient battery model + firmware saturation needed for aggressive flight |
-| **Actuator saturation** | Motor time constants exist but no explicit torque/RPM ceiling | Webots plant debug found `maxTorque` behaves as an acceleration cap — the two models impose different limits |
+| **Actuator saturation** | Normalized motor actions and rotor state are clamped; physical battery-dependent RPM/thrust authority and ESC limits are not identified | Webots uses a large kinematic `maxTorque` to suppress an extra numerical ramp. Its shaft speed is a force-equivalent proxy, not measured hardware RPM |
 
 **Verdict on physics:** For ≤1.5 m/s indoor flight, missing drag is the main
 defect but the biggest sim-to-real gap is probably *not* dynamics — it is
@@ -93,9 +93,7 @@ Problems:
 
 Research-backed corrections, in order:
 
-- **Potential-based shaping with geodesic distance**: Φ(s) − Φ(s′),
-  Φ = −geodesic_dist, policy-invariant (Ng et al. 1999) and removes the
-  anti-detour bias. `training_potential.hpp` already computes
+- **Potential-based shaping with geodesic distance**: `gamma * Phi(s_next) - Phi(s)`, with the same gamma as PPO and terminal Phi=0. Under the theorem assumptions it preserves optimal policies; it does not guarantee better exploration. `training_potential.hpp` already computes
   `Phi = −min(geodesic_distance, cap)/cap` grids — wire it into the reward.
 - **Action-smoothness regularization** — identified as critical for
   zero-shot real flight in SimpleFlight (arXiv 2412.11764, factor 3);
@@ -106,7 +104,7 @@ Research-backed corrections, in order:
 
 ## 5. Task and environment crudeness
 
-- **Geometry:** AABB boxes/doors/tables only. Real tasks need connected routes,
+- **Geometry:** fixed-capacity analytic boxes, spheres and vertical cylinders; richer rooms use combinations of those primitives. Real tasks need connected routes,
   occlusion, forced detours — the challenge bank exists for exactly this and the
   learned policies score 0/30 on two of its three families.
 - **Difficulty is not a continuum:** gap width, clearance, TTC and route length
@@ -156,3 +154,23 @@ Research-backed corrections, in order:
 - Battery-aware RL for aggressive flight, arXiv 2609.37316 (2026)
 - MAVRL (speed adaptation), RA-L 2025 — see docs/RESEARCH_NEXT_PHASE.md
 - FlightBench task descriptors (TO/VO/AOL) — see docs/RESEARCH_NEXT_PHASE.md
+
+
+## Vehicle geometry and model agreement — required before further claims
+
+The L2F mass/inertia/rotor-arm profile describes a30.6g Crazyflie-scale vehicle. The visible Webots airframe extends roughly5.3cm laterally from its center, but both navigation simulators use an18cm-radius sphere as the collision body. That sphere is a conservative safety envelope, not a measured airframe. Physical contact and safety-margin violations must be separated; shrinking the benchmark envelope must not be reported as learned improvement.
+
+Webots shaft velocity is computed from an arbitrary force-equivalent thrust constant, preserving the chosen force/torque curve but not identified physical motor RPM. The current motor lag is continuous in L2F RK4 and sampled analytically by the Webots controller before ODE advancement. Startup, motor timing and solver differences need a common-input trajectory comparison. Small upstream fixture error proves implementation agreement with L2F, not agreement with hardware or independent simulator dynamics.
+
+Immediate priority is replaying the same motor commands through both plants with aligned initial conditions and recording pose, velocity, attitude and rate errors. Then compare the same geometry and sensor poses, and finally closed-loop navigation. This separates dynamics, sensing and learned-control failures before adding arbitrary aerodynamic coefficients or changing rewards. The selected policy remains a baseline with unresolved transfer failures.
+
+[Bitcraze system-identification measurements](https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/functional-areas/pwm-to-thrust/) provide actuator evidence; [Crazyflow identification](https://learnsyslab.github.io/crazyflow/user-guide/dynamics/system-identification/) documents fitting and testing against distinct validation trajectories. These are references for calibration, not evidence that this project has calibrated hardware.
+
+
+## Common-command calibration result (2026-10-02)
+
+A free-running CPU L2F replay and independent Webots ODE plant now receive the same recorded motor commands after a2s hover warm-up. The original end-of-interval force sampling creates up to0.223rad/s roll-rate and0.233rad/s pitch-rate disagreement in the pulse cases. Analytically averaging the continuous actuator/thrust curve over each10ms command interval reduces those discrepancies to about0.00010/0.00107rad/s at10ms ODE steps. Reducing ODE steps to1ms while retaining100Hz RAPTOR and20Hz navigation gives maximum position errors0.183/0.175mm and maximum rate errors0.000037/0.000087rad/s in the roll/pitch cases.
+
+These are limited common-input model comparisons, not hardware identification or reliable learned navigation. They isolate a real actuator-sampling defect and show solver convergence. Neither configured model currently includes identified aerodynamics. Future navigation comparisons use the calibrated protocol explicitly and retain the old protocol as a baseline.
+
+Reproduce with `python3 webots/physics_audit.py --motor-sampling average --physics-step-ms 1 --profiles roll,pitch`. Rootcode uses Supervisor state only inside this diagnostic; navigation continues to consume sensor APIs. [Webots GPS implementation](https://github.com/cyberbotics/webots/blob/R2025a/src/webots/nodes/WbGps.cpp) reads instantaneous rigid-body velocity when a physics body exists; it is not a finite-difference estimate in this setup.

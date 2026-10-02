@@ -1,0 +1,1 @@
+{"phase":"physics-audit","seed":1,"success":false,"collision":false,"timeout":true,"steps":320,"time_s":3.2,"path_m":0.705982,"final_error_m":3.99039,"peak_speed_mps":0.790835,"min_sensor_range_m":1.78054,"altitude_min_m":1.19916,"altitude_max_m":1.5,"tracking_rms_mps":0.182525,"sensor_updates":64,"raptor_loaded":true,"navigation_loaded":false}

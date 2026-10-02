@@ -2,7 +2,7 @@
 
 **A from-scratch reinforcement-learning training engine that runs entirely in raw Metal on Apple Silicon — no PyTorch, no TensorFlow, no Python in the training loop — that trains a drone navigation policy to fly through cluttered environments above a real learned flight controller.**
 
-Built and validated on a MacBook-class Apple M3 (10 GPU cores, 16 GB unified memory) in a single day of automated research sessions.
+Built on Apple M3 (10 GPU cores, 16 GB unified memory). Numerical parity is checked against upstream models; reliable navigation transfer remains unproven.
 
 ---
 

@@ -23,7 +23,7 @@ Run one route in batch mode:
 
 ```sh
 /Users/muadhsambul/embodied/work/Webots.app/Contents/MacOS/webots \
-  --batch --mode=fast --no-rendering --stdout --stderr \
+  --minimize --batch --mode=fast --no-rendering --stdout --stderr \
   webots/worlds/a_to_b.wbt
 ```
 
@@ -52,6 +52,8 @@ After camera and collision-envelope calibration, `navigation.bin` completed all 
 
 The frozen RAPTOR hover diagnostic ran for 8 s with no contact. It settled at 1.448 m from a 1.5 m start and reached 0.759 m/s during startup. The 1 m/s world-velocity reference reached the 4 m goal in 3.65 s. Its whole-episode velocity tracking RMS was 0.243 m/s, including startup; measured forward speed was about 1 m/s by 2 s. These traces are in `results/diagnostics/`.
 
-The 36-case challenge matrix completed on seeds 41001–41006. The original policy finished 5/6 doorways, 4/6 tables, and 0/6 mixed layouts. The static policy finished 6/6 doorways, 2/6 tables, and 0/6 mixed layouts. Overall, 17/36 routes succeeded, 18 ended with physical contact, and one timed out. The mixed family caused a contact for every run. These results show clear transfer failures on mixed clutter. They do not support a broad-generalization claim. These are static worlds with zero wind, zero depth noise, and ideal Webots ego sensors. They do not test moving obstacles or noisy state estimation.
+The first cylinder-based matrix used the wrong primitive axis and is archived under `results/pre-cylinder-axis-correction/`. It does not establish the intended vertical-pole task results. The corrected generator uses Webots local Z as the cylinder axis; Supervisor checks on a table and mixed scene confirm the actual axes are world Z. After rerunning the24 affected episodes, both policies complete6/6 tables; mixed clutter remains weak (original1/6, static2/6). Doorway results from the unaffected boxes remain5/6 and6/6. These are development cases with ideal ego sensors and a conservative18cm collision sphere. They do not establish reliable broad transfer or actual-airframe collision accuracy.
+
+All batch launches use `--minimize --batch` and the RL-only port23456. The runtime also provides a `physics-audit` phase: it warms RAPTOR hover, applies small common motor-command pulses, and compares measured ODE states against a free-running CPU L2F reference. This calibrates numerical/model agreement; it is not hardware validation.
 
 Primary Webots R2025a references: [Propeller](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/propeller.md), [Motor](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/motor.md), [RangeFinder](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/rangefinder.md), [Physics](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/physics.md), [Supervisor](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/supervisor.md), [InertialUnit](https://github.com/cyberbotics/webots/blob/R2025a/docs/reference/inertialunit.md).

@@ -10,6 +10,7 @@
 #include "guidance.hpp"
 #include "physics.hpp"
 #include "raptor.hpp"
+#include "physics_comparison.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -32,6 +33,8 @@ const char* kMotorNames[4] = {"motor_fr", "motor_br", "motor_bl", "motor_fl"};
 
 struct Config {
     std::string phase="raptor-hover";
+    std::string physics_profile="hover";
+    std::string motor_sampling="end";
     std::string policy="../assets/navigation.bin";
     uint32_t seed=1;
     uint32_t max_steps=800;
@@ -58,6 +61,8 @@ Config parse_config(const char* custom) {
         if(eq!=std::string::npos) {
             const std::string key=item.substr(0,eq),value=item.substr(eq+1);
             if(key=="phase")c.phase=value;
+            else if(key=="profile")c.physics_profile=value;
+            else if(key=="motor_sampling")c.motor_sampling=value;
             else if(key=="policy")c.policy=value;
             else if(key=="seed")c.seed=uint32_t(std::strtoul(value.c_str(),nullptr,10));
             else if(key=="max_steps")c.max_steps=uint32_t(std::strtoul(value.c_str(),nullptr,10));
@@ -125,8 +130,12 @@ std::unordered_map<std::string,std::string> data_fields(const char* raw) {
 
 int main(int argc,char** argv) {
     wb_robot_init();
-    const int step_ms=int(std::round(wb_robot_get_basic_time_step()));
-    if(step_ms!=10){std::fprintf(stderr,"Webots basicTimeStep must be 10ms, got %d\n",step_ms);wb_robot_cleanup();return 2;}
+    const int physics_step_ms=int(std::round(wb_robot_get_basic_time_step()));
+    if(physics_step_ms<1 || 10%physics_step_ms!=0) {
+        std::fprintf(stderr,"physics step must divide the100Hz controller period\n");
+        wb_robot_cleanup();return 2;
+    }
+    const int step_ms=10; // RAPTOR remains100Hz with finer ODE integration.
     const Config config=parse_config(wb_robot_get_custom_data());
     std::printf("WEBOTS_START phase=%s seed=%u step_ms=%d custom=%s\n",config.phase.c_str(),config.seed,step_ms,wb_robot_get_custom_data()?wb_robot_get_custom_data():"");
     std::fflush(stdout);
@@ -152,6 +161,31 @@ int main(int argc,char** argv) {
     std::filesystem::create_directories(result_dir);
     std::ofstream trace(result_dir/"last-run-trace.csv",std::ios::trunc);
     trace<<"step,time_s,x,y,z,vx,vy,vz,target_vx,target_vy,target_vz,goal_error\n";
+    if(config.phase=="geometry-calibrate"){
+        std::ofstream geometry(result_dir/"geometry-axis-calibration.json",std::ios::trunc);
+        geometry<<"{\"obstacles\":[";
+        bool first=true;
+        for(int index=0;index<8;index++){
+            char def_name[40];std::snprintf(def_name,sizeof(def_name),"ChallengeObstacle%02d",index);
+            const WbNodeRef obstacle=wb_supervisor_node_get_from_def(def_name);
+            if(!obstacle)continue;
+            const double* obstacle_position=wb_supervisor_node_get_position(obstacle);
+            const double* obstacle_rotation=wb_supervisor_node_get_orientation(obstacle);
+            if(!first)geometry<<',';
+            first=false;
+            geometry<<"{\"def\":\""<<def_name<<"\",\"position_xyz_m\":["
+                    <<obstacle_position[0]<<','<<obstacle_position[1]<<','<<obstacle_position[2]
+                    <<"],\"local_z_world\":["<<obstacle_rotation[2]<<','<<obstacle_rotation[5]<<','<<obstacle_rotation[8]<<"]}";
+            std::printf("WEBOTS_GEOMETRY_CAL def=%s xyz=%g,%g,%g local_z_world=%g,%g,%g\n",
+                        def_name,obstacle_position[0],obstacle_position[1],obstacle_position[2],
+                        obstacle_rotation[2],obstacle_rotation[5],obstacle_rotation[8]);
+        }
+        geometry<<"]}\n";geometry.flush();geometry.close();
+        std::fflush(stdout);
+        wb_supervisor_simulation_quit(0);
+        wb_robot_cleanup();
+        return 0;
+    }
     nav_deployment::NavigationPolicy navigation;
     const bool policy_mode=config.phase=="navigation";
     if(policy_mode){
@@ -170,6 +204,7 @@ int main(int argc,char** argv) {
     raptor_loaded=true;
     std::printf("WEBOTS_MODELS raptor=%s path=%s project=%s\n",raptor_loaded?"loaded":"pending",raptor_path.string().c_str(),root.string().c_str());std::fflush(stdout);
     const RLPhysicsParams physics=rl_physics_crazyflie_default();
+    PhysicsComparison physics_comparison(physics,result_dir);
     const float c0=physics.rotor_thrust_coefficients[0],c1=physics.rotor_thrust_coefficients[1],c2=physics.rotor_thrust_coefficients[2];
     const float hover_force=physics.mass*9.81f/4.0f;
     float throttle=(-c1+std::sqrt(c1*c1-4.0f*c2*(c0-hover_force)))/(2.0f*c2);
@@ -194,23 +229,6 @@ int main(int argc,char** argv) {
     while(true) {
         const int step_status=wb_robot_step(step_ms);
         if(step_status==-1){std::printf("WEBOTS_STEP_END steps=%u\n",steps);std::fflush(stdout);break;}
-        if(config.phase=="geometry-calibrate"){
-            std::printf("WEBOTS_GEOMETRY_CAL_BEGIN\n");
-            for(int index=0;index<8;index++){
-                char def_name[40];std::snprintf(def_name,sizeof(def_name),"ChallengeObstacle%02d",index);
-                const WbNodeRef obstacle=wb_supervisor_node_get_from_def(def_name);
-                if(!obstacle){if(index<2)std::printf("WEBOTS_GEOMETRY_CAL_MISSING def=%s\n",def_name);continue;}
-                const double* obstacle_position=wb_supervisor_node_get_position(obstacle);
-                const double* obstacle_rotation=wb_supervisor_node_get_orientation(obstacle);
-                std::printf("WEBOTS_GEOMETRY_CAL def=%s xyz=%g,%g,%g local_z_world=%g,%g,%g\n",
-                            def_name,obstacle_position[0],obstacle_position[1],obstacle_position[2],
-                            obstacle_rotation[2],obstacle_rotation[5],obstacle_rotation[8]);
-            }
-            std::fflush(stdout);
-            wb_supervisor_simulation_quit(0);
-            wb_robot_cleanup();
-            return 0;
-        }
         if(steps==0){std::printf("WEBOTS_STEP first\n");std::fflush(stdout);}
         current_time=wb_robot_get_time();
         const double* gps_position=wb_gps_get_values(gps);const double* gps_world_velocity=wb_gps_get_speed_vector(gps);
@@ -222,6 +240,15 @@ int main(int argc,char** argv) {
         const float q[4]={float(imu_xyzw[3]),float(imu_xyzw[0]),float(imu_xyzw[1]),float(imu_xyzw[2])};
         const float body_rates[3]={float(gyro_values[0]),float(gyro_values[1]),float(gyro_values[2])};
         float rotation[9];raptor_quaternion_matrix(q,rotation);
+        if(config.phase=="physics-audit" && steps>=200) {
+            // Audit scoring reads ODE state explicitly. Navigation continues
+            // to use sensor APIs; no Supervisor state enters its observation.
+            const double* true_velocity=wb_supervisor_node_get_velocity(self);
+            const float audit_velocity[3]={float(true_velocity[0]),float(true_velocity[1]),float(true_velocity[2])};
+            const float world_rates[3]={float(true_velocity[3]),float(true_velocity[4]),float(true_velocity[5])};
+            float audit_rates[3];rotate_world_to_body(rotation,world_rates,audit_rates);
+            physics_comparison.observe(current_time,position,q,audit_velocity,audit_rates,motor_state);
+        }
         path+=std::sqrt(std::pow(position[0]-previous_position[0],2)+std::pow(position[1]-previous_position[1],2)+std::pow(position[2]-previous_position[2],2));
         for(int j=0;j<3;j++)previous_position[j]=position[j];
         const float speed=vector_norm3(world_velocity);peak_speed=std::fmax(peak_speed,speed);altitude_min=std::fmin(altitude_min,position[2]);altitude_max=std::fmax(altitude_max,position[2]);
@@ -312,13 +339,31 @@ int main(int argc,char** argv) {
         } else {
             raptor_forward(raptor,raptor_observation,hidden,motor_action);raptor_clip_action(motor_action);
         }
+        if(config.phase=="physics-audit" && steps>=200) {
+            physics_comparison.apply_pulse(config.physics_profile,2*throttle-1,motor_action);
+            physics_comparison.advance(motor_action);
+        }
         if(steps==0){std::printf("WEBOTS_RAPTOR action=%g,%g,%g,%g\n",motor_action[0],motor_action[1],motor_action[2],motor_action[3]);std::fflush(stdout);}
         const float dt=step_ms*0.001f;
         for(int i=0;i<4;i++){
             previous_action[i]=motor_action[i];const float setpoint=(motor_action[i]+1.0f)*0.5f;
             const float tau=setpoint>=motor_state[i]?physics.rotor_time_constants_rising[i]:physics.rotor_time_constants_falling[i];
-            const float alpha=std::exp(-dt/tau);motor_state[i]=alpha*motor_state[i]+(1.0f-alpha)*setpoint;
-            const float* thrust=&physics.rotor_thrust_coefficients[3*i];const float force=thrust[0]+thrust[1]*motor_state[i]+thrust[2]*motor_state[i]*motor_state[i];
+            const float initial=motor_state[i];
+            const float alpha=std::exp(-dt/tau);
+            motor_state[i]=alpha*initial+(1.0f-alpha)*setpoint;
+            const float* thrust=&physics.rotor_thrust_coefficients[3*i];
+            float force=thrust[0]+thrust[1]*motor_state[i]+thrust[2]*motor_state[i]*motor_state[i];
+            if(config.motor_sampling=="average") {
+                // ODE holds propeller force over one native interval. Integrate
+                // the same continuous first-order actuator and quadratic force
+                // curve used by L2F, rather than applying the end-of-step force.
+                const float delta=initial-setpoint;
+                const float first_moment=-tau*std::expm1(-dt/tau)/dt;
+                const float second_moment=-.5f*tau*std::expm1(-2*dt/tau)/dt;
+                const float mean_state=setpoint+delta*first_moment;
+                const float mean_squared=setpoint*setpoint+2*setpoint*delta*first_moment+delta*delta*second_moment;
+                force=thrust[0]+thrust[1]*mean_state+thrust[2]*mean_squared;
+            }
             const float omega=std::sqrt(std::fmax(force/kRotorThrustK,0.0f));wb_motor_set_velocity(motors[i],float(kMotorSign[i])*omega);
         }
         if(steps==0){std::printf("WEBOTS_SET motors=%g,%g,%g,%g throttle=%g\n",wb_motor_get_velocity(motors[0]),wb_motor_get_velocity(motors[1]),wb_motor_get_velocity(motors[2]),wb_motor_get_velocity(motors[3]),motor_state[0]);std::fflush(stdout);}
@@ -340,6 +385,7 @@ int main(int argc,char** argv) {
         if(collision||success) {std::printf("WEBOTS_BREAK event=collision_or_success step=%u\n",steps);completed=true;break;}
         if(steps>=max_steps){std::printf("WEBOTS_BREAK event=timeout step=%u\n",steps);timeout=true;completed=true;break;}
     }
+    if(config.phase=="physics-audit")physics_comparison.save(config.physics_profile,config.motor_sampling);
     std::printf("WEBOTS_LOOP_EXIT steps=%u completed=%d\n",steps,completed?1:0);std::fflush(stdout);
     const double* final_pos=wb_gps_get_values(gps);const float final_error=final_pos?float(std::sqrt(std::pow(goal[0]-final_pos[0],2)+std::pow(goal[1]-final_pos[1],2)+std::pow(goal[2]-final_pos[2],2))):NAN;
     std::ofstream metrics(result_dir/"last-run.json",std::ios::trunc);
