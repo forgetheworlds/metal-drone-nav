@@ -2,7 +2,7 @@
 EXTERNPROTO "../protos/RaptorCrazyflie.proto"
 WorldInfo {
   title "RAPTOR A-to-B Independent Webots Benchmark"
-  basicTimeStep 10
+  basicTimeStep 1
   gravity 9.81
   coordinateSystem "ENU"
   physicsDisableTime -1
@@ -31,5 +31,5 @@ RaptorCrazyflie {
   name "RaptorCrazyflie"
   controller "raptor_webots"
   supervisor TRUE
-  customData "phase=navigation;seed=2;policy=../assets/navigation.bin;speed=1.5;distance=4;goal=4,0,1.5;max_steps=800"
+  customData "phase=navigation;seed=2;policy=../assets/navigation.bin;speed=1.5;distance=4;goal=4,0,1.5;max_steps=800;profile=hover;motor_sampling=average"
 }
