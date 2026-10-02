@@ -192,3 +192,26 @@ python3 evidence.py --out artifacts
 ```
 
 The 3D crossing panel and GIF use recorded simulator poses and saved obstacle geometry. They are not camera footage. Pose paths use 20 Hz samples; terminal contact/end markers use exact JSON metadata. The original and threat-joint runs share the same world seed and obstacle path; the original policy collides and the later candidate succeeds.
+
+## Independent Webots transfer check
+
+Webots R2025a ran 36 seeded episodes on six doorways, six tables, and six mixed-clutter scenes, with both `navigation.bin` and `navigation-static.bin`. Webots used a 1 ms ODE step, 100 Hz RAPTOR updates, 20 Hz navigation updates, average actuator-force sampling, and the 18 cm spherical collision envelope. The matrix recorded 30 successes, two contacts, and four timeouts. The original policy completed 16/18 episodes; the static policy completed 14/18.
+
+| Family | Webots original | Webots static | Metal bounded original | Metal bounded static | Metal geometry only |
+|---|---:|---:|---:|---:|---:|
+| Doorway | 6/6 | 5/6 | 6/6 | 6/6 | 6/6 |
+| Table/overhang | 6/6 | 6/6 | 6/6 | 6/6 | 6/6 |
+| Mixed clutter | 4/6 | 3/6 | 4/6 | 5/6 | 6/6 |
+| Total | 16/18 | 14/18 | 16/18 | 17/18 | 18/18 |
+
+The six failures were: original policy mixed seeds 41002 and 41004 timed out at 8 s; static policy doorway seed 41004 timed out at 8 s; static policy mixed seed 41003 contacted an obstacle at 3.87 s, seed 41005 timed out at 8 s, and seed 41006 contacted an obstacle at 3.37 s. There were no doorway or table contacts. A route witness proves a feasible geometric path for the modeled envelope; it does not prove the actor can follow it.
+
+The paired Metal bounded runs completed 16/18 original-policy, 17/18 static-policy, and 18/18 geometry-only episodes. The original policy had two mixed-scene contacts; the static policy had one mixed-scene contact. These results do not isolate a simulator effect: the Webots runs use a different physical motor startup, a larger open-room floor/world extent, and the measured-camera frontend described below. The Metal table uses its fixed room bounds and initializes at hover motor state.
+
+The sensor and reset states still differ from Metal. Metal initializes motor state at computed hover RPM and casts 16×20 rays from the body reference point with vertical slope 0.75. Webots starts physical propeller speed at zero, commands hover throttle at time zero, and spins up through Webots motors. On the empty seed-1 trace, the vehicle was at z=1.49212 m with vz=−0.20076 m/s at 0.05 s; at 0.50 s it was at z=1.38128 m with vz=−0.11160 m/s. The Webots camera is 8 cm forward of the body reference point. Its 20×16, 90° horizontal-FOV image has native vertical slope 0.8; the frontend resamples it to 0.75, converts axial depth to ray range, then applies the same 2×2 minimum pool. Camera-origin poses are used for depth history, while the current vehicle pose remains body-centered. Webots GPS, InertialUnit, and Gyro are ideal. Depth noise and dropout are zero. The transfer check includes an actuator startup mismatch and has no estimator noise.
+
+An independent ray audit checked one recorded frame from a mixed-clutter contact and one bounded-room table episode. For the open mixed scene, 222 pixels that hit modeled surfaces had median absolute residual 0.49 mm, p95 4.38 mm, and max 16.7 mm. For the bounded table scene, 303 pixels had median 0.62 mm, p95 4.20 mm, and raw max 0.877 m. Seven pixels were within 2 mm of a cylinder tangent; excluding those near-tangent pixels, the max was 9.26 mm. This audit uses saved scene geometry and the measured camera pose for scoring only. It does not feed ground truth to the policy.
+
+The corrected-cylinder matrix replaces an earlier invalid run whose cylinders lay horizontally. Do not use that pre-correction matrix as vertical-pole evidence. The current table and mixed worlds were checked against their declared vertical cylinder axes. The full CSV, all six failed episodes with their exact worlds/logs/manifests, source and asset hashes, and both raw sensor audit inputs are packaged under `evidence/inputs/webots-raptor-1ms-average/`. The seed-41003 audit was a later diagnostic rerun; its route and log are labeled separately, and the matrix route was restored to the run-manifest hash. The bounded cases preserve the open-scene obstacle geometry and witness while adding room bounds at x=[−2,14], y=[−5,5], z=[0,5].
+
+These results are a small simulator transfer check. They do not establish robust generalization, hardware accuracy, or real-flight performance.

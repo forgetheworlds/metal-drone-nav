@@ -37,17 +37,41 @@ inline void sim_rotation(thread const float* q, thread float* r) {
     r[6]=2*(x*z-w*y);r[7]=2*(y*z+w*x);r[8]=1-2*(x*x+y*y);
 }
 inline float sim_normal(thread uint& rng) { float u=max(wurand(rng),1e-7f),v=wurand(rng);return sqrt(-2*log(u))*cos(6.28318530718f*v); }
-inline void sim_reset_one(device RLPhysicsState& s,device SimRun& run,device WWorld& world,device float* sensors,device float* commands,device const float* weights,constant RLPhysicsParams& p,constant SimConfig& cfg,uint n,bool first) {
+inline uint sim_domain_episode_seed(constant NavigationRuntimeConfig& runtime,constant SimConfig& cfg,uint env,uint episode) {
+    uint seed=runtime.domain_seed^cfg.seed^((env+1u)*0x9e3779b9u)^((episode+1u)*0x85ebca6bu);
+    seed^=seed>>16;seed*=0x7feb352du;seed^=seed>>15;seed*=0x846ca68bu;seed^=seed>>16;
+    return seed?seed:1u;
+}
+inline void sim_reset_one(device RLPhysicsState& s,device SimRun& run,device WWorld& world,device float* sensors,device float* commands,device const float* weights,device RLPhysicsParams* environment_physics,constant NavigationRuntimeConfig& runtime,constant RLPhysicsParams& p,constant SimConfig& cfg,uint n,bool first) {
     uint rng=first?(cfg.seed+n*747796405u+2891336453u):run.rng;
     uint episode_family=wtraining_family(cfg.family,rng);
     wgenerate(world,wrng(rng),episode_family,cfg.distance);
     world.wind[0]=sim_wind_param(cfg,n);world.wind[1]=0;world.wind[2]=0;
     for(uint j=0;j<3;j++){s.position[j]=j==2?1.5f:0;s.linear_velocity[j]=0;s.angular_velocity_body[j]=0;run.desired_velocity[j]=0;run.reference_position[j]=s.position[j];}
     s.orientation_wxyz[0]=1;for(uint j=1;j<4;j++)s.orientation_wxyz[j]=0;
-    float target=p.mass*9.81f/4,c0=p.rotor_thrust_coefficients[0],c1=p.rotor_thrust_coefficients[1],c2=p.rotor_thrust_coefficients[2];
-    float hover=clamp((-c1+sqrt(c1*c1-4*c2*(c0-target)))/(2*c2),p.action_min,p.action_max);
+    RLPhysicsParams episode_params=p;
+    if(runtime.enabled!=0 && runtime.domain_amplitude>0.0f){
+        RLPhysicsDomainSample domain_sample{};RLPhysicsParams nominal_params=p,varied{};RLPhysicsDomainRange domain_range=runtime.domain_range;
+        uint domain_rng=sim_domain_episode_seed(runtime,cfg,n,first?0u:run.episodes);
+        if(rl_physics_sample_domain(nominal_params,domain_rng,runtime.domain_amplitude,domain_range,varied,domain_sample))episode_params=varied;
+        else episode_params.mass=as_type<float>(0x7fc00000u);
+    }
+    environment_physics[n]=episode_params;
+    float hover[4];
+    if(runtime.enabled==0){
+        float target=p.mass*9.81f/4,c0=p.rotor_thrust_coefficients[0],c1=p.rotor_thrust_coefficients[1],c2=p.rotor_thrust_coefficients[2];
+        float nominal_hover=clamp((-c1+sqrt(c1*c1-4*c2*(c0-target)))/(2*c2),p.action_min,p.action_max);
+        for(uint j=0;j<4;j++)hover[j]=nominal_hover;
+    }else{
+        float target=episode_params.mass*9.81f/4;
+        for(uint rotor=0;rotor<4;rotor++){
+            uint c=3*rotor;float c0=episode_params.rotor_thrust_coefficients[c],c1=episode_params.rotor_thrust_coefficients[c+1],c2=episode_params.rotor_thrust_coefficients[c+2];
+            float discriminant=c1*c1-4*c2*(c0-target);
+            hover[rotor]=discriminant>=0.0f?clamp((-c1+sqrt(discriminant))/(2*c2),episode_params.action_min,episode_params.action_max):episode_params.action_max;
+        }
+    }
     float hidden[16];raptor_reset(weights,hidden);for(uint j=0;j<16;j++)run.hidden[j]=hidden[j];
-    for(uint j=0;j<4;j++){s.rpm[j]=hover;run.motors[j]=0;run.previous_nav[j]=0;}
+    for(uint j=0;j<4;j++){s.rpm[j]=hover[j];run.motors[j]=0;run.previous_nav[j]=0;}
     if(world.family==10 || world.family==11) {
         s.linear_velocity[0]=cfg.speed;
         run.desired_velocity[0]=cfg.speed;
@@ -86,8 +110,27 @@ inline void sim_apply_challenge_world(device RLPhysicsState& state,device SimRun
     }
     bank_active_ids[env]=level_id;
 }
-kernel void sim_reset(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],constant RLPhysicsParams& p [[buffer(6)]],constant SimConfig& cfg [[buffer(7)]],device float* poses [[buffer(8)]],device const WWorld* bank_worlds [[buffer(9)]],device const uint* bank_schedule [[buffer(10)]],constant ChallengeBankControl& bank_control [[buffer(11)]],device uint* bank_active_ids [[buffer(12)]],uint n [[thread_position_in_grid]]) {
-    if(n<cfg.n){sim_reset_one(states[n],runs[n],worlds[n],sensors,commands,weights,p,cfg,n,true);if(bank_control.enabled!=0)sim_apply_challenge_world(states[n],runs[n],worlds[n],bank_worlds,bank_schedule,bank_control,bank_active_ids,cfg,n,0);else bank_active_ids[n]=0xffffffffu;for(uint j=0;j<96;j++)poses[n*96+j]=0;}
+// Task seeds are separate from action sampling. A rejected task remains
+// explicitly invalid; host validation stops before any optimizer update.
+inline void sim_reset_navigation_task(device RLPhysicsState& state,device SimRun& run,
+                                     device WWorld& world,device NavigationTaskState& task,
+                                     constant NavigationTaskControl& control,
+                                     constant SimConfig& cfg,uint env) {
+    task=NavigationTaskState{};
+    if(control.enabled==0)return;
+    uint task_rng=cfg.seed^((env+1u)*0x27d4eb2du)^((run.episodes+1u)*0x165667b1u);
+    navigation_generate_task(world,task,task_rng,control.config);
+    if(task.valid==0)return;
+    navigation_task_apply_start(task,state);
+    run.yaw=task.start_yaw_rad;run.initial_distance=task.initial_distance_m;
+    for(uint axis=0;axis<3;axis++) {
+        run.reference_position[axis]=state.position[axis];
+        run.desired_velocity[axis]=state.linear_velocity[axis];
+    }
+    world.wind[0]=sim_wind_param(cfg,env);world.wind[1]=0;world.wind[2]=0;
+}
+kernel void sim_reset(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],constant RLPhysicsParams& p [[buffer(6)]],constant SimConfig& cfg [[buffer(7)]],device float* poses [[buffer(8)]],device const WWorld* bank_worlds [[buffer(9)]],device const uint* bank_schedule [[buffer(10)]],constant ChallengeBankControl& bank_control [[buffer(11)]],device uint* bank_active_ids [[buffer(12)]],device RLPhysicsParams* environment_physics [[buffer(13)]],constant NavigationRuntimeConfig& runtime [[buffer(14)]],device NavigationTaskState* task_states [[buffer(15)]],constant NavigationTaskControl& task_control [[buffer(16)]],uint n [[thread_position_in_grid]]) {
+    if(n<cfg.n){sim_reset_one(states[n],runs[n],worlds[n],sensors,commands,weights,environment_physics,runtime,p,cfg,n,true);if(bank_control.enabled!=0)sim_apply_challenge_world(states[n],runs[n],worlds[n],bank_worlds,bank_schedule,bank_control,bank_active_ids,cfg,n,0);else bank_active_ids[n]=0xffffffffu;sim_reset_navigation_task(states[n],runs[n],worlds[n],task_states[n],task_control,cfg,n);for(uint j=0;j<96;j++)poses[n*96+j]=0;}
 }
 kernel void sim_depth(device const RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],constant RLPhysicsParams& p [[buffer(4)]],constant SimConfig& cfg [[buffer(5)]],device float* poses [[buffer(6)]],uint i [[thread_position_in_grid]]) {
     uint n=i/320,k=i%320;if(n>=cfg.n || (cfg.eval && runs[n].episodes) || runs[n].steps%cfg.sensor_period!=0)return;
@@ -185,10 +228,11 @@ kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* r
     if(cfg.mode==19){float magnitude=length(float3(v[0],v[1],v[2]));if(magnitude>1e-8f){float scale=cfg.speed/magnitude;for(uint j=0;j<3;j++)v[j]*=scale;}}
     for(uint j=0;j<3;j++)runs[n].desired_velocity[j]=r[j*3]*v[0]+r[j*3+1]*v[1]+r[j*3+2]*v[2];runs[n].yaw+=runs[n].previous_nav[3]*p.dt*cfg.substeps*0.5f;
 }
-kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],device const float* critic [[buffer(6)]],device float* rewards [[buffer(7)]],device float* next_values [[buffer(8)]],device uchar* terminated [[buffer(9)]],device uchar* truncated [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],device const WWorld* bank_worlds [[buffer(13)]],device const uint* bank_schedule [[buffer(14)]],constant ChallengeBankControl& bank_control [[buffer(15)]],device uint* bank_active_ids [[buffer(16)]],device uint* bank_transition_ids [[buffer(17)]],uint n [[thread_position_in_grid]]) {
+kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],device const float* critic [[buffer(6)]],device float* rewards [[buffer(7)]],device float* next_values [[buffer(8)]],device uchar* terminated [[buffer(9)]],device uchar* truncated [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],device const WWorld* bank_worlds [[buffer(13)]],device const uint* bank_schedule [[buffer(14)]],constant ChallengeBankControl& bank_control [[buffer(15)]],device uint* bank_active_ids [[buffer(16)]],device uint* bank_transition_ids [[buffer(17)]],device RLPhysicsParams* environment_physics [[buffer(18)]],constant NavigationRuntimeConfig& runtime [[buffer(19)]],device NavigationTaskState* task_states [[buffer(20)]],constant NavigationTaskControl& task_control [[buffer(21)]],uint n [[thread_position_in_grid]]) {
     if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;RLPhysicsState s=states[n];float h[16],motors[4];for(uint j=0;j<16;j++)h[j]=runs[n].hidden[j];for(uint j=0;j<4;j++)motors[j]=runs[n].motors[j];
+    RLPhysicsParams step_params=p;if(runtime.enabled!=0)step_params=environment_physics[n];
     float3 goal=float3(worlds[n].goal[0],worlds[n].goal[1],worlds[n].goal[2]);float before=length(goal-float3(s.position[0],s.position[1],s.position[2]));float yaw=runs[n].yaw,c=cos(yaw),si=sin(yaw);bool collision=false;float step_clearance=12;
-    float wind[3]={worlds[n].wind[0]*p.mass,worlds[n].wind[1]*p.mass,worlds[n].wind[2]*p.mass};
+    float wind[3]={worlds[n].wind[0]*step_params.mass,worlds[n].wind[1]*step_params.mass,worlds[n].wind[2]*step_params.mass};
     for(uint step=0;step<cfg.substeps;step++) {
         float obs[22],v[3];for(uint j=0;j<3;j++)v[j]=runs[n].desired_velocity[j];
         for(uint j=0;j<3;j++)runs[n].reference_position[j]+=v[j]*p.dt;
@@ -197,7 +241,7 @@ kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRu
         float ch=cos(yaw*.5f),sh=sin(yaw*.5f),q[4]={ch*s.orientation_wxyz[0]+sh*s.orientation_wxyz[3],ch*s.orientation_wxyz[1]+sh*s.orientation_wxyz[2],ch*s.orientation_wxyz[2]-sh*s.orientation_wxyz[1],ch*s.orientation_wxyz[3]-sh*s.orientation_wxyz[0]};
         float r[9];sim_rotation(q,r);for(uint j=0;j<9;j++)obs[3+j]=r[j];obs[12]=clamp(c*dv[0]+si*dv[1],-1.0f,1.0f);obs[13]=clamp(-si*dv[0]+c*dv[1],-1.0f,1.0f);obs[14]=clamp(dv[2],-1.0f,1.0f);
         for(uint j=0;j<3;j++)obs[15+j]=s.angular_velocity_body[j];for(uint j=0;j<4;j++)obs[18+j]=motors[j];
-        raptor_forward(weights,obs,h,motors);raptor_clip_action(motors);RLPhysicsState next;rl_physics_step(s,motors,wind,p,next);
+        raptor_forward(weights,obs,h,motors);raptor_clip_action(motors);RLPhysicsState next;rl_physics_step(s,motors,wind,step_params,next);
         bool valid=true;for(uint j=0;j<3;j++)valid=valid&&isfinite(next.position[j])&&isfinite(next.linear_velocity[j])&&isfinite(next.angular_velocity_body[j]);for(uint j=0;j<4;j++)valid=valid&&isfinite(next.orientation_wxyz[j])&&isfinite(next.rpm[j]);if(!valid){collision=true;break;}
         runs[n].path+=distance(float3(s.position[0],s.position[1],s.position[2]),float3(next.position[0],next.position[1],next.position[2]));s=next;runs[n].elapsed+=p.dt;
         float clearance=wclearance(worlds[n],wv(s.position[0],s.position[1],s.position[2]),runs[n].elapsed);step_clearance=min(step_clearance,clearance);runs[n].min_clearance=min(runs[n].min_clearance,clearance);runs[n].peak_speed=max(runs[n].peak_speed,length(float3(s.linear_velocity[0],s.linear_velocity[1],s.linear_velocity[2])));
@@ -206,10 +250,21 @@ kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRu
     runs[n].steps++;states[n]=s;for(uint j=0;j<16;j++)runs[n].hidden[j]=h[j];for(uint j=0;j<4;j++)runs[n].motors[j]=motors[j];
     float after=length(goal-float3(s.position[0],s.position[1],s.position[2]));bool success=after<(cfg.mode==20?.10f:.35f)&&!collision,timeout=runs[n].steps>=cfg.max_steps;
     rewards[row]=(before-after)*2-0.01f-cfg.risk_coef*clamp((0.6f-step_clearance)/0.6f,0.0f,1.0f)+(success?10.0f:0)-(collision?10.0f:0);terminated[row]=collision||success;truncated[row]=timeout&&!terminated[row];
+    if(task_control.enabled!=0) {
+        float executed[4]={runs[n].desired_velocity[0],runs[n].desired_velocity[1],
+                           runs[n].desired_velocity[2],runs[n].previous_nav[3]*0.5f};
+        NavigationTaskStep outcome=navigation_task_step(task_states[n],task_control.config,
+            states[n].position,states[n].linear_velocity,executed,uint(collision),uint(timeout));
+        // Contact is still the historical18cm sphere contract in this first
+        // task experiment. Mechanical contact is audited separately.
+        success=outcome.stable_success!=0&&!collision;timeout=outcome.timeout!=0;
+        rewards[row]=outcome.reward;terminated[row]=collision||success;
+        truncated[row]=timeout&&!terminated[row];
+    }
     bank_transition_ids[row]=bank_control.enabled!=0?bank_active_ids[n]:0xffffffffu;
     float co[32],hidden[64];sim_critic_obs(s,worlds[n],runs[n],co);next_values[row]=ppo_critic_value(critic,co,hidden);
     if(success||collision||timeout) {
         runs[n].successes+=success;runs[n].collisions+=collision;runs[n].timeouts+=timeout&&!terminated[row];runs[n].episodes++;runs[n].success_time+=success?runs[n].elapsed:0;runs[n].total_path+=runs[n].path;runs[n].total_elapsed+=runs[n].elapsed;runs[n].final_progress+=1-after/max(runs[n].initial_distance,1e-4f);
-        if(!cfg.eval){sim_reset_one(states[n],runs[n],worlds[n],sensors,commands,weights,p,cfg,n,false);if(bank_control.enabled!=0)sim_apply_challenge_world(states[n],runs[n],worlds[n],bank_worlds,bank_schedule,bank_control,bank_active_ids,cfg,n,cfg.tick+1);else bank_active_ids[n]=0xffffffffu;}
+        if(!cfg.eval){sim_reset_one(states[n],runs[n],worlds[n],sensors,commands,weights,environment_physics,runtime,p,cfg,n,false);if(bank_control.enabled!=0)sim_apply_challenge_world(states[n],runs[n],worlds[n],bank_worlds,bank_schedule,bank_control,bank_active_ids,cfg,n,cfg.tick+1);else bank_active_ids[n]=0xffffffffu;sim_reset_navigation_task(states[n],runs[n],worlds[n],task_states[n],task_control,cfg,n);}
     }
 }

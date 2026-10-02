@@ -1,0 +1,121 @@
+{
+  "schema": "webots-transfer-matrix-manifest-v1",
+  "webots_release": "R2025a",
+  "date": "2026-10-02",
+  "protocol": {
+    "physics_step_ms": 1,
+    "raptor_control_period_ms": 10,
+    "navigation_period_ms": 50,
+    "actuator_sample": "average over each 10 ms interval",
+    "physics_profile": "hover",
+    "episode_limit_steps": 800,
+    "speed_cap_mps": 1.5,
+    "start_xyz_m": [
+      0,
+      0,
+      1.5
+    ],
+    "goal_xyz_m": [
+      4,
+      0,
+      1.5
+    ],
+    "collision_radius_m": 0.18,
+    "sensor_range_max_m": 12,
+    "sensor_noise_stddev_m": 0,
+    "dropout": 0,
+    "ego_sensors": "ideal GPS, InertialUnit and Gyro; no estimator noise"
+  },
+  "matrix": {
+    "rows": 36,
+    "successes": 30,
+    "collisions": 2,
+    "timeouts": 4,
+    "families": [
+      "doorway",
+      "table_overhang",
+      "mixed_clutter"
+    ],
+    "seeds": [
+      41001,
+      41002,
+      41003,
+      41004,
+      41005,
+      41006
+    ],
+    "policies": [
+      "navigation.bin",
+      "navigation-static.bin"
+    ],
+    "csv_sha256": "da84440cae271a3e14ac25d82e6c2b61fe2917224828ff63a218fd2be09b38b2"
+  },
+  "matrix_source_hashes": {
+    "controller_source_sha256": "70e7753f3b2c51e74f7af7a55f2f444046fc03d38d43f98436575704e7edf7d5",
+    "controller_binary_sha256": "2a442c25aa628fbb19def19ec8481fcb8ebefe2f61206c9a2813c788d0efede2",
+    "vehicle_proto_sha256": "ea23cf4e1adf13b320f4230e4a6c931cb621eb251742113b164ab0d3c3d27edf",
+    "navigation_actor_sha256": {
+      "navigation.bin": "d13c1b3f3965ca0e6df5ec94cb1d42b944f70d7ff5a1f875e3218452caea203d",
+      "navigation-static.bin": "d72ca47054a14eecabf5c366c0ff0bf91fda2617444fcb0a6c4716adf85e7015"
+    },
+    "raptor_actor_sha256": "94e6c4ec01a1719f715097dbbd2d5cc6ab32471a64298db4f55f6a41ef9fa808",
+    "range_calibration_sha256": "34db9f4c966ee639b96ae693134abce175dcd979d8ec755235a8e1adcf3670ff",
+    "generator_sha256": "558c98217ba51c80402491870bf4b7a0313df4462dd861f409d48be1b7b07ec2",
+    "benchmark_runner_sha256": "628163c7b796b6bbc9effdf3c5bea75378d48b2677b3febc74bc22b288fa08ee",
+    "l2f_physics_header_sha256": "58ed923f61b72314610e71b59fe468af02a491d1a8857efc638dc8069c6cfca3",
+    "controller_source_hash_all_36": "70e7753f3b2c51e74f7af7a55f2f444046fc03d38d43f98436575704e7edf7d5",
+    "controller_binary_sha256_all_36": "2a442c25aa628fbb19def19ec8481fcb8ebefe2f61206c9a2813c788d0efede2",
+    "vehicle_proto_sha256_all_36": "ea23cf4e1adf13b320f4230e4a6c931cb621eb251742113b164ab0d3c3d27edf",
+    "matrix_run_manifest_count": 36,
+    "manifest_hash_consistency": true
+  },
+  "current_audit_code": {
+    "controller_source_sha256": "ab9c47bc961b012e6a8a2b79f9deaa9375dc4d83d10e6e7f5b23a98524c80d8c",
+    "binary_sha256": "f73b68ce3a1d99000252cb29107ce80abe34f801e274ffd7957947f4fd67f148",
+    "matrix_source_reconstructed_after_removing_optional_sensor_audit": "70e7753f3b2c51e74f7af7a55f2f444046fc03d38d43f98436575704e7edf7d5",
+    "sensor_audit_flag_default": false
+  },
+  "reproduction": {
+    "generator": "python3 webots/challenge_generator.py --seeds 41001,41002,41003,41004,41005,41006 --families doorway,table_overhang,mixed_clutter --policies ../assets/navigation.bin,../assets/navigation-static.bin --run --physics-step-ms 1 --motor-sampling average",
+    "webots_launch": "Webots R2025a --minimize --batch --mode=fast --no-rendering --port=23456",
+    "episode_vs_csv_check": "all 36 episode JSON records match success/collision/timeout/steps/time and protocol columns in the CSV"
+  },
+  "start_state_mismatch": {
+    "Metal": "L2F motor states initialize at computed hover RPM",
+    "Webots": "propeller angular velocity starts at zero; hover throttle is commanded at t=0 and Webots motor/ODE spins up",
+    "observed_on_empty_seed_1_trace": {
+      "at_0.05s": {
+        "z_m": 1.49212,
+        "vz_mps": -0.200758
+      },
+      "at_0.50s": {
+        "z_m": 1.38128,
+        "vz_mps": -0.111598
+      }
+    }
+  },
+  "limitations": [
+    "ideal ego sensors and zero configured depth noise/dropout",
+    "simulator benchmark only; no hardware or real-flight evidence",
+    "route witness validates existence of a geometric path, not policy behavior"
+  ],
+  "evidence_files_sha256": {
+    "challenge-matrix.csv": "da84440cae271a3e14ac25d82e6c2b61fe2917224828ff63a218fd2be09b38b2",
+    "failure-episodes.json": "64385a726ea03f9bd233f09be4ac25a423100bdb5954f902b5a8cf1c214d5f27",
+    "mixed-static-contact-41003-audit-rerun.log": "a253a4b3602731cd9a026001f9ceec909d56d2b34ee5f8ac19052e301193724e",
+    "mixed-static-contact-41003-audit-rerun.wbt": "99eb0191313ba6b72e02dbbe124bbd584a6123da42440eea3a21cbad55b88374",
+    "mixed-static-contact-41003.run-manifest.json": "8e6e1663f71ebea252d8d050e1856c41cd05b13356724e9d379e1542471bed96",
+    "mixed-static-contact-41003.wbt": "274a1be87d916650263fbf3e6645a4c900db0d18916fb0a21f47de1828f42cca",
+    "range-ray-audits.json": "d28b0f1231cc95eb17b968df31fca29e4807e957352c8fcffd07502afdf11760"
+  },
+  "baseline_a_to_b_check": {
+    "benchmark_rows": 6,
+    "successes": 5,
+    "collisions": 1,
+    "timeouts": 0,
+    "benchmark_csv_sha256": "3cfa8a0c34128ceeb574b51bead87018b04a77e35420727ea1fdf6027b5a566a",
+    "seed_1_route_sha256": "c2a507981f7189e05e7847d626c646bdc5a310b6697ca3ae31908513151bc1a8",
+    "seed_1_trace_sha256": "df1e3fc3b5d336c9732af3ec52837eb7ea2b81ccfe11286b7ae831c1c1bc4198",
+    "all_rows_match_episode_and_route_protocol": true
+  }
+}

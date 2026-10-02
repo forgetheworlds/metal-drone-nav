@@ -46,7 +46,7 @@ inline void rl_physics_rotate_body_to_world(thread const float* q, thread const 
     out[2] = v[2] + q[0]*tz + q[1]*ty - q[2]*tx;
 }
 
-inline void rl_physics_derivative(constant RLPhysicsParams& p, thread const RLPhysicsState& s,
+inline void rl_physics_derivative(thread const RLPhysicsParams& p, thread const RLPhysicsState& s,
                                   thread const float* setpoint, thread const float* wind_force_world,
                                   thread RLPhysicsState& d) {
     float thrust[3] = {0.0f, 0.0f, 0.0f};
@@ -105,7 +105,7 @@ inline void rl_physics_add_scaled(thread const RLPhysicsState& s, thread const R
     for (uint i = 0; i < 4; ++i) out.rpm[i] = s.rpm[i] + scale*d.rpm[i];
 }
 
-inline void rl_physics_rk4(constant RLPhysicsParams& p, thread const RLPhysicsState& s,
+inline void rl_physics_rk4(thread const RLPhysicsParams& p, thread const RLPhysicsState& s,
                            thread const float* setpoint, thread const float* wind_force_world,
                            thread RLPhysicsState& out) {
     RLPhysicsState k1{}, k2{}, k3{}, k4{}, temp{};
@@ -130,7 +130,7 @@ inline void rl_physics_rk4(constant RLPhysicsParams& p, thread const RLPhysicsSt
 
 // `action` uses RAPTOR's [-1,1] range and rotor order. Wind is a force in N.
 inline void rl_physics_step(thread const RLPhysicsState& state, thread const float* action,
-                            thread const float* wind_force_world, constant RLPhysicsParams& params,
+                            thread const float* wind_force_world, thread const RLPhysicsParams& params,
                             thread RLPhysicsState& next_state) {
     float setpoint[4];
     const float half_range = (params.action_max - params.action_min) * 0.5f;

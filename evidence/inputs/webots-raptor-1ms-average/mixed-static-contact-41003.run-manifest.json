@@ -1,0 +1,28 @@
+{
+  "schema": "webots-challenge-run-v1",
+  "webots_release": "R2025a",
+  "policy": "navigation-static.bin",
+  "family": "mixed_clutter",
+  "seed": 41003,
+  "physics_basic_time_step_ms": 1,
+  "raptor_control_period_ms": 10,
+  "navigation_period_ms": 50,
+  "motor_sampling": "average",
+  "physics_profile": "hover",
+  "files_sha256": {
+    "route_world": "274a1be87d916650263fbf3e6645a4c900db0d18916fb0a21f47de1828f42cca",
+    "generator_metadata": "3e207e6e31de157e776a90d7354753eb3c91a12440034b9a14afb89632019b51",
+    "navigation_actor": "d72ca47054a14eecabf5c366c0ff0bf91fda2617444fcb0a6c4716adf85e7015",
+    "raptor_actor": "94e6c4ec01a1719f715097dbbd2d5cc6ab32471a64298db4f55f6a41ef9fa808",
+    "controller_source": "70e7753f3b2c51e74f7af7a55f2f444046fc03d38d43f98436575704e7edf7d5",
+    "controller_binary": "2a442c25aa628fbb19def19ec8481fcb8ebefe2f61206c9a2813c788d0efede2",
+    "vehicle_proto": "ea23cf4e1adf13b320f4230e4a6c931cb621eb251742113b164ab0d3c3d27edf",
+    "range_calibration": "34db9f4c966ee639b96ae693134abce175dcd979d8ec755235a8e1adcf3670ff"
+  },
+  "collision_radius_m": 0.18,
+  "range_noise_stddev_m": 0.0,
+  "ego_sensors": "ideal Webots GPS, InertialUnit, and Gyro; no estimator noise",
+  "startup_condition": "The reference L2F state starts at hover rpm; Webots motor internal angular velocity starts at zero and spins up from the first command.",
+  "actor_inputs": "Depth and ego state only. Obstacle geometry and route-witness metadata are not passed in Robot.customData or observations.",
+  "real_flight_claim": false
+}

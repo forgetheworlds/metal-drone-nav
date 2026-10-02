@@ -364,7 +364,7 @@ inline BankScore run(Metal& metal, const std::string& checkpoint_path,
     if (!checkpoint) fail("cannot open checkpoint: " + checkpoint_path);
     const PpoCheckpointHeader header = read_checkpoint_header(checkpoint);
     if (!checkpoint || header.actor_count != fixed_ppo::actor_param_count ||
-        header.critic_count != fixed_ppo::critic_param_count || header.version < 3 || header.version > 6)
+        header.critic_count != fixed_ppo::critic_param_count || header.version < 3 || header.version > 7)
         fail("checkpoint header/dimensions are unsupported");
     std::vector<float> actor(header.actor_count), critic(header.critic_count);
     checkpoint.read(reinterpret_cast<char*>(actor.data()), std::streamsize(actor.size() * sizeof(float)));
