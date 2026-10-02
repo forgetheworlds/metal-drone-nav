@@ -1,6 +1,6 @@
 ## Current working objective — updated 2026-10-01
 
-Build on the verified Metal-native drone navigation engine in /Users/muadhsambul/RL, following GOAL.md, nextphase1.md and CODE_DIRECTION.md. Establish and improve a fast, robust local depth-navigation policy that maps goal/waypoint, perception and ego state to [vx, vy, vz, yaw_rate], then uses the actual RAPTOR controller to drive motors. Identify generalization limits through richer seeded 3D tasks, failure analysis and challenge-focused PPO training; test alternative methods such as GR2PO only through justified controlled comparisons. Validate the full stack in independent Webots physics, sensors, actuators and collisions, preserve genuinely held-out task splits, and measure speed, reliability, dynamics and sensing robustness. Preserve strong baselines and produce reproducible benchmarks, plots, rendered worlds and recorded videos that show both improvements and failures. Keep the specialized Metal hot path and verified RAPTOR/L2F/PPO behavior; follow the coding direction, use only Luna subagents and no skills.
+Build on the verified Metal-native drone navigation engine in /Users/muadhsambul/RL, following GOAL.md, docs/NEXT_PHASE.md and docs/CODE_DIRECTION.md. Establish and improve a fast, robust local depth-navigation policy that maps goal/waypoint, perception and ego state to [vx, vy, vz, yaw_rate], then uses the actual RAPTOR controller to drive motors. Identify generalization limits through richer seeded 3D tasks, failure analysis and challenge-focused PPO training; test alternative methods such as GR2PO only through justified controlled comparisons. Validate the full stack in independent Webots physics, sensors, actuators and collisions, preserve genuinely held-out task splits, and measure speed, reliability, dynamics and sensing robustness. Preserve strong baselines and produce reproducible benchmarks, plots, rendered worlds and recorded videos that show both improvements and failures. Keep the specialized Metal hot path and verified RAPTOR/L2F/PPO behavior; follow the coding direction, use only Luna subagents and no skills.
 
 The original specification below remains the technical baseline. The next-phase brief and coding direction extend it; this update does not claim completion.
 
@@ -1157,9 +1157,9 @@ Create/update:
 - `README.md` — build/run/benchmark basics;
 - `STATUS.md` — what currently works, what fails, next highest-leverage step;
 - `DECISIONS.md` — important architectural choices and evidence;
-- `BENCHMARKS.md` — machine, commit, configuration, exact commands, results;
-- `RESEARCH_LOG.md` — hypothesis → experiment → result → conclusion;
-- `docs/` for any deeper notes that are truly needed.
+- `docs/BENCHMARKS.md` — machine, commit, configuration, exact commands, results;
+- `docs/RESEARCH_LOG.md` — hypothesis → experiment → result → conclusion;
+- `docs/` for the remaining research and planning notes that are truly needed.
 
 Do not hide failed experiments. Failed hypotheses are useful evidence.
 
@@ -1570,7 +1570,7 @@ extra features
 
 If forced to choose between a flashy but unverifiable end-to-end demo and a smaller subsystem with strong parity tests and benchmark evidence, choose the verified subsystem.
 
-At the end of the work session, leave the repository in a state where another capable agent can immediately continue. `STATUS.md`, `DECISIONS.md`, `BENCHMARKS.md`, tests, and reproducible commands are part of the product.
+At the end of the work session, leave the repository in a state where another capable agent can immediately continue. `STATUS.md`, `DECISIONS.md`, `docs/BENCHMARKS.md`, tests, and reproducible commands are part of the product.
 
 The north-star question for every line of code is:
 

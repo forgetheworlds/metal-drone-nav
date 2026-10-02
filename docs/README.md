@@ -1,0 +1,22 @@
+# Project documents
+
+Research, planning and measurement documents for the Metal drone navigation
+project. `README.md` and `GOAL.md` stay at the repository root; everything else
+lives here.
+
+| Document | What it is |
+|---|---|
+| [NEXT_PHASE.md](NEXT_PHASE.md) | The current phase brief: general local navigation, training-distribution research, Webots validation, and what "evidence matters" means for this repo |
+| [RESEARCH_NEXT_PHASE.md](RESEARCH_NEXT_PHASE.md) | The next experiment decision — PLR-style seeded task replay as the PPO baseline test, with the GR2PO and external-benchmark assessments |
+| [RESEARCH_LOG.md](RESEARCH_LOG.md) | Hypothesis → experiment → result → conclusion, including rejected and failed hypotheses |
+| [BENCHMARKS.md](BENCHMARKS.md) | Every measured number: machine, commit, exact command, configuration, result, and which earlier measurements were discarded as invalid |
+| [CODE_DIRECTION.md](CODE_DIRECTION.md) | The coding standard this project is written to, kept verbatim |
+| [M3_RESEARCH.md](M3_RESEARCH.md) | Apple M3 / Apple GPU family 9 feature research with cited Apple sources and a ranked experiment list |
+
+Root-level context documents:
+
+| Document | What it is |
+|---|---|
+| [../README.md](../README.md) | Build, run, results and repository map |
+| [../GOAL.md](../GOAL.md) | The outcome specification and execution contract — what "done" means and why each design choice was made |
+| [../THIRD_PARTY_LICENSES.txt](../THIRD_PARTY_LICENSES.txt) | MIT notices for the RAPTOR / RLtools source and weights |

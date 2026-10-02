@@ -72,7 +72,7 @@ Box-trained best checkpoint,128 freshseed800001 episodes at speed1/goal3m: learn
 
 ## Final deliverable evaluation
 
-Source base `f758f57`, selected checkpoint `results/guided-table-memory.bin.best`, guided184 actor with recorded geometry memory and velocity contract1. Evaluation command `python3 evaluation.py`;28 sequential configurations,128 episodes each,1.5m/s intent,4m goal. Machine-readable evidence is preserved in `assets/evaluation.csv`; the local run is `results/evaluation.csv`. Each row includes actual printed metrics and GPU/host times. Baseline seed800001, second fresh seed900001, training selection seed700001.
+Source base `f758f57`, selected checkpoint `assets/checkpoints/guided-table-memory.bin.best`, guided184 actor with recorded geometry memory and velocity contract1. Evaluation command: `python3 evaluation.py --checkpoint assets/checkpoints/guided-table-memory.bin.best`; 28 sequential configurations, 128 episodes each, 1.5m/s intent and 4m goal. The captured CSV is packaged at `evidence/inputs/evaluation.csv`; its local run was written to ignored `results/`. Each row includes actual printed metrics and GPU/host times. Baseline seed800001, second fresh seed900001, training selection seed700001.
 
 | Family | Learned/guided mode17 | Geometry-only mode13 | Goal script mode2 | Guided fresh seed900001 |
 |---|---:|---:|---:|---:|
@@ -91,13 +91,13 @@ Selected checkpoint SHA-256: `fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b2901
 
 ## Packaged policy verification
 
-Commit eec01c4 includes the actor-only asset and loader. `./build/metal_nav_guided export results/guided-table-memory.bin.best assets/navigation.bin`:48,496 bytes,184 observations,12,104 FP32 parameters,mode17,1.5m/s,source FNV64 `1d991b0048dec80a`. Eight observation probes match the fixed PPO CPU actor exactly (maximum error0). `./build/metal_nav_guided eval-policy assets/navigation.bin 8 800001` reproduces checkpoint episode results:89.0625%success,10.9375%collision,0%timeout,2.83684s successful goal time.
+Commit eec01c4 includes the actor-only asset and loader. `./build/metal_nav_guided export assets/checkpoints/guided-table-memory.bin.best assets/navigation.bin`:48,496 bytes,184 observations,12,104 FP32 parameters,mode17,1.5m/s,source FNV64 `1d991b0048dec80a`. Eight observation probes match the fixed PPO CPU actor exactly (maximum error0). `./build/metal_nav_guided eval-policy assets/navigation.bin 8 800001` reproduces checkpoint episode results:89.0625%success,10.9375%collision,0%timeout,2.83684s successful goal time.
 
 `./build/metal_nav_guided policy-bench assets/navigation.bin`:10,000 sequential CPU evaluations at batch1,5.28245us average on M3. Inputs change and previous-command features update each iteration. This excludes depth acquisition, geometry-memory preparation, RAPTOR and physical command response. It does not establish end-to-end reaction latency.
 
 ## Disturbance curricula and controlled-threat acceptance gaps
 
-Same guided184/spherical/memory actor,FP32 onM3,128episodes/configuration,freshseed800001. Each candidate receives1000additional PPOrollouts withrisk.04,entropy.0003,learningrate.0001,sensor2frames,command1tick,acceleration.5m/s²,noise.05m,pixel-drop.1,validationselectionmode17. Broadstress warmsfromtheoriginaltable-memorybest;doorand rehearsalwarmfrombroadstressbest. These are curriculum candidates, not a controlled architecture-speed comparison. Full rows and checkpointSHA256 are inassets/continuation-evaluation.csv.
+Same guided184/spherical/memory actor,FP32 onM3,128episodes/configuration,freshseed800001. Each candidate receives1000additional PPOrollouts withrisk.04,entropy.0003,learningrate.0001,sensor2frames,command1tick,acceleration.5m/s²,noise.05m,pixel-drop.1,validationselectionmode17. Broadstress warmsfromtheoriginaltable-memorybest;doorand rehearsalwarmfrombroadstressbest. These are curriculum candidates, not a controlled architecture-speed comparison. Full rows and checkpoint SHA-256 values are in `evidence/inputs/continuation-evaluation.csv`.
 
 | Candidate | Clean held doors | Combined held doors | Clean tables | Combined tables |
 |---|---:|---:|---:|---:|
@@ -110,4 +110,85 @@ Rehearsal is50%doors,25%tables,25%broad0–6;heldfamily8isneversampled. It raise
 
 Controlled threats: `python3 evaluation.py --threats`.24configurations×128episodes,flyingstartvx1.5m/s,approach/crossing,.5/2m/s,sphere.35m,nominalTTC.5/1s,modes17/13/2,seed800001. Goal-script collides100% inallcases. Selectedoldpolicy succeeds100% onslowapproach/1s and82.03%on2m/sapproach/1s,but0% on2m/sapproach/.5s andfastcrossing. This contradicts a broad fast-evasion claim. TTC is a nominal scene parameter,not the actual policy path's measuredcollisiontime.
 
-Reaction diagnostic: `./build/metal_nav_guided reaction-latency results/guided-table-memory.bin.best 0 0` and`... 2 1`. Pairclonedwarmedtrajectories,verifyidenticalmotorsbeforeaddingoneapproachingthreat,anddetectcommand/motordelta>1e-4. Simulatedresponseupperbounds50ms clean and200ms delayed,resolution50ms. These include modeledsample/queue delays; theyexclude actualsensor/transportdelay and do not prove evasion. Normaltrainingstillhasnoper-stepCPUwait;the diagnostic intentionallyreadsaftereachnavigationtick.
+Reaction diagnostic: `./build/metal_nav_guided reaction-latency assets/checkpoints/guided-table-memory.bin.best 0 0` and`... 2 1`. Pairclonedwarmedtrajectories,verifyidenticalmotorsbeforeaddingoneapproachingthreat,anddetectcommand/motordelta>1e-4. Simulatedresponseupperbounds50ms clean and200ms delayed,resolution50ms. These include modeledsample/queue delays; theyexclude actualsensor/transportdelay and do not prove evasion. Normaltrainingstillhasnoper-stepCPUwait;the diagnostic intentionallyreadsaftereachnavigationtick.
+
+## Frozen challenge-bank development failures
+
+The versioned challenge bank contains 270 explicit levels: 90 train, 90 dev and 90 final across family 14 (bent hallway), family 15 (connected rooms and doors), and family 16 (vertical over/under choice). The fixed-scene results below use only the 90 dev levels (30 per family). The final split has no evaluation rows and remains untouched. Every policy episode used a 1.5 m/s requested cap and a 400-step limit (20 seconds).
+
+Success counts are out of 30 levels per family:
+
+| Policy or inference mode | Family 14 corner | Family 15 rooms | Family 16 vertical |
+|---|---:|---:|---:|
+| Original guided PPO, mode 17 | 0 | 0 | 22 |
+| Clean/stress PPO, mode 17 | 0 | 0 | 5 |
+| Threat-joint PPO, mode 17 | 0 | 0 | 13 |
+| Geometry prior, mode 13 | 0 | 18 | 28 |
+| Goal script, mode 2 | 0 | 0 | 0 |
+
+![Frozen challenge-bank development outcomes](../artifacts/challenge-bank-held-dev-outcomes.png)
+
+The chart also shows collision/timeout counts and 95% Wilson intervals. This is a development-set comparison. The checkpoints were trained or selected under different procedures; it is not a single matched training experiment. The geometry prior is a non-learned baseline. The green paths below are geometric clearance witnesses; they do not show learned flight.
+
+![Representative saved challenge geometry and witness paths](../artifacts/challenge-bank-witness-worlds.png)
+
+One targeted family-14 run warm-started the original policy and trained for 1,000 PPO rollouts (4.096 million transitions). It logged 82,729 training episodes with a 99.994% collision rate. Its 128-episode family-14 validation at seed 700001 stayed at 0/128 successes before and after training. This shows that the tested schedule did not teach the needed detour. It does not show that the route is unlearnable. The 100 validation records and run log are packaged in `evidence/inputs/`.
+
+## Privileged witness-route execution
+
+The opt-in mirrored bank is generated with `--mirror-y`, which reflects alternate levels across `Y=0`. This reduces a fixed left/right detour bias; it does not add learned-policy data. The saved route is supplied directly as a sequence of waypoints to a scripted controller. Frozen RAPTOR and simulator physics execute the waypoints. These measurements test route execution with privileged route information, not autonomous navigation.
+
+On the 90 mirrored dev levels, a 1.0 m/s cap and 60-second budget produced 90/90 successes with no collisions or timeouts. Mean completion times were 21.92 seconds for corners, 19.75 seconds for rooms, and 21.87 seconds for vertical routes. With a 1.5 m/s cap and 20-second budget, 69/90 levels succeeded and 21 timed out; there were no collisions. All 30 corners and all 30 rooms passed within 20 seconds. Nine of 30 vertical routes passed; the other 21 timed out.
+
+Recreate the mirrored bank and both checks with:
+
+```sh
+python3 challenge_bank.py --seed 20261001 --distance 8 --per-split 30 --families 14,15,16 --mirror-y --out evidence/inputs/challenge-bank-mirrored-v1.jsonl
+./build/metal_nav_guided bank-witness evidence/inputs/challenge-bank-mirrored-v1.jsonl dev results/bank-witness-1mps.csv 1.0 1200
+./build/metal_nav_guided bank-witness evidence/inputs/challenge-bank-mirrored-v1.jsonl dev results/bank-witness-1.5mps.csv 1.5 400
+```
+
+The 60-second 1.0 m/s result is not directly comparable to the 20-second policy score. Both logs and CSVs are packaged as evidence inputs.
+
+Separate uniform and priority PPO experiments have started on mirrored levels. Their development results are preliminary and are not included in this report yet. The mirrored final split remains unevaluated.
+
+## Fixed-weight inference ablations
+
+`evidence/inputs/threat-joint-ablations.csv` compares modes 17, 18 and 19 with the same threat-joint checkpoint, seed 800001 and 128 episodes per row. No mode was retrained. Mode 18 duplicates the previous-depth actor channel with the current frame and limits geometry-memory guidance to the newest frame; geometry guidance stays enabled. Mode 19 rescales each nonzero navigation command to the requested cap.
+
+| Scene and condition | Mode 17 | Mode 18 | Mode 19 |
+|---|---:|---:|---:|
+| Table/counter, clean | 91.4% | 83.6% | 68.0% |
+| Table/counter, combined stress | 90.6% | 75.0% | 57.8% |
+| Held doors, clean | 91.4% | 81.3% | 73.4% |
+| Held doors, combined stress | 90.6% | 94.5% | 73.4% |
+
+History helps on these table cases, but not on every held-door condition. The full matrix also covers mixed scenes and moving threats; this table reports only table/counter and held doors.
+
+```sh
+python3 evaluation.py --ablations --checkpoint assets/checkpoints/guided-threat-joint.bin.best --output results/threat-joint-ablations.csv
+```
+
+## Fixed-policy command-cap sweep
+
+`evidence/inputs/static-speed.csv` contains 25 mode-17 comparisons from one guided checkpoint. It tests requested caps of 0.75, 1, 1.5, 2 and 3 m/s on clean table, mixed and held-door scenes, plus combined stress on table and held doors. Each case uses seed 800001, 128 episodes and a 10-second episode limit. We kept the weights fixed; this is not speed-curriculum training.
+
+At a 1.5 m/s cap, clean success is 92.2% on tables, 94.5% on mixed scenes and 94.5% on held doors. At 3 m/s it falls to 31.3%, 26.6% and 25.0%. In the combined-stress table/door cases at 3 m/s it falls to 16.4%/9.4%; most other episodes collide. At a 0.75 m/s cap, many cases time out at the 10-second limit.
+
+The requested cap is not a physical speed bound. At the 3 m/s cap, the maximum observed speed is 7.34 m/s on tables, 6.88 m/s on mixed scenes and 5.61 m/s on held doors. Mean path speed includes failures; peak speed is the largest observation across 128 episodes and can be an outlier. These measurements do not establish a safe cruising speed.
+
+![Fixed-policy requested-cap sweep and observed speeds](../artifacts/static-policy-speed-cap-sweep.png)
+
+```sh
+python3 evaluation.py --speed-sweep --checkpoint assets/checkpoints/guided-clean-stress.bin.best --output results/static-speed.csv
+```
+
+## Reproducible evidence package
+
+`evidence/inputs/` contains the compact CSV, TSV, JSONL and paired trace files for all figures and outcomes. Selected checkpoint snapshots are in `assets/checkpoints/`. `artifacts/manifest.json` records input hashes, commands, metric definitions and limits. Rebuild the figures without running Metal:
+
+```sh
+python3 evidence.py --out artifacts
+```
+
+The 3D crossing panel and GIF use recorded simulator poses and saved obstacle geometry. They are not camera footage. Pose paths use 20 Hz samples; terminal contact/end markers use exact JSON metadata. The original and threat-joint runs share the same world seed and obstacle path; the original policy collides and the later candidate succeeds.

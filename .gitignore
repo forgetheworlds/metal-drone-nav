@@ -2,3 +2,6 @@ build/
 results/
 .DS_Store
 STATUS.md
+.freebuff/
+__pycache__/
+*.py[cod]
