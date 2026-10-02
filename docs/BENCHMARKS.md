@@ -215,3 +215,16 @@ An independent ray audit checked one recorded frame from a mixed-clutter contact
 The corrected-cylinder matrix replaces an earlier invalid run whose cylinders lay horizontally. Do not use that pre-correction matrix as vertical-pole evidence. The current table and mixed worlds were checked against their declared vertical cylinder axes. The full CSV, all six failed episodes with their exact worlds/logs/manifests, source and asset hashes, and both raw sensor audit inputs are packaged under `evidence/inputs/webots-raptor-1ms-average/`. The seed-41003 audit was a later diagnostic rerun; its route and log are labeled separately, and the matrix route was restored to the run-manifest hash. The bounded cases preserve the open-scene obstacle geometry and witness while adding room bounds at x=[−2,14], y=[−5,5], z=[0,5].
 
 These results are a small simulator transfer check. They do not establish robust generalization, hardware accuracy, or real-flight performance.
+
+
+## Goal entry versus stable arrival in Webots
+
+The same 18 static layouts now run with a matched 20 s limit and two scoring modes. Stable arrival requires error ≤0.35 m, actual world speed ≤0.5 m/s and 0.20 s dwell. Webots checks every 10 ms; Metal's training task checks every 50 ms. The original actor entered the goal region in 17/18 hold episodes but never held successfully. It had four envelope contacts and 14 timeouts. The arrival candidate held in 17/18, with no timeouts and one contact in mixed seed 41004. Doors and tables each passed 6/6; mixed passed 5/6. Every success had 0.20 s dwell and final speed ≤0.5 m/s.
+
+The hold protocol preserves the original entry scorer as the default. Separate output folders and CSVs prevent overwriting entry evidence. The complete 36 episode records, exact worlds, source/asset hashes and protocol are bundled in `evidence/inputs/webots-stable-arrival/`. The sensors remain ideal and the collider remains the 18 cm envelope. This result verifies the arrival behavior on these layouts, not hardware dynamics or general long-route navigation.
+
+## Routing and generator diagnostics
+
+The arrival actor completes 30/30 connected-room routes when given privileged intermediate goals; all finish within 15.86 s. It still gets 0/30 on the same development family given only the final goal. Corners with privileged waypoints complete 9/30 under a 60 s diagnostic budget; only two finish within 20 s. This identifies routing as a major room-task gap while narrow turns remain a local-control gap. These oracle-waypoint diagnostics are not autonomous navigation scores.
+
+Mixed-static task sampling exposed a rare 64-attempt rejection: 61 proposed goals lay outside bounds and three failed endpoint clearance. The corrected generator conditions direction sampling on endpoint bounds within each scene. A 20,000-seed probe had no rejection and averaged 1.299 scene attempts versus 6.817 before. Accepted detour share remained 11.925% versus 12.545%. The change is versioned and incompatible task resumes are rejected; parameter warmstarts remain supported. The saved failed run stopped before invalid transitions affected PPO. Reproduction code, logs and both training histories are in `evidence/inputs/pipeline-diagnostics/`.

@@ -1,0 +1,24 @@
+device=Apple M3 FP32 safe/precise
+eval_budget_s=10 speed_intent_cap=1.5
+eval family=4 mode=17 episodes=128 success=0.898438 collision=0.101562 timeout=0 progress=0.880288 mean_goal_time=2.77652 mean_speed=1.47108 peak_speed=2.52142 min_clearance=-0.0205868 wall_s=0.101557
+eval_GPU_s=0.0979643
+device=Apple M3 FP32 safe/precise
+eval_budget_s=10 speed_intent_cap=1.5
+eval family=5 mode=17 episodes=128 success=0.789062 collision=0.210938 timeout=0 progress=0.793614 mean_goal_time=3.08267 mean_speed=1.35187 peak_speed=2.50568 min_clearance=-0.0112324 wall_s=0.117285
+eval_GPU_s=0.113363
+device=Apple M3 FP32 safe/precise
+eval_budget_s=10 speed_intent_cap=1.5
+eval family=7 mode=17 episodes=128 success=0.84375 collision=0.15625 timeout=0 progress=0.846975 mean_goal_time=2.79722 mean_speed=1.44897 peak_speed=2.83222 min_clearance=-0.0240023 wall_s=0.110474
+eval_GPU_s=0.106001
+device=Apple M3 FP32 safe/precise
+eval_budget_s=10 speed_intent_cap=1.5
+eval family=10 mode=17 episodes=128 success=0.804688 collision=0.195312 timeout=0 progress=0.803472 mean_goal_time=2.7966 mean_speed=1.48763 peak_speed=1.78662 min_clearance=-0.0198377 wall_s=0.0884538
+eval_GPU_s=0.0847314
+device=Apple M3 FP32 safe/precise
+eval_budget_s=10 speed_intent_cap=1.5
+eval family=11 mode=17 episodes=128 success=0.257812 collision=0.742188 timeout=0 progress=0.491037 mean_goal_time=3.05909 mean_speed=1.41823 peak_speed=1.8992 min_clearance=-0.0195756 wall_s=0.103023
+eval_GPU_s=0.0993356
+device=Apple M3 FP32 safe/precise
+eval_budget_s=10 speed_intent_cap=1.5
+eval family=12 mode=17 episodes=128 success=0.921875 collision=0.078125 timeout=0 progress=0.883257 mean_goal_time=2.80085 mean_speed=1.45542 peak_speed=2.31387 min_clearance=-0.003768 wall_s=0.106802
+eval_GPU_s=0.10331

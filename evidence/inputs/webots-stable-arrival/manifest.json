@@ -1,0 +1,46 @@
+{
+  "schema": "webots-stable-arrival-v1",
+  "records": 36,
+  "radius_m": 0.35,
+  "speed_max_mps": 0.5,
+  "dwell_s": 0.2,
+  "budget_s": 20,
+  "physics_step_ms": 1,
+  "control_period_ms": 10,
+  "navigation_period_ms": 50,
+  "hold_check_period_ms": 10,
+  "metal_hold_check_period_ms": 50,
+  "sensors": "idealGPS/IMU/Gyro;cleanRangeFinder",
+  "body_scoring": "historical0.18m sphere",
+  "motor_sampling": "interval-average",
+  "results": {
+    "original": {
+      "success": 0,
+      "collision": 4,
+      "timeout": 14,
+      "ever_entered_goal": 17
+    },
+    "arrival": {
+      "success": 17,
+      "collision": 1,
+      "timeout": 0
+    }
+  },
+  "reproduction": "Use benchmark.run_one for doorway/table_overhang/mixed_clutter seeds41001..41006 with eachactor,2000steps,1msODE,average,goal_objective=hold. Alllaunches--minimize--batch--port23456. See savedrunroutes and sourcehashes.",
+  "source_hashes": {
+    "webots/benchmark.py": "30322ffa819eebc2206ca826f92ce09600904e132ba563bc75eb9ee51c636323",
+    "webots/controllers/raptor_webots/raptor_webots.cpp": "42e6171133c1c082d4fa90d199caa1007d3350f6b3a8d827b1e2abebb1451b33",
+    "assets/navigation.bin": "d13c1b3f3965ca0e6df5ec94cb1d42b944f70d7ff5a1f875e3218452caea203d",
+    "assets/navigation-arrival-experimental.bin": "ab590a63fcea7bf035318e2e0fc52392eaafc8b6c4f1c00b87e4768db107b548"
+  },
+  "limitations": [
+    "18staticunknowngeometrytasks;notbroadgeneralization.",
+    "Metal20HzversusWebots100Hzholdcheck.",
+    "Single training seed; nohardwareorrealstereoevidence.",
+    "Long-routecornerandconnectedroomtasksremainunsolved."
+  ],
+  "input_hashes": {
+    "episodes.csv": "633b5658aafe5d254e553e19ca0d8300171a1c224a128f3588f7c1cf1c4936c2",
+    "runs.json": "60a076274b2a41e5377b41273ee175022207dc55197cad4ed27f00172fccc8e9"
+  }
+}

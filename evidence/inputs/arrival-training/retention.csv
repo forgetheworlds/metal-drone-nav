@@ -1,0 +1,15 @@
+policy,family,seed,episodes,success,collision,timeout,mean_goal_time_s,budget_s,speed_cap_mps,success_rule
+original,4,800001,128,0.984375,0.015625,0,2.74325,10,1.5,first_goal_region_entry
+original,5,800001,128,0.96875,0.03125,0,3.04435,10,1.5,first_goal_region_entry
+original,7,800001,128,0.898438,0.101562,0,2.77652,10,1.5,first_goal_region_entry
+original,10,800001,128,0.875,0.125,0,2.83125,10,1.5,first_goal_region_entry
+original,11,800001,128,0.1875,0.8125,0,3.00833,10,1.5,first_goal_region_entry
+original,12,800001,128,0.976562,0.0234375,0,2.808,10,1.5,first_goal_region_entry
+arrival,4,800001,128,0.898438,0.101562,0,2.77652,10,1.5,first_goal_region_entry
+arrival,5,800001,128,0.789062,0.210938,0,3.08267,10,1.5,first_goal_region_entry
+arrival,7,800001,128,0.84375,0.15625,0,2.79722,10,1.5,first_goal_region_entry
+arrival,10,800001,128,0.804688,0.195312,0,2.7966,10,1.5,first_goal_region_entry
+arrival,11,800001,128,0.257812,0.742188,0,3.05909,10,1.5,first_goal_region_entry
+arrival,12,800001,128,0.921875,0.078125,0,2.80085,10,1.5,first_goal_region_entry
+original,8,800001,128,0.890625,0.109375,0,2.83684,10,1.5,first_goal_region_entry
+arrival,8,800001,128,0.960938,0.0390625,0,2.78211,10,1.5,first_goal_region_entry

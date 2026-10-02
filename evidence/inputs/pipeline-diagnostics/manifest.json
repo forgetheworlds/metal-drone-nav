@@ -1,0 +1,78 @@
+{
+  "schema": "navigation-pipeline-diagnostics-v1",
+  "waypoints": {
+    "privileged": true,
+    "budget_s": 60,
+    "ordinary_actor_waypoint_radius_m": 0.35,
+    "success_counts": {
+      "corner": 9,
+      "connected_rooms": 30,
+      "vertical": 27
+    },
+    "under20s": {
+      "corner": 2,
+      "connected_rooms": 30,
+      "vertical": 27
+    },
+    "scope": "Oracle route diagnostic, not autonomous global routing. Full-goal richbank0/30cornersand0/30rooms remains."
+  },
+  "contact_snapshot": {
+    "scope": "checkpoint_saved_state",
+    "samples": 128,
+    "declared_contact": 0,
+    "safety04violations": 0,
+    "historical18violations": 0,
+    "cpu_metal_max_error_m": 0,
+    "scope_limit": "No whole-flight collision orhardwareclaim."
+  },
+  "task_generator": {
+    "failed_training_seed": 43,
+    "failed_env": 7,
+    "failed_episode_counter": 57,
+    "failed_task_seed": 825501529,
+    "scene_attempts": 64,
+    "rejects": {
+      "goal_bounds": 61,
+      "goal_clearance": 3
+    },
+    "fix": "Resample direction within same scene until endpoint lies within configured bounds; retain64 scene attemptcap and explicit exhaustedstatus.",
+    "old_20k_mean_scene_attempts": 6.817,
+    "new_20k_mean_scene_attempts": 1.299,
+    "new_20k_max_scene_attempts": 7,
+    "old_detour_share": 0.12545,
+    "new_detour_share": 0.11925,
+    "no_new_20k_failure": true,
+    "new_accepted_families": {
+      "box": 5276,
+      "cylinder": 4605,
+      "doorway": 4145,
+      "table": 5974
+    },
+    "training_after_fix": {
+      "rollouts": 1000,
+      "transitions": 4096000,
+      "wall_s": 48.6702,
+      "warmstart": "results/arrival-clutter-domain.bin.best",
+      "seed": 46,
+      "final_dev_success": 0.867188
+    },
+    "scope": "No majornewclutterlearningclaim. Conditionalgeneratorchangeversioned; oldcheckpointparameterwarmstartonly."
+  },
+  "resume": {
+    "checkpoint_version": 8,
+    "continuous2_vs_split1plus1": "byte-identical",
+    "seed": 45,
+    "stage": 2,
+    "family": 12,
+    "domain_amplitude": 1
+  },
+  "input_hashes": {
+    "privileged-waypoints.csv": "7cbdd5ce607cf860d43b2ba42b3886db12312c934b6224acce5c53dd395ac96d",
+    "contact-snapshot.csv": "01ff3a42e03f62b1a6fd4c4e2dfeed2c06ae6c33d590c8b695be18a9205f072f",
+    "generator-audit.log": "59cfafd2398de41fb118e6c3ae5f9da56b48dec86141f762e58e20d840b3af5b",
+    "generator-audit.cpp": "9e61e3e743884a70863e298a32dabf96a8431a2e99393cad2ba9952ceadeefe9",
+    "clutter-before-fix-history.csv": "41d3ab0370f43b65e6856c2a858a077bc5563d32caf3ff19f1e4bb6b33a740b9",
+    "clutter-after-fix-history.csv": "0599381ccf1a6a8b1f649748c256af371a08160e77fac821dc6e6ba809b3e80e"
+  },
+  "generator_probe_command": "clang++ -std=c++17 -O3 -Wall -Wextra -I. evidence/inputs/pipeline-diagnostics/generator-audit.cpp -o /tmp/rl-generator-audit && /tmp/rl-generator-audit"
+}

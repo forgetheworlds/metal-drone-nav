@@ -1,0 +1,23 @@
+seeds=20000 failures=0 actual_failures=0 mismatches=0 first_failure=0 attempts_total=25979 mean_attempts=1.29895 max_attempts=7
+accepted_direct=17615 accepted_detour=2385 detour_share=0.11925
+family1 AABB attempted=6493 accepted=5276 accept_rate=0.81257
+family2 cylinder attempted=6485 accepted=4605 accept_rate=0.71010
+family4 doorway attempted=6477 accepted=4145 accept_rate=0.63996
+family5 table/counter attempted=6524 accepted=5974 accept_rate=0.91570
+reject_nonfinite=0
+reject_bounds=0
+reject_start clearance=262
+reject_goal clearance=5137
+reject_distance=0
+reject_no witness=580
+target_failure attempts=2 accepted=1 direct=1 detour=0
+target_reject_nonfinite=0
+target_reject_bounds=0
+target_reject_start clearance=0
+target_reject_goal clearance=1
+target_reject_distance=0
+target_reject_no witness=0
+target_family0_attempts=0
+target_family1_attempts=0
+target_family2_attempts=1
+target_family3_attempts=1

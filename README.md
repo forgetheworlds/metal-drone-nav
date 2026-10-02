@@ -32,6 +32,14 @@ The candidate is **not a replacement**: the old tabletop test regressed to 101/1
 
 Independent Webots runs now use ODE physics, native RangeFinder sensing, RAPTOR and Propeller motors at 1 ms physics / 10 ms control / 50 ms navigation periods. Across 36 short static episodes, the original policy reached 16/18 and the static policy 14/18, with two contacts and four timeouts overall. Both passed all six table cases; mixed clutter remains a failure. Sensor origin, sampling and actuator startup still differ from Metal. See [the full protocol and failures](docs/BENCHMARKS.md#independent-webots-transfer-check) and [raw evidence](evidence/inputs/webots-raptor-1ms-average/manifest.json).
 
+A matched Webots test now checks stable arrival for 20 s. The original entered the goal region in 17/18 scenes but held in **0/18**. The arrival candidate held in **17/18**: all six doors, all six tables, five of six mixed scenes. Its remaining failure contacted the collision envelope before goal entry. Webots checks the same radius/speed/dwell thresholds at 100 Hz; Metal checks at 20 Hz. This establishes one transferred behavior on a small static matrix, with ideal ego sensing and clean depth. [Raw runs and protocol](evidence/inputs/webots-stable-arrival/manifest.json) preserve both successes and failures.
+
+![Independent Webots stable arrival](artifacts/webots-stable-arrival.png)
+
+![Recorded training progress](artifacts/arrival-open-training.png)
+
+![Selective retention on legacy tasks](artifacts/arrival-legacy-retention-regression.png)
+
 Common-command pulse tests separated actuator sampling errors from plant errors. Interval-average thrust and a 1 ms ODE step reduced the roll/pitch pose discrepancy to below 0.2 mm on those tests. This aligns two idealized plants; it does not validate missing aerodynamics, hardware thrust or noisy state estimation.
 
 ## Headline results

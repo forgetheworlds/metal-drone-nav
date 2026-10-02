@@ -35,6 +35,7 @@ struct Config {
     std::string phase="raptor-hover";
     std::string physics_profile="hover";
     std::string motor_sampling="end";
+    std::string goal_objective="entry";
     std::string policy="../assets/navigation.bin";
     uint32_t seed=1;
     uint32_t max_steps=800;
@@ -64,6 +65,7 @@ Config parse_config(const char* custom) {
             if(key=="phase")c.phase=value;
             else if(key=="profile")c.physics_profile=value;
             else if(key=="motor_sampling")c.motor_sampling=value;
+            else if(key=="goal_objective")c.goal_objective=value;
             else if(key=="policy")c.policy=value;
             else if(key=="seed")c.seed=uint32_t(std::strtoul(value.c_str(),nullptr,10));
             else if(key=="max_steps")c.max_steps=uint32_t(std::strtoul(value.c_str(),nullptr,10));
@@ -139,7 +141,10 @@ int main(int argc,char** argv) {
     }
     const int step_ms=10; // RAPTOR remains100Hz with finer ODE integration.
     const Config config=parse_config(wb_robot_get_custom_data());
-    std::printf("WEBOTS_START phase=%s seed=%u step_ms=%d custom=%s\n",config.phase.c_str(),config.seed,step_ms,wb_robot_get_custom_data()?wb_robot_get_custom_data():"");
+    if(config.goal_objective!="entry"&&config.goal_objective!="hold") {
+        std::fprintf(stderr,"goal_objective must be entry or hold\n");wb_robot_cleanup();return 2;
+    }
+    std::printf("WEBOTS_START phase=%s objective=%s seed=%u step_ms=%d custom=%s\n",config.phase.c_str(),config.goal_objective.c_str(),config.seed,step_ms,wb_robot_get_custom_data()?wb_robot_get_custom_data():"");
     std::fflush(stdout);
     const auto fields=data_fields(wb_robot_get_custom_data());
     const float* goal=config.goal;
@@ -228,6 +233,10 @@ int main(int argc,char** argv) {
     float peak_speed=0.0f,altitude_min=1.5f,altitude_max=1.5f;
     double previous_position[3]={0,0,1.5},current_time=0.0;
     uint32_t nav_updates=0;
+    bool previous_inside_goal=false;
+    uint32_t goal_radius_entry_count=0;
+    double goal_radius_entry_first_time_s=-1.0,goal_radius_entry_last_time_s=-1.0;
+    float goal_dwell_s=0.0f,final_world_speed_mps=0.0f;
 
     while(true) {
         const int step_status=wb_robot_step(step_ms);
@@ -399,13 +408,29 @@ int main(int argc,char** argv) {
         if(steps==0){std::printf("WEBOTS_CONTACT count=%d\n",contact_count);std::fflush(stdout);}
         if(contact_count>0)collision=true;
         const float goal_error=std::sqrt(std::pow(goal[0]-position[0],2)+std::pow(goal[1]-position[1],2)+std::pow(goal[2]-position[2],2));
+        const bool inside_goal=goal_error<=0.35f;
+        final_world_speed_mps=vector_norm3(world_velocity);
+        if(inside_goal&&!previous_inside_goal) {
+            goal_radius_entry_count++;
+            if(goal_radius_entry_count==1)goal_radius_entry_first_time_s=current_time;
+            goal_radius_entry_last_time_s=current_time;
+        }
+        previous_inside_goal=inside_goal;
+        if(config.goal_objective=="hold") {
+            if(inside_goal&&final_world_speed_mps<=0.5f)goal_dwell_s+=step_ms*0.001f;
+            else goal_dwell_s=0.0f;
+        }
         if(trace && (steps<80 || steps%100==0)){
             trace<<steps<<','<<current_time<<','<<position[0]<<','<<position[1]<<','<<position[2]<<','
                  <<world_velocity[0]<<','<<world_velocity[1]<<','<<world_velocity[2]<<','
                  <<target_velocity_world[0]<<','<<target_velocity_world[1]<<','<<target_velocity_world[2]<<','<<goal_error<<'\n';
             trace.flush();
         }
-        if(goal_error<0.35f && !collision){success=true;completed=true;}
+        if(config.goal_objective=="entry") {
+            if(goal_error<0.35f&&!collision){success=true;completed=true;}
+        } else if(inside_goal&&final_world_speed_mps<=0.5f&&goal_dwell_s>=0.2f-1e-6f&&!collision) {
+            success=true;completed=true;
+        }
         steps++;
         if(steps%100==0){std::printf("WEBOTS_PROGRESS step=%u pz=%g vz=%g error=%g\n",steps,position[2],world_velocity[2],goal_error);std::fflush(stdout);}
         if(collision||success) {std::printf("WEBOTS_BREAK event=collision_or_success step=%u\n",steps);completed=true;break;}
@@ -423,14 +448,18 @@ int main(int argc,char** argv) {
            <<",\"altitude_max_m\":"<<altitude_max<<",\"tracking_rms_mps\":"
            <<(tracking_samples?std::sqrt(tracking_squared/(3.0*tracking_samples)):0.0)
            <<",\"sensor_updates\":"<<nav_updates<<",\"raptor_loaded\":"<<(raptor_loaded?"true":"false")
-           <<",\"navigation_loaded\":"<<(policy_mode?"true":"false")<<"}\n";
+           <<",\"navigation_loaded\":"<<(policy_mode?"true":"false")
+           <<",\"goal_objective\":\""<<config.goal_objective<<"\",\"goal_radius_entry_count\":"<<goal_radius_entry_count
+           <<",\"goal_radius_entry_first_time_s\":"<<goal_radius_entry_first_time_s
+           <<",\"goal_radius_entry_last_time_s\":"<<goal_radius_entry_last_time_s
+           <<",\"goal_dwell_s\":"<<goal_dwell_s<<",\"final_world_speed_mps\":"<<final_world_speed_mps<<"}\n";
     metrics.flush();metrics.close();trace.flush();trace.close();
     std::ofstream marker(result_dir/"last-run-exit.marker",std::ios::trunc);
     marker<<"loop_exit steps="<<steps<<" completed="<<(completed?1:0)<<"\n";
     marker.flush();marker.close();
-    std::printf("WEBOTS_RESULT phase=%s seed=%u success=%d collision=%d timeout=%d steps=%u time_s=%.4f path_m=%.4f final_error_m=%.4f mean_speed_mps=%.4f peak_speed_mps=%.4f tracking_rms_mps=%.4f min_sensor_range_m=%.4f altitude_min_m=%.4f altitude_max_m=%.4f raptor_loaded=%d nav_loaded=%d nav_updates=%u\n",
-        config.phase.c_str(),config.seed,success?1:0,collision?1:0,timeout?1:0,steps,current_time,path,final_error,
-        steps?path/(steps*step_ms*0.001):0,peak_speed,tracking_samples?std::sqrt(tracking_squared/(3.0*tracking_samples)):0,minimum_sensor_range,altitude_min,altitude_max,raptor_loaded?1:0,policy_mode?1:0,nav_updates);
+    std::printf("WEBOTS_RESULT phase=%s objective=%s seed=%u success=%d collision=%d timeout=%d steps=%u time_s=%.4f path_m=%.4f final_error_m=%.4f mean_speed_mps=%.4f peak_speed_mps=%.4f tracking_rms_mps=%.4f min_sensor_range_m=%.4f altitude_min_m=%.4f altitude_max_m=%.4f raptor_loaded=%d nav_loaded=%d nav_updates=%u goal_entries=%u goal_dwell_s=%.3f final_speed_mps=%.4f\n",
+        config.phase.c_str(),config.goal_objective.c_str(),config.seed,success?1:0,collision?1:0,timeout?1:0,steps,current_time,path,final_error,
+        steps?path/(steps*step_ms*0.001):0,peak_speed,tracking_samples?std::sqrt(tracking_squared/(3.0*tracking_samples)):0,minimum_sensor_range,altitude_min,altitude_max,raptor_loaded?1:0,policy_mode?1:0,nav_updates,goal_radius_entry_count,goal_dwell_s,final_world_speed_mps);
     std::fflush(stdout);
     wb_supervisor_simulation_quit(0);
     wb_robot_cleanup();

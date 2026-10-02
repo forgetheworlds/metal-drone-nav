@@ -1,7 +1,7 @@
 {
   "generated_by": "evidence.py",
   "command": "python3 evidence.py --out artifacts",
-  "generated_utc": "2026-10-02T01:50:43+00:00",
+  "generated_utc": "2026-10-02T10:02:31+00:00",
   "runtime": {
     "python": "3.14.7",
     "matplotlib": "3.10.8",
@@ -30,18 +30,28 @@
     "inference-history-and-speed-ablations.png",
     "inference-history-and-speed-ablations.svg",
     "static-policy-speed-cap-sweep.png",
-    "static-policy-speed-cap-sweep.svg"
+    "static-policy-speed-cap-sweep.svg",
+    "arrival-open-training.png",
+    "arrival-open-training.svg",
+    "arrival-fresh-seed-domain.png",
+    "arrival-fresh-seed-domain.svg",
+    "arrival-rich-bank-limit.png",
+    "arrival-rich-bank-limit.svg",
+    "arrival-legacy-retention-regression.png",
+    "arrival-legacy-retention-regression.svg",
+    "webots-stable-arrival.png",
+    "webots-stable-arrival.svg"
   ],
   "inputs": [
     {
       "path": "evidence.py",
-      "sha256": "dcd84b65bba71dd151ef023e609e1d8ea9eb86ed8f42cfde2c671feec9b14acf",
-      "bytes": 74441
+      "sha256": "b78f95d5158833b65b94f924050e61db4bfbb5c4f16824756bfb66e37dbae17a",
+      "bytes": 120343
     },
     {
       "path": "docs/BENCHMARKS.md",
-      "sha256": "bde0d0b416b13bb278989809acd9d8df031d6c68240aebbf2da7c1e08be9a738",
-      "bytes": 18681
+      "sha256": "e0303eb4390149d99572071d5a1fa22cf1cdab47aa346b782890f86188fa45a0",
+      "bytes": 25097
     },
     {
       "path": "docs/CODE_DIRECTION.md",
@@ -57,6 +67,136 @@
       "path": "docs/RESEARCH_LOG.md",
       "sha256": "a41ccf325b782e5a0d08b36daac8b1c61f096998b02a0addd0c70815638d711f",
       "bytes": 17356
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-arrival-holdout-stage0-family0-amp0.csv",
+      "sha256": "6fa7f9c508723f747ceca6a34589b1b7b2a12db16da2d8c8c0a5e3367e47ba9a",
+      "bytes": 29174
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-arrival-holdout-stage0-family0-amp1.csv",
+      "sha256": "857c93bbc77a8f68d512d5473e9c15470e46e6ebda0e52ec845f0dff4c5e16a8",
+      "bytes": 29564
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-arrival-holdout-stage1-family0-amp1.csv",
+      "sha256": "291480ae9a44cfb9d9b8f0909643933a3c594ed7fe1d5876ac53af0b90168b24",
+      "bytes": 29314
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-arrival-holdout-stage2-family1-amp1.csv",
+      "sha256": "c40efeaaf1b492787600a2fdef0e2b171bd7bb8ad7be9c503c06bea368b9bad9",
+      "bytes": 29741
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-arrival-holdout-stage2-family2-amp1.csv",
+      "sha256": "5a45920787d2bc08d8de2f284290412bcd83ea88f3359807e4fbdb0a43b09323",
+      "bytes": 29768
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-arrival-holdout-stage2-family4-amp1.csv",
+      "sha256": "cc22a04c500033acf103641701477922cc9f6a6f3f37b2da543f579f3eee740c",
+      "bytes": 29735
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-arrival-holdout-stage2-family5-amp1.csv",
+      "sha256": "cd3fa4e5970b735ba21f337112964b95a242009576495152c349d48a71cc272d",
+      "bytes": 29629
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-original-holdout-stage0-family0-amp0.csv",
+      "sha256": "c32d354321962553f5e0c183f8bbb80addea4dc034c2b91355a4efe3426545eb",
+      "bytes": 29366
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-original-holdout-stage0-family0-amp1.csv",
+      "sha256": "2126b271809b59014cf1525863917f896724e606d1e422ba2c34e4ade4cc357a",
+      "bytes": 29751
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-original-holdout-stage1-family0-amp1.csv",
+      "sha256": "927cdae3898a60cab588a50369301421458382d6bc5d9a1809f17c4f8977eadf",
+      "bytes": 29522
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-original-holdout-stage2-family1-amp1.csv",
+      "sha256": "3460fdf06be68796226730e45386b12e9abe3ea95c366a9843575cfd9eb29c49",
+      "bytes": 29866
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-original-holdout-stage2-family2-amp1.csv",
+      "sha256": "b40e6122c72e5b4b07d0dc3eba08818a11d485af73fa691a13df253ab1f9022b",
+      "bytes": 29838
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-original-holdout-stage2-family4-amp1.csv",
+      "sha256": "10c75f27dad9783e0329b94320f6cc8f8f255c6926387eaa354138531d13ceca",
+      "bytes": 29820
+    },
+    {
+      "path": "evidence/inputs/arrival-training/arrival-original-holdout-stage2-family5-amp1.csv",
+      "sha256": "cea2695575242ddd18678c6fbff4f1d7e2f2be73e0eb757e8164c780f2212f2b",
+      "bytes": 29750
+    },
+    {
+      "path": "evidence/inputs/arrival-training/evaluations.csv",
+      "sha256": "bbeefd1eda13ed0ffb8882b3b235f7aab120084ef673eacf4856b79aede1d843",
+      "bytes": 1372
+    },
+    {
+      "path": "evidence/inputs/arrival-training/history.csv",
+      "sha256": "2cfae43179c1552c83df8071ce3b69c62d81d71a477e79ab6f8331b5c15763a1",
+      "bytes": 1970
+    },
+    {
+      "path": "evidence/inputs/arrival-training/initial-dev.csv",
+      "sha256": "3f184ca5e0bd2479c409c5343ee981b64cf496617174c9cb7d28ddffebf3b829",
+      "bytes": 29690
+    },
+    {
+      "path": "evidence/inputs/arrival-training/manifest.json",
+      "sha256": "5cba96a06cfd83126f1ce20799318ef71eef156e373e0547255b6ac191091fb9",
+      "bytes": 5957
+    },
+    {
+      "path": "evidence/inputs/arrival-training/metal-webots-arrival.csv",
+      "sha256": "adaa6bae86cd7ba3b3ac1468272e337d79f1de76cf17c32543b38a5c1841699e",
+      "bytes": 9749
+    },
+    {
+      "path": "evidence/inputs/arrival-training/metal-webots-original.csv",
+      "sha256": "8d6bec6b6fcb6e9de6cdfaefaea164c8a2424a381bd22e480c2848e32659b48d",
+      "bytes": 9745
+    },
+    {
+      "path": "evidence/inputs/arrival-training/metal-webots-static.csv",
+      "sha256": "a4557fbcdbe7730d26dfcf391414fa1e91d4c2934cfb56ead54768cd16c8d9a1",
+      "bytes": 9745
+    },
+    {
+      "path": "evidence/inputs/arrival-training/retention.csv",
+      "sha256": "7bed93365053bc2d3d5ab25a696417b65b23a96ad5edf419d5452753e495c4c3",
+      "bytes": 1240
+    },
+    {
+      "path": "evidence/inputs/arrival-training/retention.log",
+      "sha256": "4e7ca793ae50263cc3ded28678b7602ec560e87fa53e5cf89b35e66ded5a72f0",
+      "bytes": 1759
+    },
+    {
+      "path": "evidence/inputs/arrival-training/rich-dev.csv",
+      "sha256": "9af832054214e3fff234c8ab996c64f379fdf2a68c4f7282770f1fddec23f6e2",
+      "bytes": 72496
+    },
+    {
+      "path": "evidence/inputs/arrival-training/selected-dev.csv",
+      "sha256": "8efddbb4c3e9de304764b2cd40559e9647a588a028febf1f8b5f9f19f572ad0c",
+      "bytes": 29497
+    },
+    {
+      "path": "evidence/inputs/arrival-training/webots-first-entry.csv",
+      "sha256": "e1765d5c6feacf497e01d1a60691b7b3956488bd5267af4272c1d25a7494199b",
+      "bytes": 6516
     },
     {
       "path": "evidence/inputs/bank-dynamic.csv",
@@ -154,6 +294,41 @@
       "bytes": 1756
     },
     {
+      "path": "evidence/inputs/pipeline-diagnostics/clutter-after-fix-history.csv",
+      "sha256": "0599381ccf1a6a8b1f649748c256af371a08160e77fac821dc6e6ba809b3e80e",
+      "bytes": 2166
+    },
+    {
+      "path": "evidence/inputs/pipeline-diagnostics/clutter-before-fix-history.csv",
+      "sha256": "41d3ab0370f43b65e6856c2a858a077bc5563d32caf3ff19f1e4bb6b33a740b9",
+      "bytes": 566
+    },
+    {
+      "path": "evidence/inputs/pipeline-diagnostics/contact-snapshot.csv",
+      "sha256": "01ff3a42e03f62b1a6fd4c4e2dfeed2c06ae6c33d590c8b695be18a9205f072f",
+      "bytes": 52721
+    },
+    {
+      "path": "evidence/inputs/pipeline-diagnostics/generator-audit.cpp",
+      "sha256": "9e61e3e743884a70863e298a32dabf96a8431a2e99393cad2ba9952ceadeefe9",
+      "bytes": 5290
+    },
+    {
+      "path": "evidence/inputs/pipeline-diagnostics/generator-audit.log",
+      "sha256": "59cfafd2398de41fb118e6c3ae5f9da56b48dec86141f762e58e20d840b3af5b",
+      "bytes": 908
+    },
+    {
+      "path": "evidence/inputs/pipeline-diagnostics/manifest.json",
+      "sha256": "5f2eccf0af8a0c672a69c73068095ad55d94adcbdc313c7ebe72974e459a0175",
+      "bytes": 2459
+    },
+    {
+      "path": "evidence/inputs/pipeline-diagnostics/privileged-waypoints.csv",
+      "sha256": "7cbdd5ce607cf860d43b2ba42b3886db12312c934b6224acce5c53dd395ac96d",
+      "bytes": 24816
+    },
+    {
       "path": "evidence/inputs/static-speed.csv",
       "sha256": "cbdc4dc3a2f9d9c9c22c78407a675ba466505c1aa9d78e0bc2ad15c62e7d727e",
       "bytes": 12589
@@ -189,6 +364,61 @@
       "bytes": 199300
     },
     {
+      "path": "evidence/inputs/webots-raptor-1ms-average/challenge-matrix.csv",
+      "sha256": "da84440cae271a3e14ac25d82e6c2b61fe2917224828ff63a218fd2be09b38b2",
+      "bytes": 12081
+    },
+    {
+      "path": "evidence/inputs/webots-raptor-1ms-average/failure-episodes.json",
+      "sha256": "64385a726ea03f9bd233f09be4ac25a423100bdb5954f902b5a8cf1c214d5f27",
+      "bytes": 39372
+    },
+    {
+      "path": "evidence/inputs/webots-raptor-1ms-average/manifest.json",
+      "sha256": "be20f4c21436b564556501e4e03dd2c5c56fb6d0515e898414021a254522907c",
+      "bytes": 5388
+    },
+    {
+      "path": "evidence/inputs/webots-raptor-1ms-average/mixed-static-contact-41003-audit-rerun.log",
+      "sha256": "a253a4b3602731cd9a026001f9ceec909d56d2b34ee5f8ac19052e301193724e",
+      "bytes": 1157
+    },
+    {
+      "path": "evidence/inputs/webots-raptor-1ms-average/mixed-static-contact-41003-audit-rerun.wbt",
+      "sha256": "99eb0191313ba6b72e02dbbe124bbd584a6123da42440eea3a21cbad55b88374",
+      "bytes": 2267
+    },
+    {
+      "path": "evidence/inputs/webots-raptor-1ms-average/mixed-static-contact-41003.run-manifest.json",
+      "sha256": "8e6e1663f71ebea252d8d050e1856c41cd05b13356724e9d379e1542471bed96",
+      "bytes": 1546
+    },
+    {
+      "path": "evidence/inputs/webots-raptor-1ms-average/mixed-static-contact-41003.wbt",
+      "sha256": "274a1be87d916650263fbf3e6645a4c900db0d18916fb0a21f47de1828f42cca",
+      "bytes": 2252
+    },
+    {
+      "path": "evidence/inputs/webots-raptor-1ms-average/range-ray-audits.json",
+      "sha256": "d28b0f1231cc95eb17b968df31fca29e4807e957352c8fcffd07502afdf11760",
+      "bytes": 40017
+    },
+    {
+      "path": "evidence/inputs/webots-stable-arrival/episodes.csv",
+      "sha256": "633b5658aafe5d254e553e19ca0d8300171a1c224a128f3588f7c1cf1c4936c2",
+      "bytes": 13843
+    },
+    {
+      "path": "evidence/inputs/webots-stable-arrival/manifest.json",
+      "sha256": "5175a7e0c1e8d4e6ff9de3fa905aef0ade00fc210d8add63fd56712dd4c8951d",
+      "bytes": 1792
+    },
+    {
+      "path": "evidence/inputs/webots-stable-arrival/runs.json",
+      "sha256": "60a076274b2a41e5377b41273ee175022207dc55197cad4ed27f00172fccc8e9",
+      "bytes": 191016
+    },
+    {
       "path": "assets/checkpoints/guided-table-memory.bin.best",
       "sha256": "fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9",
       "bytes": 1666548
@@ -217,6 +447,16 @@
       "path": "assets/checkpoints/guided-threat-joint.bin.best",
       "sha256": "fde3cc40baf0741c45abb2a89e9bab2c4b48dc982d7b3bda4e49a44455a6cc52",
       "bytes": 1666548
+    },
+    {
+      "path": "assets/checkpoints/arrival-open-domain-experimental.bin.best",
+      "sha256": "bb6e83096abeee16a9eae2f5adcee411b9fd2e7422b5d02047acb040f41c9fac",
+      "bytes": 1745068
+    },
+    {
+      "path": "assets/navigation-arrival-experimental.bin",
+      "sha256": "ab590a63fcea7bf035318e2e0fc52392eaafc8b6c4f1c00b87e4768db107b548",
+      "bytes": 48496
     }
   ],
   "recorded_candidate_hashes": {
@@ -374,6 +614,348 @@
       "evidence/inputs/bank-witness-1.5mps.log"
     ]
   },
+  "arrival_open_domain_candidate": {
+    "input_directory": "evidence/inputs/arrival-training",
+    "input_manifest_sha256": "5cba96a06cfd83126f1ce20799318ef71eef156e373e0547255b6ac191091fb9",
+    "training_command": "./build/metal_nav_guided train-tasks 1000 results/arrival-open-domain.bin assets/checkpoints/guided-table-memory.bin.best 0 0 1 42",
+    "train_seed": 42,
+    "selection_seed": 800001,
+    "selected_rollout": 900,
+    "total_transitions": 4096000,
+    "elapsed_wall_s": 34.7468,
+    "checkpoint": "assets/checkpoints/arrival-open-domain-experimental.bin.best",
+    "checkpoint_sha256": "bb6e83096abeee16a9eae2f5adcee411b9fd2e7422b5d02047acb040f41c9fac",
+    "actor_export": "assets/navigation-arrival-experimental.bin",
+    "actor_export_sha256": "ab590a63fcea7bf035318e2e0fc52392eaafc8b6c4f1c00b87e4768db107b548",
+    "selection_validation": {
+      "episodes": 128,
+      "seed": 800001,
+      "initial_success": 0.742188,
+      "selected_success": 1.0,
+      "selected_mean_arrival_s_successes_only": 4.32735
+    },
+    "fresh_seed_evaluation": {
+      "seed": 820001,
+      "episodes_per_condition": 128,
+      "paired_task_and_plant_rows": true,
+      "conditions": [
+        {
+          "policy": "original",
+          "stage": 0,
+          "family": 0,
+          "domain_amplitude": 0,
+          "successes": 95,
+          "collisions": 13,
+          "timeouts": 20
+        },
+        {
+          "policy": "original",
+          "stage": 0,
+          "family": 0,
+          "domain_amplitude": 1,
+          "successes": 95,
+          "collisions": 14,
+          "timeouts": 19
+        },
+        {
+          "policy": "original",
+          "stage": 1,
+          "family": 0,
+          "domain_amplitude": 1,
+          "successes": 97,
+          "collisions": 23,
+          "timeouts": 8
+        },
+        {
+          "policy": "original",
+          "stage": 2,
+          "family": 1,
+          "domain_amplitude": 1,
+          "successes": 75,
+          "collisions": 47,
+          "timeouts": 6
+        },
+        {
+          "policy": "original",
+          "stage": 2,
+          "family": 2,
+          "domain_amplitude": 1,
+          "successes": 51,
+          "collisions": 63,
+          "timeouts": 14
+        },
+        {
+          "policy": "original",
+          "stage": 2,
+          "family": 4,
+          "domain_amplitude": 1,
+          "successes": 98,
+          "collisions": 12,
+          "timeouts": 18
+        },
+        {
+          "policy": "original",
+          "stage": 2,
+          "family": 5,
+          "domain_amplitude": 1,
+          "successes": 86,
+          "collisions": 25,
+          "timeouts": 17
+        },
+        {
+          "policy": "arrival",
+          "stage": 0,
+          "family": 0,
+          "domain_amplitude": 0,
+          "successes": 128,
+          "collisions": 0,
+          "timeouts": 0
+        },
+        {
+          "policy": "arrival",
+          "stage": 0,
+          "family": 0,
+          "domain_amplitude": 1,
+          "successes": 128,
+          "collisions": 0,
+          "timeouts": 0
+        },
+        {
+          "policy": "arrival",
+          "stage": 1,
+          "family": 0,
+          "domain_amplitude": 1,
+          "successes": 128,
+          "collisions": 0,
+          "timeouts": 0
+        },
+        {
+          "policy": "arrival",
+          "stage": 2,
+          "family": 1,
+          "domain_amplitude": 1,
+          "successes": 111,
+          "collisions": 17,
+          "timeouts": 0
+        },
+        {
+          "policy": "arrival",
+          "stage": 2,
+          "family": 2,
+          "domain_amplitude": 1,
+          "successes": 101,
+          "collisions": 27,
+          "timeouts": 0
+        },
+        {
+          "policy": "arrival",
+          "stage": 2,
+          "family": 4,
+          "domain_amplitude": 1,
+          "successes": 123,
+          "collisions": 5,
+          "timeouts": 0
+        },
+        {
+          "policy": "arrival",
+          "stage": 2,
+          "family": 5,
+          "domain_amplitude": 1,
+          "successes": 126,
+          "collisions": 2,
+          "timeouts": 0
+        }
+      ]
+    },
+    "rich_bank_development": {
+      "bank": "evidence/inputs/challenge-bank-mirrored-v1.jsonl",
+      "bank_sha256": "e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e",
+      "rows": 90,
+      "final_split_evaluated": false,
+      "outcomes_by_family": {
+        "14": {
+          "success": 0,
+          "collision": 30,
+          "timeout": 0
+        },
+        "15": {
+          "success": 0,
+          "collision": 30,
+          "timeout": 0
+        },
+        "16": {
+          "success": 25,
+          "collision": 5,
+          "timeout": 0
+        }
+      }
+    },
+    "legacy_first_entry_retention": {
+      "input": "evidence/inputs/arrival-training/retention.csv",
+      "sha256": "7bed93365053bc2d3d5ab25a696417b65b23a96ad5edf419d5452753e495c4c3",
+      "seed": 800001,
+      "episodes_per_family_policy": 128,
+      "budget_s": 10,
+      "requested_speed_cap_mps": 1.5,
+      "success_rule": "first_goal_region_entry for both policies; these rows are not stable-arrival scores",
+      "families": [
+        {
+          "family": 4,
+          "original_successes": 126,
+          "arrival_successes": 115
+        },
+        {
+          "family": 5,
+          "original_successes": 124,
+          "arrival_successes": 101
+        },
+        {
+          "family": 7,
+          "original_successes": 115,
+          "arrival_successes": 108
+        },
+        {
+          "family": 8,
+          "original_successes": 114,
+          "arrival_successes": 123
+        },
+        {
+          "family": 10,
+          "original_successes": 112,
+          "arrival_successes": 103
+        },
+        {
+          "family": 11,
+          "original_successes": 24,
+          "arrival_successes": 33
+        },
+        {
+          "family": 12,
+          "original_successes": 125,
+          "arrival_successes": 118
+        }
+      ]
+    },
+    "source_hashes_at_run": {
+      "main.mm": "29cf6c9ac90c9601761be7c3e7900304bbd2d8a19066a95271c14a74743bfe75",
+      "sim.metal": "0b5e976f8b167be425f42c23838e8d4a6ccc98c9291692f83b6583205894d609",
+      "physics.metal": "f21e672d0ca3c0ababf7c0ef0058d38eb2bd59d2a4dd2ea7b3f92cf4f4e03639",
+      "physics_domain.hpp": "78a0eda5c637efece3bcee769b7b61a4c05f47ff09aa44d80b34989a96290633",
+      "navigation_runtime.hpp": "7b5fbc2e3a9a4faf387caee0854974ca7bb236ae3c2ef3ba5c5b44752226b5b9",
+      "navigation_tasks.hpp": "3437f24b6e3f9cceb3070514639b39a5023f814e820eca6157bfbc02fb181d08",
+      "navigation_training.hpp": "639d3d180fd21a26d66197f9fc916b9b7cc21786d3381650c0c294b5ae5d2f7f",
+      "world.hpp": "5e651fdf2dcb2d252b64d688a46ab0b793849356bd10a1c205d2b7cd9fabffa2",
+      "ppo.hpp": "f18a0dc10d6dcd12b105173236efd76b6183fc053962656f82aa0e2df06c8b3a",
+      "ppo.metal": "0d746823a3ff78669de99975bd322b7c28bdee85df86df7c818d05f560b2a27d",
+      "assets/checkpoints/guided-table-memory.bin.best": "fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9",
+      "assets/checkpoints/arrival-open-domain-experimental.bin.best": "bb6e83096abeee16a9eae2f5adcee411b9fd2e7422b5d02047acb040f41c9fac",
+      "assets/navigation-arrival-experimental.bin": "ab590a63fcea7bf035318e2e0fc52392eaafc8b6c4f1c00b87e4768db107b548"
+    },
+    "limitations": [
+      "Single training seed; open room training only.",
+      "Clutter test includes direct paths and simple dogleg geometric witnesses; not a full route planning benchmark.",
+      "No estimator noise, structured stereo errors or aerodynamic identification.",
+      "Original policy and stronger source baselines preserved; candidate remains experimental pending retention and independent transfer checks.",
+      "This single training seed improves the evaluated open and near-goal tasks and selected simple static scenes; it is not a full generalization result.",
+      "The rich mirrored-bank result uses a different scene set and does not form a paired checkpoint comparison.",
+      "The same-seed selection curve is model-selection evidence, not an independent final test.",
+      "Legacy first-entry retention rows use a different success rule than the new stable-arrival task; use the matched legacy matrix only for retention comparisons."
+    ]
+  },
+  "webots_stable_arrival_transfer": {
+    "input_directory": "evidence/inputs/webots-stable-arrival",
+    "manifest_sha256": "5175a7e0c1e8d4e6ff9de3fa905aef0ade00fc210d8add63fd56712dd4c8951d",
+    "episodes_csv_sha256": "633b5658aafe5d254e553e19ca0d8300171a1c224a128f3588f7c1cf1c4936c2",
+    "runs_json_sha256": "60a076274b2a41e5377b41273ee175022207dc55197cad4ed27f00172fccc8e9",
+    "webots_release": "R2025a",
+    "scene_count": 18,
+    "episodes": 36,
+    "seeds_per_family_policy": 6,
+    "families": [
+      "doorway",
+      "table_overhang",
+      "mixed_clutter"
+    ],
+    "goal_contract": {
+      "radius_m": 0.35,
+      "max_actual_speed_mps": 0.5,
+      "continuous_dwell_s": 0.2,
+      "budget_s": 20,
+      "scorer_hz": 100
+    },
+    "simulation": {
+      "physics_step_ms": 1,
+      "controller_period_ms": 10,
+      "navigation_period_ms": 50,
+      "motor_sampling": "interval-average",
+      "physics_profile": "hover",
+      "collision_sphere_radius_m": 0.18
+    },
+    "sensors": {
+      "ego": "ideal GPS/IMU/Gyro",
+      "range": "clean RangeFinder",
+      "range_noise_stddev_m": 0
+    },
+    "results_by_policy": {
+      "original": {
+        "success": 0,
+        "collision": 4,
+        "timeout": 14,
+        "by_family": {
+          "doorway": {
+            "success": 0,
+            "collision": 1,
+            "timeout": 5
+          },
+          "table_overhang": {
+            "success": 0,
+            "collision": 0,
+            "timeout": 6
+          },
+          "mixed_clutter": {
+            "success": 0,
+            "collision": 3,
+            "timeout": 3
+          }
+        }
+      },
+      "arrival_candidate": {
+        "success": 17,
+        "collision": 1,
+        "timeout": 0,
+        "by_family": {
+          "doorway": {
+            "success": 6,
+            "collision": 0,
+            "timeout": 0
+          },
+          "table_overhang": {
+            "success": 6,
+            "collision": 0,
+            "timeout": 0
+          },
+          "mixed_clutter": {
+            "success": 5,
+            "collision": 1,
+            "timeout": 0
+          }
+        }
+      }
+    },
+    "reproduction": "Use benchmark.run_one for doorway/table_overhang/mixed_clutter seeds41001..41006 with eachactor,2000steps,1msODE,average,goal_objective=hold. Alllaunches--minimize--batch--port23456. See savedrunroutes and sourcehashes.",
+    "source_hashes": {
+      "webots/benchmark.py": "30322ffa819eebc2206ca826f92ce09600904e132ba563bc75eb9ee51c636323",
+      "webots/controllers/raptor_webots/raptor_webots.cpp": "42e6171133c1c082d4fa90d199caa1007d3350f6b3a8d827b1e2abebb1451b33",
+      "assets/navigation.bin": "d13c1b3f3965ca0e6df5ec94cb1d42b944f70d7ff5a1f875e3218452caea203d",
+      "assets/navigation-arrival-experimental.bin": "ab590a63fcea7bf035318e2e0fc52392eaafc8b6c4f1c00b87e4768db107b548"
+    },
+    "limitations": [
+      "18staticunknowngeometrytasks;notbroadgeneralization.",
+      "Metal20HzversusWebots100Hzholdcheck.",
+      "Single training seed; nohardwareorrealstereoevidence.",
+      "Long-routecornerandconnectedroomtasksremainunsolved."
+    ]
+  },
   "figure_sources": {
     "training-broad-validation": {
       "input": "evidence/inputs/training.tsv",
@@ -448,6 +1030,37 @@
     "static-policy-speed-cap-sweep": {
       "input": "evidence/inputs/static-speed.csv",
       "filter": "same checkpoint weights and seed; five requested caps; three clean and two combined-stress static families"
+    },
+    "arrival-open-training": {
+      "input": "evidence/inputs/arrival-training/history.csv",
+      "filter": "all 21 logged evaluations from rollout 0 through 1000; seed 800001; selected at rollout 900"
+    },
+    "arrival-fresh-seed-domain": {
+      "inputs": [
+        "evidence/inputs/arrival-training/evaluations.csv",
+        "evidence/inputs/arrival-training/initial-dev.csv",
+        "evidence/inputs/arrival-training/selected-dev.csv"
+      ],
+      "filter": "fresh seed 820001; 128 paired episode rows per condition; identical start/goal/scene/mass between policies"
+    },
+    "arrival-rich-bank-limit": {
+      "inputs": [
+        "evidence/inputs/arrival-training/rich-dev.csv",
+        "evidence/inputs/challenge-bank-mirrored-v1.jsonl"
+      ],
+      "filter": "candidate-only, 90 mirrored challenge-bank dev levels; 30 each families 14/15/16; final split untouched"
+    },
+    "arrival-legacy-retention-regression": {
+      "input": "evidence/inputs/arrival-training/retention.csv",
+      "filter": "same seed 800001; 128 episodes, 10 s budget, requested cap 1.5 m/s; both checkpoints scored with legacy first-goal-region-entry rule"
+    },
+    "webots-stable-arrival": {
+      "inputs": [
+        "evidence/inputs/webots-stable-arrival/episodes.csv",
+        "evidence/inputs/webots-stable-arrival/runs.json",
+        "evidence/inputs/webots-stable-arrival/manifest.json"
+      ],
+      "filter": "36 episodes; 3 static scene families\u00d76 saved seeds\u00d72 policies; 20 s stable-arrival contract; matched by scene and seed"
     }
   },
   "training_tsv_schema": [
@@ -467,7 +1080,13 @@
     "wall_time": "Training TSV elapsed wall seconds are measured since the training invocation at each logged validation. Scaling values are the recorded complete three-rollout workload wall times.",
     "threat_ttc": "Nominal initial scene time-to-collision parameter. It is not actual closest-approach or policy-path collision time.",
     "speed_sweep": "speed_mps is the requested 3D velocity-intent norm cap under contract 1, not measured speed. mean_speed_mps is path divided by elapsed time across successes and failures. peak_speed_mps is the maximum vehicle speed observed in the case and can reflect an outlier.",
-    "corner_control": "Training TSV rows are periodic fixed-seed selection evaluations. The initial and final evaluations use the same family-14 configuration; this is one targeted warm-start experiment."
+    "corner_control": "Training TSV rows are periodic fixed-seed selection evaluations. The initial and final evaluations use the same family-14 configuration; this is one targeted warm-start experiment.",
+    "stable_arrival": "Success requires position within 0.35 m and actual speed at or below 0.5 m/s for a continuous 0.2 s hold. Mean arrival time is averaged over successful episodes only.",
+    "arrival_training_validation": "The open-domain training curve uses a fixed 128-episode selection set (seed 800001). Checkpoint selection uses that set; these points are not an independent test.",
+    "arrival_fresh_seed": "Seed 820001 uses paired start, goal, scene and recorded mass rows for original and candidate policies, with 128 episodes per condition. It is one fresh evaluation seed.",
+    "arrival_domain_amplitude": "Amplitude 1 applies the declared parameter-randomization ranges. These ranges are assumptions, not measured hardware uncertainty.",
+    "legacy_first_entry_retention": "Legacy family retention uses first goal-region entry as success. It cannot be compared numerically with the candidate's stable-arrival evaluation, which also requires speed and hold time.",
+    "webots_stable_arrival": "Webots success requires a 0.35 m radius, actual speed at or below 0.5 m/s, and continuous 0.2 s hold scored at 100 Hz. The compared runs share each saved world and seed."
   },
   "limitations": [
     "All evidence is from simulation. No real camera, transport, or flight validation is represented.",
@@ -480,7 +1099,10 @@
     "Separate PPO runs on the mirrored bank are tracked outside this figure package. Their preliminary development scores are not included here; no final split has been evaluated.",
     "The 3D view and GIF render recorded simulator traces and logged scene geometry. They are not camera footage. Pose paths are sampled at 20 Hz; terminal state metadata records the exact final 100 Hz state.",
     "Challenge-bank outcome bars use 30 levels per family from the frozen development split. They are not final holdout results, and the five policy/inference variants were not trained as a single matched experiment.",
-    "Challenge-bank witness routes are geometric feasibility witnesses only; they are not learned trajectories or evidence that the tested policy can fly them."
+    "Challenge-bank witness routes are geometric feasibility witnesses only; they are not learned trajectories or evidence that the tested policy can fly them.",
+    "The open-domain candidate is a single-seed foundation experiment. Its gains on tested open/near-goal and simple static scenes do not establish full navigation generalization; it fails the mirrored corner and connected-room dev strata.",
+    "The arrival rich-bank evaluation uses one candidate checkpoint on 90 mirrored development levels only. It is separate from the earlier bank and provides no matched baseline; the final split remains untouched.",
+    "The Webots stable-arrival result covers 18 static scenes and ideal ego/range sensors. It is a small simulator transfer check, not broad generalization or hardware evidence."
   ],
   "visualization_trace_contract": {
     "sources": [

@@ -45,6 +45,15 @@ WITNESS_1MPS = INPUTS / "bank-witness-1mps.csv"
 WITNESS_15MPS = INPUTS / "bank-witness-1.5mps.csv"
 WITNESS_LOG_1MPS = INPUTS / "bank-witness-1mps.log"
 WITNESS_LOG_15MPS = INPUTS / "bank-witness-1.5mps.log"
+ARRIVAL_DIR = INPUTS / "arrival-training"
+ARRIVAL_HISTORY = ARRIVAL_DIR / "history.csv"
+ARRIVAL_EVALUATIONS = ARRIVAL_DIR / "evaluations.csv"
+ARRIVAL_MANIFEST = ARRIVAL_DIR / "manifest.json"
+ARRIVAL_RETENTION = ARRIVAL_DIR / "retention.csv"
+WEBOTS_STABLE_DIR = INPUTS / "webots-stable-arrival"
+WEBOTS_STABLE_EPISODES = WEBOTS_STABLE_DIR / "episodes.csv"
+WEBOTS_STABLE_RUNS = WEBOTS_STABLE_DIR / "runs.json"
+WEBOTS_STABLE_MANIFEST = WEBOTS_STABLE_DIR / "manifest.json"
 BENCHMARKS = ROOT / "docs" / "BENCHMARKS.md"
 CHALLENGE_FILES = {
     "Original PPO · mode 17": (INPUTS / "bank-original.csv", "guided-table-memory.bin.best", "17"),
@@ -98,6 +107,265 @@ def read_csv(path: Path) -> list[dict[str, str]]:
     if not rows:
         raise ValueError(f"No data rows in {path}")
     return rows
+
+
+def load_and_validate_arrival_evidence() -> tuple[list[dict[str, Any]], list[dict[str, str]], dict[str, list[dict[str, str]]], dict[str, Any], list[dict[str, str]], list[dict[str, str]]]:
+    """Load the recorded open-domain training run and matched fresh-seed rows."""
+    manifest = json.loads(ARRIVAL_MANIFEST.read_text())
+    if manifest.get("schema") != "arrival-training-evidence-v1":
+        raise ValueError("Unknown arrival-training evidence schema")
+    if (int(manifest.get("train_seed", -1)) != 42 or
+            int(manifest.get("selection_seed", -1)) != 800001 or
+            int(manifest.get("fresh_evaluation_seed", -1)) != 820001 or
+            int(manifest.get("selected_rollout", -1)) != 900 or
+            int(manifest.get("transitions", -1)) != 4_096_000):
+        raise ValueError("Arrival-training manifest does not match the recorded experiment")
+
+    for filename, expected_hash in manifest.get("input_hashes", {}).items():
+        path = ARRIVAL_DIR / filename
+        if not path.is_file() or sha256(path) != expected_hash:
+            raise ValueError(f"Arrival evidence input hash mismatch: {path}")
+    for relative, expected_hash in manifest.get("source_hashes", {}).items():
+        path = ROOT / relative
+        if path.is_file() and (relative.endswith(".bin.best") or relative.startswith("assets/navigation-")) and sha256(path) != expected_hash:
+            raise ValueError(f"Arrival source/checkpoint hash mismatch: {path}")
+
+    with ARRIVAL_HISTORY.open(newline="") as stream:
+        history = list(csv.DictReader(stream))
+    required_history = {"rollout", "total_transitions", "wall_s", "success", "collision", "timeout", "mean_arrival_s"}
+    if not history or not required_history.issubset(history[0]):
+        raise ValueError("Arrival history has an unexpected schema")
+    for row in history:
+        for key in required_history:
+            row[key] = float(row[key])
+        row["rollout"] = int(row["rollout"])
+        row["total_transitions"] = int(row["total_transitions"])
+        if row["total_transitions"] != row["rollout"] * 4096:
+            raise ValueError("Arrival history transition count does not match 128×32 rollout collection")
+        if abs(row["success"] + row["collision"] + row["timeout"] - 1.0) > 1e-5:
+            raise ValueError("Arrival history terminal rates do not sum to one")
+    expected_rollouts = list(range(0, 1001, 50))
+    if [row["rollout"] for row in history] != expected_rollouts:
+        raise ValueError("Arrival history must contain the initial point and 50-rollout checkpoints through 1000")
+    if any(b["wall_s"] <= a["wall_s"] for a, b in zip(history, history[1:])):
+        raise ValueError("Arrival history wall time is not increasing")
+    selected_rollout = int(manifest["selected_rollout"])
+    selected = next((row for row in history if row["rollout"] == selected_rollout), None)
+    if selected is None or selected["success"] != 1.0 or abs(selected["mean_arrival_s"] - 4.32735) > 1e-4:
+        raise ValueError("Arrival selected rollout does not match the recorded selection result")
+
+    initial_dev = read_csv(ARRIVAL_DIR / "initial-dev.csv")
+    selected_dev = read_csv(ARRIVAL_DIR / "selected-dev.csv")
+    if len(initial_dev) != 128 or len(selected_dev) != 128:
+        raise ValueError("Arrival selection evaluation must use 128 episodes before and after training")
+    for rows, label in ((initial_dev, "initial"), (selected_dev, "selected")):
+        if any((r["seed"] != "800001" or r["stage"] != "0" or r["family"] != "0" or
+                r["mode"] != "17" or r["domain_amplitude"] != "1") for r in rows):
+            raise ValueError(f"Arrival {label} selection rows do not match the open-domain validation profile")
+        if any(sum(int(r[k]) for k in ("success", "collision", "timeout")) != 1 for r in rows):
+            raise ValueError(f"Arrival {label} selection rows contain an invalid terminal outcome")
+    initial_rate = sum(int(r["success"]) for r in initial_dev) / len(initial_dev)
+    selected_rate = sum(int(r["success"]) for r in selected_dev) / len(selected_dev)
+    selected_mean = sum(float(r["time_s"]) for r in selected_dev if r["success"] == "1") / max(1, sum(int(r["success"]) for r in selected_dev))
+    if abs(initial_rate - history[0]["success"]) > 1e-5 or abs(selected_rate - selected["success"]) > 1e-5 or abs(selected_mean - selected["mean_arrival_s"]) > 1e-4:
+        raise ValueError("Arrival selection CSV does not match its history checkpoints")
+
+    summaries = read_csv(ARRIVAL_EVALUATIONS)
+    expected_cases = {(0, 0, 0), (0, 0, 1), (1, 0, 1), (2, 1, 1), (2, 2, 1), (2, 4, 1), (2, 5, 1)}
+    if len(summaries) != 14:
+        raise ValueError("Arrival fresh-seed evaluation must contain 14 paired domain rows")
+    episodes: dict[str, list[dict[str, str]]] = {}
+    for summary in summaries:
+        if summary["policy"] not in ("original", "arrival"):
+            raise ValueError("Unknown policy in arrival evaluation table")
+        key = (int(summary["stage"]), int(summary["family"]), int(summary["domain_amplitude"]))
+        if key not in expected_cases or summary["seed"] != "820001" or int(summary["episodes"]) != 128:
+            raise ValueError("Arrival fresh-seed row has an unexpected stage, family, amplitude, seed, or count")
+        if int(summary["successes"]) + int(summary["collisions"]) + int(summary["timeouts"]) != 128:
+            raise ValueError("Arrival fresh-seed summary outcomes do not sum to 128")
+        csv_path = ARRIVAL_DIR / Path(summary["csv_path"]).name
+        rows = read_csv(csv_path)
+        if len(rows) != 128 or len({row["env"] for row in rows}) != 128:
+            raise ValueError(f"{csv_path.name} must contain one row for each of 128 environments")
+        if any(row["seed"] != "820001" or int(row["stage"]) != key[0] or int(row["family"]) != key[1] or int(row["domain_amplitude"]) != key[2] or row["mode"] != "17" for row in rows):
+            raise ValueError(f"{csv_path.name} does not match its summary condition")
+        for row in rows:
+            if sum(int(row[k]) for k in ("success", "collision", "timeout")) != 1:
+                raise ValueError(f"{csv_path.name} contains a non-terminal or duplicate outcome")
+        counts = (sum(int(row["success"]) for row in rows), sum(int(row["collision"]) for row in rows), sum(int(row["timeout"]) for row in rows))
+        wanted_counts = tuple(int(summary[k]) for k in ("successes", "collisions", "timeouts"))
+        if counts != wanted_counts:
+            raise ValueError(f"{csv_path.name} outcomes differ from the summary table")
+        episodes[f"{key[0]}-{key[1]}-{key[2]}-{summary['policy']}"] = rows
+
+    pair_fields = ("env", "stage", "family", "domain_amplitude", "start_x", "start_y", "start_z", "start_yaw",
+                   "initial_vx", "initial_vy", "initial_vz", "goal_x", "goal_y", "goal_z", "initial_distance_m",
+                   "direct_clearance_m", "witness_length_m", "mass_kg")
+    seen_cases: set[tuple[int, int, int]] = set()
+    for key in expected_cases:
+        original = episodes.get(f"{key[0]}-{key[1]}-{key[2]}-original")
+        arrival = episodes.get(f"{key[0]}-{key[1]}-{key[2]}-arrival")
+        if original is None or arrival is None:
+            raise ValueError(f"Arrival fresh-seed pair is missing for {key}")
+        for left, right in zip(original, arrival):
+            if any(left[field] != right[field] for field in pair_fields):
+                raise ValueError(f"Arrival fresh-seed pair uses different task or plant data for {key} env={left['env']}")
+        seen_cases.add(key)
+    if seen_cases != expected_cases:
+        raise ValueError("Arrival fresh-seed matrix is incomplete")
+
+    rich_path = ARRIVAL_DIR / "rich-dev.csv"
+    rich_dev = read_csv(rich_path)
+    challenge_rows = [json.loads(line) for line in MIRRORED_BANK.read_text().splitlines()]
+    challenge_by_id = {row["failure_id"]: row for row in challenge_rows}
+    dev_ids = {key for key, row in challenge_by_id.items() if row["split"] == "dev"}
+    checkpoint_hash = manifest["source_hashes"]["assets/checkpoints/arrival-open-domain-experimental.bin.best"]
+    bank_hash = sha256(MIRRORED_BANK)
+    if len(rich_dev) != 90 or {row["failure_id"] for row in rich_dev} != dev_ids:
+        raise ValueError("Arrival rich-bank result must cover the 90 mirrored dev levels")
+    for row in rich_dev:
+        level = challenge_by_id[row["failure_id"]]
+        if (row["split"] != "dev" or int(row["episodes"]) != 1 or row["mode"] != "17" or
+                row["speed_mps"] != "1.5" or row["max_steps"] != "400" or
+                row["checkpoint_sha256"] != checkpoint_hash or row["bank_sha256"] != bank_hash or
+                row["scene_sha256"] != level["scene_sha256"] or int(row["family"]) != int(level["family"])):
+            raise ValueError(f"Arrival rich-bank provenance mismatch for {row['failure_id']}")
+        if sum(int(row[k]) for k in ("success", "collision", "timeout")) != 1:
+            raise ValueError(f"Arrival rich-bank row has a nonterminal result: {row['failure_id']}")
+    family_outcomes = {}
+    for family in (14, 15, 16):
+        selected_rows = [row for row in rich_dev if int(row["family"]) == family]
+        family_outcomes[family] = tuple(sum(int(row[k]) for row in selected_rows) for k in ("success", "collision", "timeout"))
+        if len(selected_rows) != 30:
+            raise ValueError(f"Arrival rich-bank family {family} does not contain 30 dev levels")
+    if family_outcomes != {14: (0, 30, 0), 15: (0, 30, 0), 16: (25, 5, 0)}:
+        raise ValueError(f"Arrival rich-bank development outcomes changed: {family_outcomes}")
+
+    retention = read_csv(ARRIVAL_RETENTION)
+    expected_retention = {4, 5, 7, 8, 10, 11, 12}
+    if len(retention) != 14:
+        raise ValueError("Arrival legacy-retention comparison must contain seven matched family pairs")
+    retention_keys = set()
+    for row in retention:
+        key = (row["policy"], int(row["family"]))
+        retention_keys.add(key)
+        if (row["policy"] not in ("original", "arrival") or int(row["family"]) not in expected_retention or
+                row["seed"] != "800001" or int(row["episodes"]) != 128 or row["budget_s"] != "10" or
+                row["speed_cap_mps"] != "1.5" or row["success_rule"] != "first_goal_region_entry"):
+            raise ValueError("Arrival legacy-retention row does not match the saved first-entry protocol")
+        counts = [round(float(row[name]) * int(row["episodes"])) for name in ("success", "collision", "timeout")]
+        if sum(counts) != 128:
+            raise ValueError("Arrival legacy-retention outcome rates do not sum to 128 episodes")
+    if retention_keys != {(policy, family) for policy in ("original", "arrival") for family in expected_retention}:
+        raise ValueError("Arrival legacy-retention comparison is missing a policy/family pair")
+    return history, summaries, episodes, manifest, rich_dev, retention
+
+
+def load_and_validate_webots_stable_arrival() -> tuple[list[dict[str, str]], dict[str, Any]]:
+    manifest = json.loads(WEBOTS_STABLE_MANIFEST.read_text())
+    if manifest.get("schema") != "webots-stable-arrival-v1" or int(manifest.get("records", -1)) != 36:
+        raise ValueError("Unknown or incomplete Webots stable-arrival evidence manifest")
+    for name, expected_hash in manifest.get("input_hashes", {}).items():
+        path = WEBOTS_STABLE_DIR / name
+        if not path.is_file() or sha256(path) != expected_hash:
+            raise ValueError(f"Webots stable-arrival input hash mismatch: {path}")
+
+    rows = read_csv(WEBOTS_STABLE_EPISODES)
+    run_records = json.loads(WEBOTS_STABLE_RUNS.read_text())
+    if len(rows) != 36 or len(run_records) != 36:
+        raise ValueError("Webots stable-arrival package must contain 36 episode records and run manifests")
+    if abs(float(manifest["radius_m"]) - 0.35) > 1e-9 or abs(float(manifest["speed_max_mps"]) - 0.5) > 1e-9 or abs(float(manifest["dwell_s"]) - 0.2) > 1e-9 or abs(float(manifest["budget_s"]) - 20) > 1e-9:
+        raise ValueError("Webots stable-arrival contract differs from the declared goal-hold protocol")
+    if manifest.get("sensors") != "idealGPS/IMU/Gyro;cleanRangeFinder" or abs(float(manifest.get("collision_radius_m", 0.18)) - 0.18) > 1e-9:
+        raise ValueError("Webots stable-arrival sensor or body-scoring contract changed")
+
+    policies = {"navigation.bin": "original", "navigation-arrival-experimental.bin": "arrival"}
+    actor_hashes = {"navigation.bin": manifest["source_hashes"]["assets/navigation.bin"],
+                    "navigation-arrival-experimental.bin": manifest["source_hashes"]["assets/navigation-arrival-experimental.bin"]}
+    for actor, expected_hash in actor_hashes.items():
+        path = ROOT / "assets" / actor
+        if not path.is_file() or sha256(path) != expected_hash:
+            raise ValueError(f"Webots stable-arrival actor hash mismatch: {path}")
+    families = {"doorway", "table_overhang", "mixed_clutter"}
+    expected_seeds = set(range(41001, 41007))
+    episodes_by_key = {}
+    for row in rows:
+        key = (row["policy"], row["world"], int(row["seed"]))
+        if key in episodes_by_key:
+            raise ValueError(f"Duplicate Webots stable-arrival row: {key}")
+        episodes_by_key[key] = row
+        if row["policy"] not in policies or row["family"] not in families or row["goal_objective"] != "hold":
+            raise ValueError("Unexpected Webots policy, scene family, or objective")
+        if int(row["seed"]) not in expected_seeds or int(row["steps"]) > 2000 or float(row["time_s"]) > 20.0 + 1e-6:
+            raise ValueError("Webots episode exceeds the fixed 20-second/2000-step profile")
+        if row["physics_step_ms"] != "1" or row["motor_sampling"] != "average" or row["physics_profile"] != "hover":
+            raise ValueError("Webots episode physics or motor-sampling profile changed")
+        if row["navigation_loaded"] != "True":
+            raise ValueError("Webots episode did not load its navigation actor")
+        if sum(row[field] == "True" for field in ("success", "collision", "timeout")) != 1:
+            raise ValueError("Webots episode does not have one terminal outcome")
+        if row["success"] == "True" and (float(row["final_error_m"]) > 0.35 + 1e-6 or
+                                           float(row["final_world_speed_mps"]) > 0.5 + 1e-6 or
+                                           float(row["goal_dwell_s"]) < 0.2 - 1e-6):
+            raise ValueError("Webots success does not satisfy the stable-arrival rule")
+
+    run_by_key = {}
+    for record in run_records:
+        episode = record["episode"]
+        key = (episode["policy"], episode["world"], int(episode["seed"]))
+        if key in run_by_key or key not in episodes_by_key:
+            raise ValueError(f"Duplicate or unmatched Webots run manifest: {key}")
+        run_by_key[key] = record
+        episode_row = episodes_by_key[key]
+        if (bool(episode["success"]) != (episode_row["success"] == "True") or
+                bool(episode["collision"]) != (episode_row["collision"] == "True") or
+                bool(episode["timeout"]) != (episode_row["timeout"] == "True")):
+            raise ValueError(f"Webots run record outcome differs from episodes.csv: {key}")
+        run_config = record["run_manifest"]
+        if run_config.get("files_sha256", {}).get("navigation_actor") != actor_hashes[episode["policy"]]:
+            raise ValueError(f"Webots run manifest actor hash mismatch: {key}")
+        if (run_config.get("goal_objective") != "hold" or int(run_config.get("max_steps", 0)) != 2000 or
+                int(run_config.get("physics_basic_time_step_ms", 0)) != 1 or
+                int(run_config.get("raptor_control_period_ms", 0)) != 10 or
+                int(run_config.get("navigation_period_ms", 0)) != 50 or
+                abs(float(run_config.get("goal_radius_m", 0)) - 0.35) > 1e-9 or
+                abs(float(run_config.get("goal_dwell_threshold_s", 0)) - 0.2) > 1e-9 or
+                abs(float(run_config.get("goal_dwell_max_speed_mps", 0)) - 0.5) > 1e-9):
+            raise ValueError(f"Webots hold/scorer configuration mismatch: {key}")
+        if run_config.get("range_noise_stddev_m") != 0.0 or "ideal GPS" not in run_config.get("ego_sensors", ""):
+            raise ValueError(f"Webots run does not use ideal ego sensing and clean range: {key}")
+        if "sampled at 100 Hz" not in run_config.get("goal_contract", ""):
+            raise ValueError(f"Webots hold score is not recorded at 100 Hz: {key}")
+    if set(run_by_key) != set(episodes_by_key):
+        raise ValueError("Webots episodes and run manifests do not match")
+
+    for family in families:
+        for policy in policies:
+            selected = [row for row in rows if row["family"] == family and row["policy"] == policy]
+            if len(selected) != 6 or {int(row["seed"]) for row in selected} != expected_seeds:
+                raise ValueError(f"Expected the same six Webots seeds for {policy}/{family}")
+    for row in rows:
+        key = (row["policy"], row["world"], int(row["seed"]))
+        paired_policy = "navigation.bin" if row["policy"] == "navigation-arrival-experimental.bin" else "navigation-arrival-experimental.bin"
+        paired = episodes_by_key.get((paired_policy, row["world"], int(row["seed"])))
+        if paired is None or paired["family"] != row["family"]:
+            raise ValueError(f"Webots policy comparison is not paired by saved world/seed: {key}")
+        if (paired["generator_parameters"] != row["generator_parameters"] or
+                paired["obstacle_count"] != row["obstacle_count"] or
+                paired["route_witness_length_m"] != row["route_witness_length_m"]):
+            raise ValueError(f"Webots policy comparison uses different saved geometry: {key}")
+
+    expected_totals = {"original": (0, 4, 14), "arrival": (17, 1, 0)}
+    for label, policy_file in policies.items():
+        selected = [row for row in rows if row["policy"] == label]
+        actual = tuple(sum(row[field] == "True" for row in selected) for field in ("success", "collision", "timeout"))
+        expected = expected_totals[policy_file]
+        if actual != expected:
+            raise ValueError(f"Webots stable-arrival totals changed for {policy_file}: {actual}")
+        recorded = manifest["results"][policy_file]
+        if actual != tuple(int(recorded[key]) for key in ("success", "collision", "timeout")):
+            raise ValueError(f"Webots manifest outcome totals disagree for {policy_file}")
+    return rows, manifest
 
 
 def load_and_validate_challenge_evidence() -> tuple[dict[str, list[dict[str, str]]], dict[str, dict[str, Any]]]:
@@ -328,6 +596,256 @@ def training_figure(rows: list[dict[str, Any]], out: Path) -> list[str]:
     add_footer(fig, "Each point is a recorded training-selection evaluation. The best points are selected from the same history; they are not fresh-seed test scores.")
     fig.subplots_adjust(left=0.12, right=0.98, top=0.88, bottom=0.21)
     return save_figure(fig, out, "training-broad-validation")
+
+
+def arrival_training_figure(history: list[dict[str, Any]], out: Path) -> list[str]:
+    wall = np.array([row["wall_s"] for row in history], dtype=float)
+    transitions = np.array([row["total_transitions"] for row in history], dtype=float) / 1e6
+    rollouts = np.array([row["rollout"] for row in history], dtype=int)
+    success = np.array([row["success"] for row in history], dtype=float)
+    collision = np.array([row["collision"] for row in history], dtype=float)
+    timeout = np.array([row["timeout"] for row in history], dtype=float)
+    arrival_time = np.array([row["mean_arrival_s"] for row in history], dtype=float)
+    selected_index = int(np.where(rollouts == 900)[0][0])
+
+    fig, axes = plt.subplots(3, 1, figsize=(10.5, 8.0), sharex=True)
+    axes[0].plot(wall, success, color=COLORS["blue"], marker="o", markersize=3.5, linewidth=2)
+    axes[0].scatter([wall[selected_index]], [success[selected_index]], s=68, color=COLORS["green"],
+                    edgecolor="white", linewidth=1.2, zorder=5, label="Selected checkpoint · rollout 900")
+    axes[0].set_ylabel("Success")
+    axes[0].set_ylim(-0.04, 1.06)
+    axes[0].yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0%}"))
+    axes[0].legend(frameon=False, loc="lower right", fontsize=8.5)
+    axes[0].set_title("Open-domain PPO: stable arrival during training", loc="left", weight="bold", fontsize=14)
+
+    axes[1].plot(wall, collision, color=COLORS["red"], marker="o", markersize=3, linewidth=1.7, label="Collision")
+    axes[1].plot(wall, timeout, color=COLORS["orange"], marker="o", markersize=3, linewidth=1.7, label="Timeout")
+    axes[1].set_ylabel("Episode fraction")
+    axes[1].set_ylim(-0.03, 0.38)
+    axes[1].yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0%}"))
+    axes[1].legend(frameon=False, loc="upper right", ncol=2, fontsize=8.5)
+
+    axes[2].plot(wall, arrival_time, color=COLORS["purple"], marker="o", markersize=3.5, linewidth=2)
+    axes[2].scatter([wall[selected_index]], [arrival_time[selected_index]], s=68, color=COLORS["green"],
+                    edgecolor="white", linewidth=1.2, zorder=5)
+    axes[2].set_ylabel("Mean arrival time\n(successes only, s)")
+    axes[2].set_xlabel("Elapsed wall time (s)")
+    axes[2].set_ylim(0, max(arrival_time) * 1.16)
+    axes[2].annotate("4.33 s at selected rollout 900", (wall[selected_index], arrival_time[selected_index]),
+                     xytext=(-115, 13), textcoords="offset points", fontsize=8.5,
+                     arrowprops={"arrowstyle": "-", "color": COLORS["gray"], "lw": 0.8})
+
+    for ax in axes:
+        ax.axvline(wall[selected_index], color=COLORS["green"], linestyle="--", linewidth=0.9, alpha=0.75)
+        ax.grid(axis="y", alpha=0.22)
+        ax.spines[["top", "right"]].set_visible(False)
+    def wall_to_transitions(value: np.ndarray) -> np.ndarray:
+        return np.interp(value, wall, transitions)
+    def transitions_to_wall(value: np.ndarray) -> np.ndarray:
+        return np.interp(value, transitions, wall)
+    top_axis = axes[0].secondary_xaxis("top", functions=(wall_to_transitions, transitions_to_wall))
+    top_axis.set_xlabel("Collected transitions (millions)")
+    top_axis.set_xticks(np.arange(0.0, 4.01, 0.5))
+    add_footer(fig, "4.096M transitions over 34.75 s. Points are periodic fixed-seed validation records, not every rollout. Mean arrival time is conditional on success.")
+    fig.subplots_adjust(left=0.14, right=0.98, top=0.91, bottom=0.11, hspace=0.22)
+    return save_figure(fig, out, "arrival-open-training")
+
+
+def arrival_domain_figure(summaries: list[dict[str, str]], out: Path) -> list[str]:
+    rows = {(int(row["stage"]), int(row["family"]), int(row["domain_amplitude"]), row["policy"]): row
+            for row in summaries}
+    cases = [
+        ((0, 0, 0), "Open room · nominal plant"),
+        ((0, 0, 1), "Open room · randomized plant"),
+        ((1, 0, 1), "Near-goal hold · randomized plant"),
+        ((2, 1, 1), "Static boxes"),
+        ((2, 2, 1), "Vertical poles"),
+        ((2, 4, 1), "Doorway"),
+        ((2, 5, 1), "Table / counter"),
+    ]
+    fig, ax = plt.subplots(figsize=(10.3, 6.6))
+    ybase = np.arange(len(cases))[::-1]
+    offsets = {"original": -0.14, "arrival": 0.14}
+    styles = {"original": (COLORS["gray"], "o", "Original guided policy"),
+              "arrival": (COLORS["blue"], "D", "Open-domain candidate")}
+    for key, name in styles.items():
+        color, marker, _ = name
+        xs, ys, left_err, right_err = [], [], [], []
+        annotations = []
+        for index, (case, _) in enumerate(cases):
+            row = rows[(*case, key)]
+            episodes = int(row["episodes"])
+            successes = int(row["successes"])
+            rate = successes / episodes
+            low, high = wilson(rate, episodes)
+            xs.append(rate * 100)
+            ys.append(ybase[index] + offsets[key])
+            left_err.append((rate - low) * 100)
+            right_err.append((high - rate) * 100)
+            annotations.append(f"C {int(row['collisions'])} · T {int(row['timeouts'])}")
+        ax.errorbar(xs, ys, xerr=np.array([left_err, right_err]), fmt=marker, color=color,
+                    markersize=6.5, capsize=2.5, linewidth=1.4, label=styles[key][2], zorder=3)
+        for x, y, note in zip(xs, ys, annotations):
+            ax.text(103.0, y, note, va="center", fontsize=8.2, color=color)
+    ax.set_yticks(ybase, [label for _, label in cases])
+    ax.set_xlim(0, 117)
+    ax.set_xticks(np.arange(0, 101, 20))
+    ax.set_xlabel("Stable-arrival success (% of 128 episodes; 95% Wilson interval)")
+    ax.text(103.0, ybase[0] + 0.43, "Collision · timeout", va="center", fontsize=8.2,
+            color=COLORS["gray"], weight="bold")
+    ax.legend(frameon=False, loc="lower left", ncol=2, fontsize=8.5)
+    ax.grid(axis="x", alpha=0.22)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.set_ylim(-0.58, len(cases) - 0.25)
+    fig.suptitle("Fresh-seed outcomes: gains and remaining clutter failures", x=0.14, y=0.97,
+                 ha="left", weight="bold", fontsize=14)
+    fig.text(0.14, 0.92, "Seed 820001 · paired task rows and recorded mass · 20 s limit",
+             ha="left", fontsize=9, color=COLORS["gray"])
+    add_footer(fig, "One fresh evaluation seed, 128 episodes per condition. Amplitude 1 is a declared parameter-randomization range, not measured hardware uncertainty. Clutter includes direct paths and simple geometric witnesses; this is not a full route-planning benchmark.")
+    fig.subplots_adjust(left=0.29, right=0.98, top=0.85, bottom=0.15)
+    return save_figure(fig, out, "arrival-fresh-seed-domain")
+
+
+def arrival_rich_bank_figure(rows: list[dict[str, str]], out: Path) -> list[str]:
+    families = [(14, "Bent hallway corners"), (15, "Connected rooms"), (16, "Vertical choices")]
+    outcomes = ("success", "collision", "timeout")
+    colors = {"success": COLORS["green"], "collision": COLORS["red"], "timeout": COLORS["gray"]}
+    fig, ax = plt.subplots(figsize=(8.8, 4.8))
+    ys = np.arange(len(families))[::-1]
+    for y, (family, label) in zip(ys, families):
+        selected = [row for row in rows if int(row["family"]) == family]
+        total = len(selected)
+        left = 0.0
+        for outcome in outcomes:
+            count = sum(int(row[outcome]) for row in selected)
+            width = count / total * 100
+            ax.barh(y, width, left=left, height=0.48, color=colors[outcome],
+                    label=outcome.capitalize() if y == ys[0] else None)
+            if count:
+                ax.text(left + width / 2, y, str(count), ha="center", va="center",
+                        color="white", fontsize=9, weight="bold")
+            left += width
+        ax.text(102, y, f"{sum(int(row['success']) for row in selected)}/{total}",
+                va="center", fontsize=10, weight="bold", color=COLORS["navy"])
+    ax.set_yticks(ys, [label for _, label in families])
+    ax.set_xlim(0, 116)
+    ax.set_xticks(np.arange(0, 101, 20))
+    ax.set_xlabel("Outcome fraction (% of 30 development levels)")
+    ax.grid(axis="x", alpha=0.22)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    fig.suptitle("Open-domain candidate fails the richer route bank", x=0.15, y=0.97,
+                 ha="left", weight="bold", fontsize=14)
+    fig.text(0.15, 0.92, "Mirrored dev split · mode 17 · 1.5 m/s requested cap · 20 s limit · green success, red collision",
+             ha="left", fontsize=9, color=COLORS["gray"])
+    add_footer(fig, "Final split untouched. This is a separate bank and not a paired comparison against the earlier checkpoint. It rejects the open-domain candidate as a general replacement.")
+    fig.subplots_adjust(left=0.25, right=0.98, top=0.84, bottom=0.18)
+    return save_figure(fig, out, "arrival-rich-bank-limit")
+
+
+def arrival_legacy_retention_figure(rows: list[dict[str, str]], out: Path) -> list[str]:
+    labels = [(4, "Doorway"), (5, "Table / counter"), (7, "Broad mixed scenes 0–6"),
+              (8, "Held two-door scene"), (10, "Moving-sphere approach"),
+              (11, "Moving-sphere crossing"), (12, "Rehearsal mix")]
+    indexed = {(int(row["family"]), row["policy"]): row for row in rows}
+    fig, ax = plt.subplots(figsize=(10.0, 5.8))
+    ybase = np.arange(len(labels))[::-1]
+    styles = {"original": (COLORS["gray"], "o", "Original guided policy"),
+              "arrival": (COLORS["blue"], "D", "Open-domain candidate")}
+    for policy, (color, marker, legend) in styles.items():
+        xs, ys, low_errors, high_errors = [], [], [], []
+        notes = []
+        for index, (family, _) in enumerate(labels):
+            row = indexed[(family, policy)]
+            episodes = int(row["episodes"])
+            successes = round(float(row["success"]) * episodes)
+            rate = successes / episodes
+            low, high = wilson(rate, episodes)
+            xs.append(rate * 100)
+            ys.append(ybase[index] + (-0.14 if policy == "original" else 0.14))
+            low_errors.append((rate - low) * 100)
+            high_errors.append((high - rate) * 100)
+            notes.append(int(round(float(row["collision"]) * episodes)))
+        ax.errorbar(xs, ys, xerr=np.array([low_errors, high_errors]), fmt=marker,
+                    color=color, markersize=6.3, capsize=2.5, linewidth=1.4, label=legend, zorder=3)
+        if policy == "arrival":
+            for index, (y, collisions) in enumerate(zip(ys, notes)):
+                family = labels[index][0]
+                previous = int(round(float(indexed[(family, "original")]["collision"]) * 128))
+                ax.text(103, y, f"{previous} → {collisions}", va="center", fontsize=8.1, color=color)
+    for index, (family, _) in enumerate(labels):
+        before = round(float(indexed[(family, "original")]["success"]) * 128)
+        after = round(float(indexed[(family, "arrival")]["success"]) * 128)
+        y = ybase[index]
+        ax.plot([before / 128 * 100, after / 128 * 100], [y - 0.14, y + 0.14],
+                color=COLORS["gray"], linewidth=0.8, alpha=0.55, zorder=1)
+        ax.text(137, y, f"{before} → {after}", ha="center", va="center", fontsize=8.1, color=COLORS["navy"])
+    ax.set_yticks(ybase, [label for _, label in labels])
+    ax.set_xlim(0, 155)
+    ax.set_ylim(-0.6, len(labels) - 0.4)
+    ax.set_xticks(np.arange(0, 101, 20))
+    ax.set_xlabel("First-goal-entry success (% of 128 episodes; 95% Wilson interval)")
+    ax.text(103, ybase[0] + 0.48, "C old → new", va="center", fontsize=8.1, color=COLORS["gray"], weight="bold")
+    ax.text(137, ybase[0] + 0.48, "S old → new", ha="center", va="center", fontsize=8.1, color=COLORS["gray"], weight="bold")
+    ax.legend(frameon=False, loc="lower left", ncol=2, fontsize=8.5)
+    ax.grid(axis="x", alpha=0.22)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    fig.suptitle("The new task improves arrival but loses some legacy performance", x=0.14, y=0.97,
+                 ha="left", weight="bold", fontsize=14)
+    fig.text(0.14, 0.92, "Seed 800001 · 128 episodes · same 1.5 m/s requested cap and 10 s budget",
+             ha="left", fontsize=9, color=COLORS["gray"])
+    add_footer(fig, "Both policies use the legacy first-goal-region-entry score here. It does not require the new stable hold. The rich-bank failure is separate evidence against using this candidate as a general replacement.")
+    fig.subplots_adjust(left=0.30, right=0.98, top=0.86, bottom=0.16)
+    return save_figure(fig, out, "arrival-legacy-retention-regression")
+
+
+def webots_stable_arrival_figure(rows: list[dict[str, str]], out: Path) -> list[str]:
+    families = [("doorway", "Doorways"), ("table_overhang", "Table overhangs"),
+                ("mixed_clutter", "Mixed clutter")]
+    outcomes = ("success", "collision", "timeout")
+    outcome_color = {"success": COLORS["green"], "collision": COLORS["red"], "timeout": COLORS["gray"]}
+    policy_specs = [("navigation.bin", "Original policy", -0.19, ""),
+                    ("navigation-arrival-experimental.bin", "Arrival candidate", 0.19, "///")]
+    fig, ax = plt.subplots(figsize=(8.9, 5.2))
+    centers = np.arange(len(families))
+    width = 0.32
+    for policy, label, offset, hatch in policy_specs:
+        for index, (family, _) in enumerate(families):
+            selected = [row for row in rows if row["policy"] == policy and row["family"] == family]
+            counts = {outcome: sum(row[outcome] == "True" for row in selected) for outcome in outcomes}
+            x = centers[index] + offset
+            bottom = 0.0
+            for outcome in outcomes:
+                count = counts[outcome]
+                height = count / 6
+                ax.bar(x, height, width, bottom=bottom, color=outcome_color[outcome],
+                       edgecolor=COLORS["navy"] if hatch else "white", linewidth=0.6,
+                       hatch=hatch, zorder=3)
+                if count:
+                    ax.text(x, bottom + height / 2, str(count), ha="center", va="center",
+                            fontsize=8.5, color="white", weight="bold")
+                bottom += height
+            ax.text(x, 1.025, f"{counts['success']}/6", ha="center", va="bottom",
+                    fontsize=8.5, color=COLORS["navy"], weight="bold")
+    from matplotlib.patches import Patch
+    handles = [
+        Patch(facecolor="white", edgecolor=COLORS["gray"], label="Original policy"),
+        Patch(facecolor="white", edgecolor=COLORS["navy"], hatch="///", label="Arrival candidate"),
+        *[Patch(facecolor=outcome_color[outcome], edgecolor="white", label=outcome.capitalize()) for outcome in outcomes],
+    ]
+    ax.legend(handles=handles, frameon=False, ncol=5, loc="upper center", bbox_to_anchor=(0.5, 1.19), fontsize=8.5)
+    ax.set_xticks(centers, [label for _, label in families])
+    ax.set_ylim(0, 1.15)
+    ax.set_yticks(np.linspace(0, 1, 6))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0%}"))
+    ax.set_ylabel("Episode outcome (6 matched seeds per family)")
+    ax.grid(axis="y", alpha=0.22)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.suptitle("Webots stable-arrival check", x=0.11, y=0.97, ha="left", weight="bold", fontsize=14)
+    fig.text(0.11, 0.92, "R2025a · same 18 static scenes/seeds · 20 s · radius 0.35 m · speed ≤0.5 m/s · dwell 0.2 s",
+             ha="left", fontsize=9, color=COLORS["gray"])
+    add_footer(fig, "100 Hz hold scoring, 1 ms physics, ideal GPS/IMU/Gyro, clean RangeFinder, 0.18 m collision sphere. The arrival candidate passes 17/18 here; this small static-scene transfer check is not hardware evidence or broad generalization.")
+    fig.subplots_adjust(left=0.12, right=0.98, top=0.77, bottom=0.18)
+    return save_figure(fig, out, "webots-stable-arrival")
 
 
 def mode_comparison_figure(rows: list[dict[str, str]], out: Path) -> list[str]:
@@ -980,6 +1498,8 @@ def main() -> int:
     ablation_rows = load_and_validate_inference_ablations()
     corner_training, corner_baseline, corner_final = load_and_validate_corner_control()
     witness_1mps, witness_15mps, mirrored_levels = load_and_validate_mirrored_witnesses()
+    arrival_history, arrival_summaries, arrival_episodes, arrival_manifest, arrival_rich_dev, arrival_retention = load_and_validate_arrival_evidence()
+    webots_stable_rows, webots_stable_manifest = load_and_validate_webots_stable_arrival()
 
     outputs: list[str] = []
     outputs += training_figure(training, out)
@@ -994,12 +1514,19 @@ def main() -> int:
     outputs += corner_control_figure(corner_training, corner_baseline, corner_final, out)
     outputs += inference_ablation_figure(ablation_rows, out)
     outputs += speed_sweep_figure(speed_rows, out)
+    outputs += arrival_training_figure(arrival_history, out)
+    outputs += arrival_domain_figure(arrival_summaries, out)
+    outputs += arrival_rich_bank_figure(arrival_rich_dev, out)
+    outputs += arrival_legacy_retention_figure(arrival_retention, out)
+    outputs += webots_stable_arrival_figure(webots_stable_rows, out)
 
     source_paths = [
         ROOT / "evidence.py", BENCHMARKS,
         ROOT / "docs" / "CODE_DIRECTION.md", ROOT / "docs" / "NEXT_PHASE.md", ROOT / "docs" / "RESEARCH_LOG.md",
-        *sorted(INPUTS.iterdir()),
+        *sorted(INPUTS.rglob("*")),
         *checkpoint_inputs(),
+        ROOT / "assets/checkpoints/arrival-open-domain-experimental.bin.best",
+        ROOT / "assets/navigation-arrival-experimental.bin",
     ]
     inputs = [{"path": str(p.relative_to(ROOT)), "sha256": sha256(p), "bytes": p.stat().st_size}
               for p in source_paths if p.is_file()]
@@ -1070,6 +1597,96 @@ def main() -> int:
                                    "outcomes_by_family": {family: {"success": sum(int(r["success"]) for r in witness_15mps if r["family"] == family), "collision": sum(int(r["collision"]) for r in witness_15mps if r["family"] == family), "timeout": sum(int(r["timeout"]) for r in witness_15mps if r["family"] == family)} for family in ("14", "15", "16")}},
             "logs": [str(WITNESS_LOG_1MPS.relative_to(ROOT)), str(WITNESS_LOG_15MPS.relative_to(ROOT))],
         },
+        "arrival_open_domain_candidate": {
+            "input_directory": str(ARRIVAL_DIR.relative_to(ROOT)),
+            "input_manifest_sha256": sha256(ARRIVAL_MANIFEST),
+            "training_command": arrival_manifest["training_command"],
+            "train_seed": arrival_manifest["train_seed"],
+            "selection_seed": arrival_manifest["selection_seed"],
+            "selected_rollout": arrival_manifest["selected_rollout"],
+            "total_transitions": arrival_manifest["transitions"],
+            "elapsed_wall_s": arrival_manifest["wall_s"],
+            "checkpoint": "assets/checkpoints/arrival-open-domain-experimental.bin.best",
+            "checkpoint_sha256": sha256(ROOT / "assets/checkpoints/arrival-open-domain-experimental.bin.best"),
+            "actor_export": "assets/navigation-arrival-experimental.bin",
+            "actor_export_sha256": sha256(ROOT / "assets/navigation-arrival-experimental.bin"),
+            "selection_validation": {
+                "episodes": 128,
+                "seed": 800001,
+                "initial_success": arrival_history[0]["success"],
+                "selected_success": next(row["success"] for row in arrival_history if row["rollout"] == arrival_manifest["selected_rollout"]),
+                "selected_mean_arrival_s_successes_only": next(row["mean_arrival_s"] for row in arrival_history if row["rollout"] == arrival_manifest["selected_rollout"]),
+            },
+            "fresh_seed_evaluation": {
+                "seed": 820001,
+                "episodes_per_condition": 128,
+                "paired_task_and_plant_rows": True,
+                "conditions": [{"policy": row["policy"], "stage": int(row["stage"]), "family": int(row["family"]),
+                                "domain_amplitude": int(row["domain_amplitude"]), "successes": int(row["successes"]),
+                                "collisions": int(row["collisions"]), "timeouts": int(row["timeouts"])} for row in arrival_summaries],
+            },
+            "rich_bank_development": {
+                "bank": str(MIRRORED_BANK.relative_to(ROOT)),
+                "bank_sha256": sha256(MIRRORED_BANK),
+                "rows": len(arrival_rich_dev),
+                "final_split_evaluated": False,
+                "outcomes_by_family": {str(family): {"success": sum(int(row["success"]) for row in arrival_rich_dev if int(row["family"]) == family),
+                                                              "collision": sum(int(row["collision"]) for row in arrival_rich_dev if int(row["family"]) == family),
+                                                              "timeout": sum(int(row["timeout"]) for row in arrival_rich_dev if int(row["family"]) == family)}
+                                        for family in (14, 15, 16)},
+            },
+            "legacy_first_entry_retention": {
+                "input": str(ARRIVAL_RETENTION.relative_to(ROOT)),
+                "sha256": sha256(ARRIVAL_RETENTION),
+                "seed": 800001,
+                "episodes_per_family_policy": 128,
+                "budget_s": 10,
+                "requested_speed_cap_mps": 1.5,
+                "success_rule": "first_goal_region_entry for both policies; these rows are not stable-arrival scores",
+                "families": [{"family": family, "original_successes": round(float(next(row["success"] for row in arrival_retention if int(row["family"]) == family and row["policy"] == "original")) * 128),
+                              "arrival_successes": round(float(next(row["success"] for row in arrival_retention if int(row["family"]) == family and row["policy"] == "arrival")) * 128)}
+                             for family in (4, 5, 7, 8, 10, 11, 12)],
+            },
+            "source_hashes_at_run": arrival_manifest["source_hashes"],
+            "limitations": arrival_manifest["limitations"] + [
+                "This single training seed improves the evaluated open and near-goal tasks and selected simple static scenes; it is not a full generalization result.",
+                "The rich mirrored-bank result uses a different scene set and does not form a paired checkpoint comparison.",
+                "The same-seed selection curve is model-selection evidence, not an independent final test.",
+                "Legacy first-entry retention rows use a different success rule than the new stable-arrival task; use the matched legacy matrix only for retention comparisons.",
+            ],
+        },
+        "webots_stable_arrival_transfer": {
+            "input_directory": str(WEBOTS_STABLE_DIR.relative_to(ROOT)),
+            "manifest_sha256": sha256(WEBOTS_STABLE_MANIFEST),
+            "episodes_csv_sha256": sha256(WEBOTS_STABLE_EPISODES),
+            "runs_json_sha256": sha256(WEBOTS_STABLE_RUNS),
+            "webots_release": "R2025a",
+            "scene_count": 18,
+            "episodes": len(webots_stable_rows),
+            "seeds_per_family_policy": 6,
+            "families": ["doorway", "table_overhang", "mixed_clutter"],
+            "goal_contract": {"radius_m": webots_stable_manifest["radius_m"],
+                               "max_actual_speed_mps": webots_stable_manifest["speed_max_mps"],
+                               "continuous_dwell_s": webots_stable_manifest["dwell_s"],
+                               "budget_s": webots_stable_manifest["budget_s"],
+                               "scorer_hz": 100},
+            "simulation": {"physics_step_ms": 1, "controller_period_ms": 10,
+                           "navigation_period_ms": 50, "motor_sampling": "interval-average",
+                           "physics_profile": "hover", "collision_sphere_radius_m": 0.18},
+            "sensors": {"ego": "ideal GPS/IMU/Gyro", "range": "clean RangeFinder", "range_noise_stddev_m": 0},
+            "results_by_policy": {
+                label: {"success": sum(row["success"] == "True" for row in webots_stable_rows if row["policy"] == policy),
+                        "collision": sum(row["collision"] == "True" for row in webots_stable_rows if row["policy"] == policy),
+                        "timeout": sum(row["timeout"] == "True" for row in webots_stable_rows if row["policy"] == policy),
+                        "by_family": {family: {"success": sum(row["success"] == "True" for row in webots_stable_rows if row["policy"] == policy and row["family"] == family),
+                                                "collision": sum(row["collision"] == "True" for row in webots_stable_rows if row["policy"] == policy and row["family"] == family),
+                                                "timeout": sum(row["timeout"] == "True" for row in webots_stable_rows if row["policy"] == policy and row["family"] == family)}
+                                        for family in ("doorway", "table_overhang", "mixed_clutter")}}
+                for policy, label in (("navigation.bin", "original"), ("navigation-arrival-experimental.bin", "arrival_candidate"))},
+            "reproduction": webots_stable_manifest["reproduction"],
+            "source_hashes": webots_stable_manifest["source_hashes"],
+            "limitations": webots_stable_manifest["limitations"],
+        },
         "figure_sources": {
             "training-broad-validation": {"input": "evidence/inputs/training.tsv", "filter": "checkpoint basename raw-broad.bin or pooled-broad.bin; recorded validation rows; elapsed wall time from training invocation"},
             "static-scene-policy-comparison": {"input": "evidence/inputs/evaluation.csv", "filter": "group=baseline, seed=800001, families 7/8/5/3, modes 17/13/2"},
@@ -1082,6 +1699,11 @@ def main() -> int:
             "corner-control-training-failure": {"inputs": [str(CORNER_LOG.relative_to(ROOT)), str(CORNER_TRAINING.relative_to(ROOT))], "filter": "family-14 warm-start run; before/after seed-700001 validation and ten-rollout training history records"},
             "inference-history-and-speed-ablations": {"input": str(INFERENCE_ABLATIONS.relative_to(ROOT)), "filter": "same checkpoint, modes 17/18/19; table and held-door clean/combined-stress cases"},
             "static-policy-speed-cap-sweep": {"input": str(SPEED_SWEEP.relative_to(ROOT)), "filter": "same checkpoint weights and seed; five requested caps; three clean and two combined-stress static families"},
+            "arrival-open-training": {"input": str(ARRIVAL_HISTORY.relative_to(ROOT)), "filter": "all 21 logged evaluations from rollout 0 through 1000; seed 800001; selected at rollout 900"},
+            "arrival-fresh-seed-domain": {"inputs": [str(ARRIVAL_EVALUATIONS.relative_to(ROOT)), str((ARRIVAL_DIR / "initial-dev.csv").relative_to(ROOT)), str((ARRIVAL_DIR / "selected-dev.csv").relative_to(ROOT))], "filter": "fresh seed 820001; 128 paired episode rows per condition; identical start/goal/scene/mass between policies"},
+            "arrival-rich-bank-limit": {"inputs": [str((ARRIVAL_DIR / "rich-dev.csv").relative_to(ROOT)), str(MIRRORED_BANK.relative_to(ROOT))], "filter": "candidate-only, 90 mirrored challenge-bank dev levels; 30 each families 14/15/16; final split untouched"},
+            "arrival-legacy-retention-regression": {"input": str(ARRIVAL_RETENTION.relative_to(ROOT)), "filter": "same seed 800001; 128 episodes, 10 s budget, requested cap 1.5 m/s; both checkpoints scored with legacy first-goal-region-entry rule"},
+            "webots-stable-arrival": {"inputs": [str(WEBOTS_STABLE_EPISODES.relative_to(ROOT)), str(WEBOTS_STABLE_RUNS.relative_to(ROOT)), str(WEBOTS_STABLE_MANIFEST.relative_to(ROOT))], "filter": "36 episodes; 3 static scene families×6 saved seeds×2 policies; 20 s stable-arrival contract; matched by scene and seed"},
         },
         "training_tsv_schema": ["checkpoint", "rollout", "elapsed_wall_s", "gpu_s", "validation_success", "collision", "timeout", "goal_time_s"],
         "metric_definitions": {
@@ -1092,6 +1714,12 @@ def main() -> int:
             "threat_ttc": "Nominal initial scene time-to-collision parameter. It is not actual closest-approach or policy-path collision time.",
             "speed_sweep": "speed_mps is the requested 3D velocity-intent norm cap under contract 1, not measured speed. mean_speed_mps is path divided by elapsed time across successes and failures. peak_speed_mps is the maximum vehicle speed observed in the case and can reflect an outlier.",
             "corner_control": "Training TSV rows are periodic fixed-seed selection evaluations. The initial and final evaluations use the same family-14 configuration; this is one targeted warm-start experiment.",
+            "stable_arrival": "Success requires position within 0.35 m and actual speed at or below 0.5 m/s for a continuous 0.2 s hold. Mean arrival time is averaged over successful episodes only.",
+            "arrival_training_validation": "The open-domain training curve uses a fixed 128-episode selection set (seed 800001). Checkpoint selection uses that set; these points are not an independent test.",
+            "arrival_fresh_seed": "Seed 820001 uses paired start, goal, scene and recorded mass rows for original and candidate policies, with 128 episodes per condition. It is one fresh evaluation seed.",
+            "arrival_domain_amplitude": "Amplitude 1 applies the declared parameter-randomization ranges. These ranges are assumptions, not measured hardware uncertainty.",
+            "legacy_first_entry_retention": "Legacy family retention uses first goal-region entry as success. It cannot be compared numerically with the candidate's stable-arrival evaluation, which also requires speed and hold time.",
+            "webots_stable_arrival": "Webots success requires a 0.35 m radius, actual speed at or below 0.5 m/s, and continuous 0.2 s hold scored at 100 Hz. The compared runs share each saved world and seed.",
         },
         "limitations": [
             "All evidence is from simulation. No real camera, transport, or flight validation is represented.",
@@ -1104,6 +1732,9 @@ def main() -> int:
             "The 3D view and GIF render recorded simulator traces and logged scene geometry. They are not camera footage. Pose paths are sampled at 20 Hz; terminal state metadata records the exact final 100 Hz state.",
             "Challenge-bank outcome bars use 30 levels per family from the frozen development split. They are not final holdout results, and the five policy/inference variants were not trained as a single matched experiment.",
             "Challenge-bank witness routes are geometric feasibility witnesses only; they are not learned trajectories or evidence that the tested policy can fly them.",
+            "The open-domain candidate is a single-seed foundation experiment. Its gains on tested open/near-goal and simple static scenes do not establish full navigation generalization; it fails the mirrored corner and connected-room dev strata.",
+            "The arrival rich-bank evaluation uses one candidate checkpoint on 90 mirrored development levels only. It is separate from the earlier bank and provides no matched baseline; the final split remains untouched.",
+            "The Webots stable-arrival result covers 18 static scenes and ideal ego/range sensors. It is a small simulator transfer check, not broad generalization or hardware evidence.",
         ],
         "visualization_trace_contract": {
             "sources": ["evidence/inputs/early-crossing.json", "evidence/inputs/early-crossing.csv", "evidence/inputs/later-crossing.json", "evidence/inputs/later-crossing.csv"],

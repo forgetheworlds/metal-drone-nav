@@ -1,0 +1,15 @@
+policy,stage,family,domain_amplitude,seed,episodes,successes,collisions,timeouts,csv_path
+original,0,0,0,820001,128,95,13,20,results/arrival-original-holdout-stage0-family0-amp0.csv
+original,0,0,1,820001,128,95,14,19,results/arrival-original-holdout-stage0-family0-amp1.csv
+original,1,0,1,820001,128,97,23,8,results/arrival-original-holdout-stage1-family0-amp1.csv
+original,2,1,1,820001,128,75,47,6,results/arrival-original-holdout-stage2-family1-amp1.csv
+original,2,2,1,820001,128,51,63,14,results/arrival-original-holdout-stage2-family2-amp1.csv
+original,2,4,1,820001,128,98,12,18,results/arrival-original-holdout-stage2-family4-amp1.csv
+original,2,5,1,820001,128,86,25,17,results/arrival-original-holdout-stage2-family5-amp1.csv
+arrival,0,0,0,820001,128,128,0,0,results/arrival-arrival-holdout-stage0-family0-amp0.csv
+arrival,0,0,1,820001,128,128,0,0,results/arrival-arrival-holdout-stage0-family0-amp1.csv
+arrival,1,0,1,820001,128,128,0,0,results/arrival-arrival-holdout-stage1-family0-amp1.csv
+arrival,2,1,1,820001,128,111,17,0,results/arrival-arrival-holdout-stage2-family1-amp1.csv
+arrival,2,2,1,820001,128,101,27,0,results/arrival-arrival-holdout-stage2-family2-amp1.csv
+arrival,2,4,1,820001,128,123,5,0,results/arrival-arrival-holdout-stage2-family4-amp1.csv
+arrival,2,5,1,820001,128,126,2,0,results/arrival-arrival-holdout-stage2-family5-amp1.csv

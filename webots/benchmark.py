@@ -34,12 +34,15 @@ def with_custom_data(source: str, updates: dict[str, str]) -> str:
 
 def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, port: int = 23456,
             physics_step_ms: int = 1, motor_sampling: str = "average", physics_profile: str = "hover",
-            sensor_audit: bool = False) -> dict:
+            sensor_audit: bool = False, goal_objective: str = "entry") -> dict:
+    if goal_objective not in ("entry", "hold"):
+        raise ValueError("goal_objective must be entry or hold")
     base = WORLDS / f"{world_name}.wbt"
     if not base.is_file():
         raise FileNotFoundError(base)
     world = WORLDS / f".run-{world_name}-{Path(policy).stem}-{seed}.wbt"
-    output_dir = RESULTS / Path(policy).stem / f"{world_name}-seed-{seed}"
+    suffix = "-hold" if goal_objective == "hold" else ""
+    output_dir = RESULTS / Path(policy).stem / f"{world_name}-seed-{seed}{suffix}"
     output_dir.mkdir(parents=True, exist_ok=True)
     updates = {
         "phase": "navigation",
@@ -49,6 +52,7 @@ def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, p
         "profile": physics_profile,
         "motor_sampling": motor_sampling,
         "sensor_audit": "1" if sensor_audit else "0",
+        "goal_objective": goal_objective,
     }
     source = base.read_text()
     source = source.replace("basicTimeStep 10", f"basicTimeStep {physics_step_ms}", 1)
@@ -93,7 +97,7 @@ def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, p
             shutil.copy2(audit_path, output_dir / "range-ray-audit.json")
         result.update(world=world_name, policy=Path(policy).name, seed=seed,
                       physics_step_ms=physics_step_ms, motor_sampling=motor_sampling,
-                      physics_profile=physics_profile, **world_parameters)
+                      physics_profile=physics_profile, goal_objective=goal_objective, **world_parameters)
         (output_dir / "episode.json").write_text(json.dumps(result, indent=2) + "\n")
         return result
     finally:
@@ -112,6 +116,8 @@ def main() -> int:
     parser.add_argument("--motor-sampling", choices=("end", "average"), default="average")
     parser.add_argument("--physics-profile", default="hover")
     parser.add_argument("--sensor-audit", action="store_true", help="save one native RangeFinder frame and capture pose for raycast audit")
+    parser.add_argument("--goal-objective", choices=("entry", "hold"), default="entry",
+                        help="stop on first goal entry or after a stable low-speed hold")
     args = parser.parse_args()
     if not args.webots.is_file():
         parser.error(f"Webots executable not found: {args.webots}")
@@ -123,13 +129,15 @@ def main() -> int:
                 print(f"run policy={policy} world={world} seed={seed}", flush=True)
                 rows.append(run_one(args.webots, world, seed, policy, args.steps, args.port,
                                     args.physics_step_ms, args.motor_sampling, args.physics_profile,
-                                    args.sensor_audit))
-    summary = RESULTS / "benchmark.csv"
+                                    args.sensor_audit, args.goal_objective))
+    summary = RESULTS / ("benchmark-hold.csv" if args.goal_objective == "hold" else "benchmark.csv")
     fields = [
         "policy", "world", "seed", "success", "collision", "timeout", "steps", "time_s",
         "path_m", "final_error_m", "peak_speed_mps", "min_sensor_range_m", "altitude_min_m",
         "altitude_max_m", "tracking_rms_mps", "sensor_updates", "navigation_loaded", "box_y_offset_m",
         "physics_step_ms", "motor_sampling", "physics_profile",
+        "goal_objective", "goal_radius_entry_count", "goal_radius_entry_first_time_s",
+        "goal_radius_entry_last_time_s", "goal_dwell_s", "final_world_speed_mps",
     ]
     accumulated: dict[tuple[str, str, str], dict] = {}
     if summary.exists():
