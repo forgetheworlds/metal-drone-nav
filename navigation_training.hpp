@@ -81,7 +81,7 @@ inline Score evaluate(Metal& metal,const float* actor,uint32_t stage,uint32_t fa
         const float speed=std::sqrt(state.linear_velocity[0]*state.linear_velocity[0]+state.linear_velocity[1]*state.linear_velocity[1]+state.linear_velocity[2]*state.linear_velocity[2]);
         if(run.successes)require(error<=settings.config.goal_radius_m+1e-5f && speed<=settings.config.stable_speed_mps+1e-5f && final_tasks[env].stable_time_s>=.2f-1e-6f,"stable-arrival invariant failed");
         if(file.is_open()) {
-            file<<seed<<','<<env<<','<<stage<<','<<family<<','<<mode<<','<<amplitude;
+            file<<seed<<','<<env<<','<<stage<<','<<task.family<<','<<mode<<','<<amplitude;
             for(float value:task.start_position)file<<','<<value;
             file<<','<<task.start_yaw_rad;
             for(float value:task.start_velocity_world)file<<','<<value;

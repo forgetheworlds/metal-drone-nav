@@ -32,6 +32,7 @@ constant uint NAV_TASK_GENERATION_READY = 4u;
 constant uint NAV_TASK_GENERATION_UNSUPPORTED_FAMILY = 5u;
 constant uint NAV_TASK_MAX_WITNESS_POINTS = 4u;
 constant uint NAV_TASK_MAX_GENERATION_ATTEMPTS = 64u;
+constant uint NAV_TASK_MAX_DIRECTION_ATTEMPTS = 64u;
 #else
 constexpr uint NAV_TASK_STAGE_OPEN_GOAL = 0u;
 constexpr uint NAV_TASK_STAGE_NEAR_GOAL_HOLD = 1u;
@@ -45,6 +46,7 @@ constexpr uint NAV_TASK_GENERATION_READY = 4u;
 constexpr uint NAV_TASK_GENERATION_UNSUPPORTED_FAMILY = 5u;
 constexpr uint NAV_TASK_MAX_WITNESS_POINTS = 4u;
 constexpr uint NAV_TASK_MAX_GENERATION_ATTEMPTS = 64u;
+constexpr uint NAV_TASK_MAX_DIRECTION_ATTEMPTS = 64u;
 using std::cos;
 using std::sin;
 using std::ceil;
@@ -89,6 +91,7 @@ struct NavigationTaskConfig {
     float start_max_xyz[3];
     float goal_min_xyz[3];
     float goal_max_xyz[3];
+    uint generation_version; // v1 conditions clutter directions on endpoint bounds.
 };
 
 struct NavigationTaskControl {
@@ -105,9 +108,9 @@ NT_WF bool navigation_task_default_config(NT_WT NavigationTaskConfig& cfg,
        difficulty<0.0f||difficulty>1.0f)return false;
     if(stage==NAV_TASK_STAGE_OPEN_GOAL||stage==NAV_TASK_STAGE_NEAR_GOAL_HOLD) {
         if(family!=0u)return false;
-    } else if(!(family==1u||family==2u||family==4u||family==5u))return false;
+    } else if(!(family==1u||family==2u||family==4u||family==5u||family==12u))return false;
     cfg=NavigationTaskConfig{};
-    cfg.family=family;cfg.stage=stage;cfg.objective=NAV_TASK_OBJECTIVE_FINAL_HOLD;
+    cfg.generation_version=1u;cfg.family=family;cfg.stage=stage;cfg.objective=NAV_TASK_OBJECTIVE_FINAL_HOLD;
     cfg.require_detour=0u;cfg.max_generation_attempts=NAV_TASK_MAX_GENERATION_ATTEMPTS;
     cfg.max_nav_steps=400u;cfg.scene_distance_m=8.0f;cfg.difficulty=difficulty;
     cfg.minimum_endpoint_clearance_m=0.30f;cfg.minimum_witness_clearance_m=0.02f;
@@ -192,8 +195,8 @@ struct NavigationTaskWitness {
 };
 
 #ifndef __METAL_VERSION__
-static_assert(sizeof(NavigationTaskConfig) == 140, "navigation task config ABI changed");
-static_assert(sizeof(NavigationTaskControl) == 144, "navigation task control ABI changed");
+static_assert(sizeof(NavigationTaskConfig) == 144, "navigation task config ABI changed");
+static_assert(sizeof(NavigationTaskControl) == 148, "navigation task control ABI changed");
 #endif
 
 NT_WF bool navigation_task_finite(float value) {
@@ -353,7 +356,7 @@ NT_WF uint navigation_generate_task(NT_WP WWorld& world,NT_WP NavigationTaskStat
     task.valid=0;
     const bool valid_stage=cfg.stage<=NAV_TASK_STAGE_CLUTTER_GOAL;
     const bool valid_objective=cfg.objective<=NAV_TASK_OBJECTIVE_FINAL_HOLD;
-    if(!valid_stage||!valid_objective||cfg.family>16u||
+    if(cfg.generation_version!=1u||!valid_stage||!valid_objective||cfg.family>16u||
        cfg.require_detour>1u||
        !navigation_task_finite(cfg.scene_distance_m)||cfg.scene_distance_m<3.0f||cfg.scene_distance_m>10.0f||
        !navigation_task_finite(cfg.difficulty)||cfg.difficulty<0.0f||cfg.difficulty>1.0f||
@@ -376,7 +379,7 @@ NT_WF uint navigation_generate_task(NT_WP WWorld& world,NT_WP NavigationTaskStat
     if((cfg.stage==NAV_TASK_STAGE_OPEN_GOAL||cfg.stage==NAV_TASK_STAGE_NEAR_GOAL_HOLD)&&cfg.family!=0u)
         return NAV_TASK_GENERATION_INVALID_CONFIG;
     if(cfg.stage==NAV_TASK_STAGE_CLUTTER_GOAL&&
-       !(cfg.family==1u||cfg.family==2u||cfg.family==4u||cfg.family==5u))
+       !(cfg.family==1u||cfg.family==2u||cfg.family==4u||cfg.family==5u||cfg.family==12u))
         return NAV_TASK_GENERATION_UNSUPPORTED_FAMILY;
     for(uint axis=0;axis<3;axis++) {
         const float room_min=axis==0?-2.0f:(axis==1?-5.0f:0.0f);
@@ -396,13 +399,20 @@ NT_WF uint navigation_generate_task(NT_WP WWorld& world,NT_WP NavigationTaskStat
     for(uint attempt=0;attempt<attempts;attempt++) {
         task.generation_attempts=attempt+1u;
         const uint scene_seed=wrng(rng);
-        wgenerate(world,scene_seed,cfg.family,cfg.scene_distance_m);
+        // Family12 is a declared mixture of four static obstacle families.
+        // It does not inherit legacy family12's occasional moving scene.
+        uint scene_family=cfg.family;
+        if(cfg.family==12u) {
+            const uint selection=wrng(rng)%4u;
+            scene_family=selection==0u?1u:(selection==1u?2u:(selection==2u?4u:5u));
+        }
+        wgenerate(world,scene_seed,scene_family,cfg.scene_distance_m);
         if(cfg.stage==NAV_TASK_STAGE_CLUTTER_GOAL&&!navigation_task_static_world(world)) {
             task.generation_status=NAV_TASK_GENERATION_UNSUPPORTED_DYNAMIC;
             return task.generation_status;
         }
 
-        const WVec direction=navigation_task_random_direction(rng);
+        WVec direction=navigation_task_random_direction(rng);
         const float distance=navigation_task_sample_goal_distance(rng,cfg);
         WVec start,goal;
         if(cfg.stage==NAV_TASK_STAGE_NEAR_GOAL_HOLD) {
@@ -411,6 +421,20 @@ NT_WF uint navigation_generate_task(NT_WP WWorld& world,NT_WP NavigationTaskStat
         } else {
             start=navigation_task_random_point(rng,cfg.start_min_xyz,cfg.start_max_xyz);
             goal=wa(start,wm(direction,distance));
+            // Clutter goals occupy a wider region than starts. Sample directions
+            // conditional on a reachable endpoint instead of spending almost
+            // every world attempt on a goal outside the configured bounds.
+            if(cfg.stage==NAV_TASK_STAGE_CLUTTER_GOAL) {
+                bool goal_in_bounds=navigation_task_inside_bounds(goal,cfg.goal_min_xyz,cfg.goal_max_xyz);
+                for(uint direction_attempt=1u;
+                    !goal_in_bounds&&direction_attempt<NAV_TASK_MAX_DIRECTION_ATTEMPTS;
+                    direction_attempt++) {
+                    direction=navigation_task_random_direction(rng);
+                    goal=wa(start,wm(direction,distance));
+                    goal_in_bounds=navigation_task_inside_bounds(goal,cfg.goal_min_xyz,cfg.goal_max_xyz);
+                }
+                if(!goal_in_bounds)continue;
+            }
         }
         if(!navigation_task_finite(goal.x)||!navigation_task_finite(goal.y)||!navigation_task_finite(goal.z))continue;
         if(!navigation_task_inside_bounds(start,cfg.start_min_xyz,cfg.start_max_xyz)||
@@ -426,7 +450,7 @@ NT_WF uint navigation_generate_task(NT_WP WWorld& world,NT_WP NavigationTaskStat
         if(!navigation_task_find_witness(world,start,goal,cfg,witness,direct_clearance))continue;
         world.goal[0]=goal.x;world.goal[1]=goal.y;world.goal[2]=goal.z;
 
-        task.family=cfg.family;task.stage=cfg.stage;task.objective=cfg.objective;
+        task.family=scene_family;task.stage=cfg.stage;task.objective=cfg.objective;
         task.max_nav_steps=cfg.max_nav_steps;task.step_count=0;task.stable_ticks=0;
         task.was_inside_goal=0;task.waypoint_event_latched=0;task.terminal=0;
         task.start_position[0]=start.x;task.start_position[1]=start.y;task.start_position[2]=start.z;

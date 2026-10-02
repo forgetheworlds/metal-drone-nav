@@ -710,7 +710,7 @@ static_assert(sizeof(PpoCheckpointHeader) == 136, "PPO checkpoint header layout 
 
 static PpoCheckpointHeader read_checkpoint_header(std::ifstream& file) {
     PpoCheckpointHeader h{};static_assert(offsetof(PpoCheckpointHeader,config)==48,"checkpoint prefix");
-    file.read((char*)&h,48);require(file && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=7),"checkpoint prefix/version");
+    file.read((char*)&h,48);require(file && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=8),"checkpoint prefix/version");
     file.read((char*)&h.config,64);
     if(h.version>=4){file.read((char*)&h+112,16);if(h.version>=6)file.read((char*)&h+128,8);else h.config.geometry_memory=0;if(h.version==4)h.config.velocity_contract=0;}
     else{h.config.risk_coef=0;h.config.entropy_coef=h.family==7?.002f:.005f;h.config.learning_rate=.0003f;h.config.velocity_contract=0;h.config.geometry_memory=0;}
@@ -775,7 +775,7 @@ static void export_navigation_checkpoint(const std::string& source_checkpoint,
     std::ifstream file(source_checkpoint,std::ios::binary);
     require(bool(file),"cannot open guided checkpoint: "+source_checkpoint);
     const PpoCheckpointHeader h=read_checkpoint_header(file);
-    require(h.version==6 || h.version==7,"navigation export requires checkpoint version6 or7");
+    require(h.version>=6 && h.version<=8,"navigation export requires checkpoint version6..8");
     require(h.actor_count==nav_deployment::actor_weight_count,
             "navigation export requires a 184-input,64-hidden,four-action actor");
     require(h.config.geometry_memory==1 && h.config.velocity_contract==1,
@@ -913,7 +913,7 @@ struct PPOTrainer {
     void load_checkpoint(const std::string& path,uint32_t family,uint32_t horizon,uint32_t n,uint32_t seed) {
         std::ifstream f(path,std::ios::binary); if(!f)return;
         PpoCheckpointHeader h=read_checkpoint_header(f);
-        require(f && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=7),"invalid PPO checkpoint header");
+        require(f && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=8),"invalid PPO checkpoint header");
         require(h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"PPO checkpoint dimensions mismatch");
         require(h.family==family && h.horizon==horizon && h.n==n && h.base_seed==seed,"PPO checkpoint config mismatch");
         require(h.config.family==sim.cfg.family && h.config.n==sim.cfg.n && h.config.substeps==sim.cfg.substeps &&
@@ -930,7 +930,9 @@ struct PPOTrainer {
         readbytes(sim.states);readbytes(sim.runs);readbytes(sim.worlds);readbytes(sim.sensors);if(h.version>=6)readbytes(sim.poses);else std::memset(sim.poses.contents,0,sim.poses.length);readbytes(sim.commands);
         if(h.version>=7) {
             NavigationRuntimeConfig saved_runtime{};NavigationTaskControl saved_tasks{};
-            f.read((char*)&saved_runtime,sizeof(saved_runtime));f.read((char*)&saved_tasks,sizeof(saved_tasks));
+            f.read((char*)&saved_runtime,sizeof(saved_runtime));
+            f.read((char*)&saved_tasks,h.version>=8?sizeof(saved_tasks):144);
+            require(h.version>=8 || saved_tasks.enabled==0,"task-generator semantics changed; use an explicit parameter warmstart from version7");
             require(bool(f),"truncated navigation runtime configuration");
             require(std::memcmp(&saved_runtime,sim.runtime_control.contents,sizeof(saved_runtime))==0 &&
                     std::memcmp(&saved_tasks,sim.task_control.contents,sizeof(saved_tasks))==0,
@@ -960,7 +962,7 @@ struct PPOTrainer {
         PpoCheckpointHeader h;
         // The binary header has alignment padding. Initialize those bytes too
         // so paired checkpoint hashes do not depend on the host stack.
-        std::memset(&h,0,sizeof(h));std::memcpy(h.magic,"PPOFIX1",7);h.version=((const NavigationRuntimeConfig*)sim.runtime_control.contents)->enabled || ((const NavigationTaskControl*)sim.task_control.contents)->enabled ? 7 : 6;
+        std::memset(&h,0,sizeof(h));std::memcpy(h.magic,"PPOFIX1",7);h.version=((const NavigationRuntimeConfig*)sim.runtime_control.contents)->enabled || ((const NavigationTaskControl*)sim.task_control.contents)->enabled ? 8 : 6;
         h.actor_count=fixed_ppo::actor_param_count;h.critic_count=fixed_ppo::critic_param_count;
         h.horizon=sim.horizon;h.n=sim.cfg.n;h.family=family;h.base_seed=seed;h.completed_rollouts=completed_rollouts;
         h.optimizer_step=optimizer_step;h.config=sim.cfg;h.config.tick=0;
@@ -1064,7 +1066,7 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
     Sim sim(m,cfg,horizon);PPOTrainer trainer(sim);trainer.load_checkpoint(checkpoint,family,horizon,n,base_seed);
     if(!warmstart.empty() && trainer.completed_rollouts==0) {
         std::ifstream f(warmstart,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);
-        require(f && (h.version>=3&&h.version<=7) && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
+        require(f && (h.version>=3&&h.version<=8) && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
         f.read((char*)sim.actor.contents,fixed_ppo::actor_param_count*4);f.read((char*)sim.critic.contents,fixed_ppo::critic_param_count*4);require(bool(f),"warmstart read failed");
         for(uint j=0;j<4;j++)((float*)sim.actor.contents)[fixed_ppo::actor_log_std_offset+j]=warmstart_log_std;
         std::cout<<"warmstart parameters from "<<warmstart<<"; reset optimizer, exploration_log_std="<<warmstart_log_std<<"\n";
@@ -1103,7 +1105,7 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
 }
 
 static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode,uint family,uint32_t seed=800001,float speed=1,float distance=3,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t max_steps=0) {
-    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);require(f && (h.version>=3&&h.version<=7) && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay,h.config.velocity_contract,h.config.geometry_memory,max_steps);
+    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);require(f && (h.version>=3&&h.version<=8) && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay,h.config.velocity_contract,h.config.geometry_memory,max_steps);
 }
 
 // Depends on Sim, SimRun, SimConfig, PpoCheckpointHeader and
@@ -1111,6 +1113,7 @@ static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode
 #include "challenge_evaluation.hpp"
 #include "challenge_training.hpp"
 #include "navigation_training.hpp"
+#include "navigation_contact_audit.hpp"
 #if FIXED_PPO_ACTOR_OBS_DIM==184
 #include "webots/simulator_comparison.hpp"
 #endif
@@ -1147,6 +1150,7 @@ static void compare_webots_scenes(Metal& metal,const std::string& actor_path,
     std::cout<<"paired_geometry Metal episodes="<<scenes.size()*2<<" output="<<output_path
              <<"; same geometry/bounds, remaining sensor/startup contracts audited separately\n";
 #else
+    (void)metal;(void)actor_path;(void)metadata_directory;(void)output_path;
     throw std::runtime_error("paired Webots comparison requires the184-input binary");
 #endif
 }
@@ -1425,6 +1429,9 @@ int main(int argc,char** argv){@autoreleasepool{try{
     if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="compare-webots") {
         require(argc>=5,"compare-webots NAV_ACTOR BOUNDED_METADATA_DIR OUTPUT_CSV");
         compare_webots_scenes(m,argv[2],argv[3],argv[4]);
+    }else if(command=="contact-audit") {
+        require(argc>=4,"contact-audit CHECKPOINT OUTPUT_CSV");
+        audit_navigation_checkpoint_contacts(m,argv[2],argv[3]);
     }else if(command=="task-eval") {
         require(argc>=7,"task-eval CHECKPOINT OUTPUT_CSV STAGE FAMILY DOMAIN_AMPLITUDE [SEED] [MODE]");
         SimConfig config;Sim policy(m,config,32);navigation_training::load_actor(policy,argv[2]);

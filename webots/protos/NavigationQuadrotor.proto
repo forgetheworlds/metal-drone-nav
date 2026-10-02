@@ -1,0 +1,115 @@
+#VRML_SIM R2025a utf8
+# license: MIT
+# Declared Crazyflie-derived collision profile for navigation experiments.
+# Visual parts and compound boundingObject share the same chassis, arm and
+# swept-propeller dimensions. Bitcraze specifies 92 x 92 mm for Crazyflie 2.1
+# and nominal 45 mm props. The pinned L2F profile instead places motor centers
+# at +/-28 mm (79.2 mm diagonal); this dynamics-coherent model is not a CAD fit.
+PROTO NavigationQuadrotor [
+  field SFVec3f translation 0 0 1.5
+  field SFRotation rotation 0 0 1 0
+  field SFString name "NavigationQuadrotor"
+  field SFString controller "raptor_webots"
+  field MFString controllerArgs []
+  field SFString customData ""
+  field SFBool supervisor TRUE
+]
+{
+  Robot {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "Crazyflie-derived L2F navigation geometry (declared profile)"
+    controller IS controller
+    controllerArgs IS controllerArgs
+    customData IS customData
+    supervisor IS supervisor
+    children [
+      InertialUnit { name "imu" }
+      Gyro { name "gyro" }
+      GPS { name "gps" }
+      RangeFinder {
+        name "depth"
+        translation 0.08 0 0
+        rotation 0 0 1 0
+        projection "planar"
+        fieldOfView 1.570796327
+        width 20
+        height 16
+        near 0.03
+        minRange 0.03
+        maxRange 12
+        noise 0
+        resolution 0.001
+      }
+      Shape {
+        appearance PBRAppearance { baseColor 0.12 0.16 0.20 roughness 0.7 }
+        geometry Box { size 0.060 0.060 0.014 }
+      }
+      Shape {
+        appearance PBRAppearance { baseColor 0.08 0.08 0.08 roughness 0.8 }
+        geometry Box { size 0.084 0.008 0.008 }
+      }
+      Shape {
+        appearance PBRAppearance { baseColor 0.08 0.08 0.08 roughness 0.8 }
+        geometry Box { size 0.008 0.084 0.008 }
+      }
+      # Rotor guards are not present. These discs model the swept reach of the
+      # nominal 45 mm Crazyflie propeller during rotation.
+      DEF PROP_FR Propeller {
+        shaftAxis 0 0 1 centerOfThrust 0.028 -0.028 0
+        thrustConstants -0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        device RotationalMotor { name "motor_fr" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation 0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+        slowHelix Solid { translation 0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+      }
+      DEF PROP_BR Propeller {
+        shaftAxis 0 0 1 centerOfThrust -0.028 -0.028 0
+        thrustConstants 0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        device RotationalMotor { name "motor_br" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation -0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+        slowHelix Solid { translation -0.028 -0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+      }
+      DEF PROP_BL Propeller {
+        shaftAxis 0 0 1 centerOfThrust -0.028 0.028 0
+        thrustConstants -0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        device RotationalMotor { name "motor_bl" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation -0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+        slowHelix Solid { translation -0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+      }
+      DEF PROP_FL Propeller {
+        shaftAxis 0 0 1 centerOfThrust 0.028 0.028 0
+        thrustConstants 0.00004 0 torqueConstants -0.0000001866 0
+        fastHelixThreshold 100
+        device RotationalMotor { name "motor_fl" maxVelocity 600 maxTorque 10000 }
+        fastHelix Solid { translation 0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.1 0.1 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+        slowHelix Solid { translation 0.028 0.028 0 children [ Shape { appearance PBRAppearance { baseColor 0.12 0.12 0.12 transparency 0.35 } geometry Cylinder { height 0.001 radius 0.0225 } } ] }
+      }
+    ]
+    # Compound contact geometry; same dimensions as vehicle_geometry.hpp.
+    # The radius is based on Bitcraze's nominal 45 mm propeller specification.
+    boundingObject Group {
+      children [
+        Box { size 0.060 0.060 0.014 }
+        Box { size 0.084 0.008 0.008 }
+        Box { size 0.008 0.084 0.008 }
+        Transform { translation 0.028 -0.028 0 children [ Cylinder { height 0.001 radius 0.0225 } ] }
+        Transform { translation -0.028 -0.028 0 children [ Cylinder { height 0.001 radius 0.0225 } ] }
+        Transform { translation -0.028 0.028 0 children [ Cylinder { height 0.001 radius 0.0225 } ] }
+        Transform { translation 0.028 0.028 0 children [ Cylinder { height 0.001 radius 0.0225 } ] }
+      ]
+    }
+    physics Physics {
+      density -1
+      mass 0.0306
+      centerOfMass [ 0 0 0 ]
+      # Pinned rl-tools L2F Crazyflie profile from physics.hpp at
+      # e43ae4bcda4556321a63f4eb5dcc826cd637aa39; not inferred from the
+      # declared visual/contact geometry.
+      inertiaMatrix [ 0.00000941655673 0.00000964405170 0.00001745951732, 0 0 0 ]
+    }
+  }
+}
