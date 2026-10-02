@@ -1,0 +1,2 @@
+device=Apple M3 FP32 safe/precise
+witness_diagnostic privileged=true levels=90 success=69 collision=0 timeout=21 speed=1.5 budget_s=20 output=results/bank-witness-1.5mps.csv

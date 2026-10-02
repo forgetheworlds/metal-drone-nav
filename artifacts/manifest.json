@@ -1,0 +1,511 @@
+{
+  "generated_by": "evidence.py",
+  "command": "python3 evidence.py --out artifacts",
+  "generated_utc": "2026-10-02T01:50:43+00:00",
+  "runtime": {
+    "python": "3.14.7",
+    "matplotlib": "3.10.8",
+    "numpy": "2.4.4"
+  },
+  "outputs": [
+    "training-broad-validation.png",
+    "training-broad-validation.svg",
+    "static-scene-policy-comparison.png",
+    "static-scene-policy-comparison.svg",
+    "clean-and-stress-transfer.png",
+    "clean-and-stress-transfer.svg",
+    "controlled-threat-before-after.png",
+    "controlled-threat-before-after.svg",
+    "cpu-gpu-training-scaling.png",
+    "cpu-gpu-training-scaling.svg",
+    "paired-crossing-scene.png",
+    "paired-crossing-scene.svg",
+    "paired-crossing-scene.gif",
+    "challenge-bank-held-dev-outcomes.png",
+    "challenge-bank-held-dev-outcomes.svg",
+    "challenge-bank-witness-worlds.png",
+    "challenge-bank-witness-worlds.svg",
+    "corner-control-training-failure.png",
+    "corner-control-training-failure.svg",
+    "inference-history-and-speed-ablations.png",
+    "inference-history-and-speed-ablations.svg",
+    "static-policy-speed-cap-sweep.png",
+    "static-policy-speed-cap-sweep.svg"
+  ],
+  "inputs": [
+    {
+      "path": "evidence.py",
+      "sha256": "dcd84b65bba71dd151ef023e609e1d8ea9eb86ed8f42cfde2c671feec9b14acf",
+      "bytes": 74441
+    },
+    {
+      "path": "docs/BENCHMARKS.md",
+      "sha256": "bde0d0b416b13bb278989809acd9d8df031d6c68240aebbf2da7c1e08be9a738",
+      "bytes": 18681
+    },
+    {
+      "path": "docs/CODE_DIRECTION.md",
+      "sha256": "042cbf1ca191b29b039aa533e4b0edbf13c64ce6ab41dcc773fb4387ba127b99",
+      "bytes": 9811
+    },
+    {
+      "path": "docs/NEXT_PHASE.md",
+      "sha256": "2360e56048b93fd6b036239b410454f0e215383f05570ea7faa09487a9a95a85",
+      "bytes": 13472
+    },
+    {
+      "path": "docs/RESEARCH_LOG.md",
+      "sha256": "a41ccf325b782e5a0d08b36daac8b1c61f096998b02a0addd0c70815638d711f",
+      "bytes": 17356
+    },
+    {
+      "path": "evidence/inputs/bank-dynamic.csv",
+      "sha256": "45a89f07ed462e4c27a9e7bfd509b558dcd8cf6c4d0c64b59691312acf1368e1",
+      "bytes": 71720
+    },
+    {
+      "path": "evidence/inputs/bank-geometry.csv",
+      "sha256": "c7b5eadec519ed1b1a94f74157d4757da6cb2e2436cd51ffaf51094888bd666c",
+      "bytes": 71960
+    },
+    {
+      "path": "evidence/inputs/bank-goal.csv",
+      "sha256": "24b9a59363c120b3748063c03e9d9964dd7154784d970e6f459bb8f6a5e80b4c",
+      "bytes": 71550
+    },
+    {
+      "path": "evidence/inputs/bank-original.csv",
+      "sha256": "a94a00f1e5fcae1e8228b63d2bbc67a37e52da8ea3e2aed2b856c277ffffe494",
+      "bytes": 71784
+    },
+    {
+      "path": "evidence/inputs/bank-static.csv",
+      "sha256": "1f027fdd6a0cb39851297c47260202b7fd6a6d9c734c62f0099a12a7187eea57",
+      "bytes": 71684
+    },
+    {
+      "path": "evidence/inputs/bank-witness-1.5mps.csv",
+      "sha256": "82bbdf97cccb37bbe23cfc62ac8d9c6495a5b483f29c580c92cae54c8b92f967",
+      "bytes": 17502
+    },
+    {
+      "path": "evidence/inputs/bank-witness-1.5mps.log",
+      "sha256": "2f7f07dc8268eecc88bda024b276fd7223fc896f5f82986ce74c2b6c8043672e",
+      "bytes": 174
+    },
+    {
+      "path": "evidence/inputs/bank-witness-1mps.csv",
+      "sha256": "3f6a65298c09936b53daf7f05d394678ef2f605946a56af91f63f8e17beb8727",
+      "bytes": 17352
+    },
+    {
+      "path": "evidence/inputs/bank-witness-1mps.log",
+      "sha256": "8fc1eb084c9f7a812d72cc6385faa82b08d6e6368f70752c3c3de8800dc21f5b",
+      "bytes": 169
+    },
+    {
+      "path": "evidence/inputs/challenge-bank-mirrored-v1.jsonl",
+      "sha256": "e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e",
+      "bytes": 730227
+    },
+    {
+      "path": "evidence/inputs/challenge-bank-v1.jsonl",
+      "sha256": "52a2e1ccdb91a21c342cf2f0cc8388c653021425674ea5ff4736a039efdc0fab",
+      "bytes": 717647
+    },
+    {
+      "path": "evidence/inputs/continuation-evaluation.csv",
+      "sha256": "8a79b6c98da6e52ec87aca6b0d1611dbc8e55a3c997819505b42e90c7dec98a1",
+      "bytes": 62531
+    },
+    {
+      "path": "evidence/inputs/corner-control-training.tsv",
+      "sha256": "a2cfb1d96a31124dbb4f010af6157219993a295a0a49063ecd9dd3903ccf75e7",
+      "bytes": 6773
+    },
+    {
+      "path": "evidence/inputs/corner-control.log",
+      "sha256": "39f820414db177b32d8c5e24e55db57e73e1bdbc40fca82af6ad1dd1234ad92a",
+      "bytes": 54711
+    },
+    {
+      "path": "evidence/inputs/early-crossing.csv",
+      "sha256": "ae685f31d2460ac41d9e6df5efe94f350ff7cc3f3070c471dee2aed9c66d5678",
+      "bytes": 32612
+    },
+    {
+      "path": "evidence/inputs/early-crossing.json",
+      "sha256": "fffdc50b66e4965993c68b4b6f8e846cbb12344764a1dae0e8006415a2c188fa",
+      "bytes": 1763
+    },
+    {
+      "path": "evidence/inputs/evaluation.csv",
+      "sha256": "08e4f210335959b8eef6bf00cf728c80891fedcd3137746da671513de113d77a",
+      "bytes": 14005
+    },
+    {
+      "path": "evidence/inputs/later-crossing.csv",
+      "sha256": "f83e09dea74f68714e353627f1d26a67029f9fa9f18576bcdd6ce13de06e4851",
+      "bytes": 71259
+    },
+    {
+      "path": "evidence/inputs/later-crossing.json",
+      "sha256": "c223e3523d1bb98aaaed201c9ddfb560b1d0d8302d13c4f5fe29499c705b79e9",
+      "bytes": 1756
+    },
+    {
+      "path": "evidence/inputs/static-speed.csv",
+      "sha256": "cbdc4dc3a2f9d9c9c22c78407a675ba466505c1aa9d78e0bc2ad15c62e7d727e",
+      "bytes": 12589
+    },
+    {
+      "path": "evidence/inputs/static-speed.log",
+      "sha256": "0721119eccab079b7bee601099f0a5fb026e6702048c7b15f62272334b62d61b",
+      "bytes": 918
+    },
+    {
+      "path": "evidence/inputs/threat-evaluation.csv",
+      "sha256": "0614d827a8474b12fbfd1418216f9d13ed56d3f720c886b6a6935c9cf4f5f600",
+      "bytes": 12162
+    },
+    {
+      "path": "evidence/inputs/threat-joint-ablations.csv",
+      "sha256": "53570863438f08d5a45d02c04a677cdef22c92d22af3a8a4c1c43b20d5cd8de9",
+      "bytes": 15010
+    },
+    {
+      "path": "evidence/inputs/threat-joint-ablations.log",
+      "sha256": "018ba2b6290a1a28427d5ede0d5aed184a3be88e944cd359fbf49f72670f7584",
+      "bytes": 1045
+    },
+    {
+      "path": "evidence/inputs/threat-joint-controlled.csv",
+      "sha256": "644659a841e4c4bc02e5980ee0c6ff626fb96ac44bd5a8fd09bc463a115d1506",
+      "bytes": 12124
+    },
+    {
+      "path": "evidence/inputs/training.tsv",
+      "sha256": "0e86811de6fbe30d4707f6cfd56d37c6fcc4677ac3a3713395b4fe8af1f91624",
+      "bytes": 199300
+    },
+    {
+      "path": "assets/checkpoints/guided-table-memory.bin.best",
+      "sha256": "fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9",
+      "bytes": 1666548
+    },
+    {
+      "path": "assets/checkpoints/guided-clean-stress.bin.best",
+      "sha256": "469e7189af8e76c90b6e22b1fbc0be5b149df73eaa2c3b1fb1c61efc153a2136",
+      "bytes": 1666548
+    },
+    {
+      "path": "assets/checkpoints/guided-stress.bin.best",
+      "sha256": "114f6eff5b255a426c2768119f7648e6be579298343b520a288d0b3908eafc0c",
+      "bytes": 1666548
+    },
+    {
+      "path": "assets/checkpoints/guided-door-stress.bin.best",
+      "sha256": "8342d429bcf6a64487b01d4c2d006ae7f7a1301847641e6eed244ed7959e7897",
+      "bytes": 1666548
+    },
+    {
+      "path": "assets/checkpoints/guided-rehearsal.bin.best",
+      "sha256": "4883ff20a23ffc21eb3de5654dd36b5a704a413740daf2a35877d230265edce4",
+      "bytes": 1666548
+    },
+    {
+      "path": "assets/checkpoints/guided-threat-joint.bin.best",
+      "sha256": "fde3cc40baf0741c45abb2a89e9bab2c4b48dc982d7b3bda4e49a44455a6cc52",
+      "bytes": 1666548
+    }
+  ],
+  "recorded_candidate_hashes": {
+    "broad_stress": "114f6eff5b255a426c2768119f7648e6be579298343b520a288d0b3908eafc0c",
+    "door_stress": "8342d429bcf6a64487b01d4c2d006ae7f7a1301847641e6eed244ed7959e7897",
+    "rehearsal": "4883ff20a23ffc21eb3de5654dd36b5a704a413740daf2a35877d230265edce4",
+    "controlled_threats": "fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9"
+  },
+  "challenge_bank_provenance": {
+    "input": "evidence/inputs/challenge-bank-v1.jsonl",
+    "sha256": "52a2e1ccdb91a21c342cf2f0cc8388c653021425674ea5ff4736a039efdc0fab",
+    "level_count": 270,
+    "dev_level_count": 90,
+    "final_level_count": 90,
+    "final_split_evaluated": false,
+    "results": {
+      "Original PPO \u00b7 mode 17": {
+        "path": "evidence/inputs/bank-original.csv",
+        "sha256": "a94a00f1e5fcae1e8228b63d2bbc67a37e52da8ea3e2aed2b856c277ffffe494",
+        "checkpoint": "assets/checkpoints/guided-table-memory.bin.best",
+        "checkpoint_sha256": "fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9",
+        "mode": "17"
+      },
+      "Clean/stress PPO \u00b7 mode 17": {
+        "path": "evidence/inputs/bank-static.csv",
+        "sha256": "1f027fdd6a0cb39851297c47260202b7fd6a6d9c734c62f0099a12a7187eea57",
+        "checkpoint": "assets/checkpoints/guided-clean-stress.bin.best",
+        "checkpoint_sha256": "469e7189af8e76c90b6e22b1fbc0be5b149df73eaa2c3b1fb1c61efc153a2136",
+        "mode": "17"
+      },
+      "Threat-joint PPO \u00b7 mode 17": {
+        "path": "evidence/inputs/bank-dynamic.csv",
+        "sha256": "45a89f07ed462e4c27a9e7bfd509b558dcd8cf6c4d0c64b59691312acf1368e1",
+        "checkpoint": "assets/checkpoints/guided-threat-joint.bin.best",
+        "checkpoint_sha256": "fde3cc40baf0741c45abb2a89e9bab2c4b48dc982d7b3bda4e49a44455a6cc52",
+        "mode": "17"
+      },
+      "Geometry prior \u00b7 mode 13": {
+        "path": "evidence/inputs/bank-geometry.csv",
+        "sha256": "c7b5eadec519ed1b1a94f74157d4757da6cb2e2436cd51ffaf51094888bd666c",
+        "checkpoint": "assets/checkpoints/guided-table-memory.bin.best",
+        "checkpoint_sha256": "fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9",
+        "mode": "13"
+      },
+      "Goal script \u00b7 mode 2": {
+        "path": "evidence/inputs/bank-goal.csv",
+        "sha256": "24b9a59363c120b3748063c03e9d9964dd7154784d970e6f459bb8f6a5e80b4c",
+        "checkpoint": "assets/checkpoints/guided-table-memory.bin.best",
+        "checkpoint_sha256": "fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9",
+        "mode": "2"
+      }
+    }
+  },
+  "targeted_corner_training": {
+    "log": "evidence/inputs/corner-control.log",
+    "filtered_history": "evidence/inputs/corner-control-training.tsv",
+    "history_rows": 100,
+    "rollouts": 1000,
+    "transitions": 4096000,
+    "training_episodes": 82729,
+    "training_collision_fraction": 0.99994,
+    "selection_validation": {
+      "before": {
+        "episodes": 128,
+        "success": 0.0,
+        "collision": 1.0
+      },
+      "after": {
+        "episodes": 128,
+        "success": 0.0,
+        "collision": 1.0
+      }
+    },
+    "configuration": "family 14, mode 17, 1.5 m/s cap, 8 m goal, 20 s episode limit"
+  },
+  "speed_sweep_provenance": {
+    "input": "evidence/inputs/static-speed.csv",
+    "sha256": "cbdc4dc3a2f9d9c9c22c78407a675ba466505c1aa9d78e0bc2ad15c62e7d727e",
+    "checkpoint": "assets/checkpoints/guided-clean-stress.bin.best",
+    "checkpoint_sha256": "469e7189af8e76c90b6e22b1fbc0be5b149df73eaa2c3b1fb1c61efc153a2136",
+    "command": "python3 evaluation.py --speed-sweep --checkpoint assets/checkpoints/guided-clean-stress.bin.best --output results/static-speed.csv",
+    "episode_limit_s": 10,
+    "episodes_per_case": 128,
+    "retrained_at_caps": false
+  },
+  "inference_ablation_provenance": {
+    "input": "evidence/inputs/threat-joint-ablations.csv",
+    "sha256": "53570863438f08d5a45d02c04a677cdef22c92d22af3a8a4c1c43b20d5cd8de9",
+    "checkpoint": "assets/checkpoints/guided-threat-joint.bin.best",
+    "checkpoint_sha256": "fde3cc40baf0741c45abb2a89e9bab2c4b48dc982d7b3bda4e49a44455a6cc52",
+    "command": "python3 evaluation.py --ablations --checkpoint assets/checkpoints/guided-threat-joint.bin.best --output results/threat-joint-ablations.csv",
+    "retrained_by_mode": false
+  },
+  "privileged_witness_route_runs": {
+    "bank": "evidence/inputs/challenge-bank-mirrored-v1.jsonl",
+    "bank_sha256": "e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e",
+    "bank_level_count": 270,
+    "dev_levels": 90,
+    "final_split_evaluated": false,
+    "generator_command": "python3 challenge_bank.py --seed 20261001 --distance 8 --per-split 30 --families 14,15,16 --mirror-y --out evidence/inputs/challenge-bank-mirrored-v1.jsonl",
+    "semantics": "Saved witness waypoints were followed by a scripted host controller through frozen RAPTOR and simulator physics. The waypoint path is privileged input, not a learned-navigation policy result.",
+    "at_1mps_cap_60s": {
+      "csv": "evidence/inputs/bank-witness-1mps.csv",
+      "sha256": "3f6a65298c09936b53daf7f05d394678ef2f605946a56af91f63f8e17beb8727",
+      "successes": 90,
+      "episodes": 90,
+      "outcomes_by_family": {
+        "14": {
+          "success": 30,
+          "collision": 0,
+          "timeout": 0,
+          "mean_elapsed_s": 21.917072946666668
+        },
+        "15": {
+          "success": 30,
+          "collision": 0,
+          "timeout": 0,
+          "mean_elapsed_s": 19.748689976666665
+        },
+        "16": {
+          "success": 30,
+          "collision": 0,
+          "timeout": 0,
+          "mean_elapsed_s": 21.865405083333332
+        }
+      }
+    },
+    "at_1_5mps_cap_20s": {
+      "csv": "evidence/inputs/bank-witness-1.5mps.csv",
+      "sha256": "82bbdf97cccb37bbe23cfc62ac8d9c6495a5b483f29c580c92cae54c8b92f967",
+      "successes": 69,
+      "timeouts": 21,
+      "collisions": 0,
+      "episodes": 90,
+      "outcomes_by_family": {
+        "14": {
+          "success": 30,
+          "collision": 0,
+          "timeout": 0
+        },
+        "15": {
+          "success": 30,
+          "collision": 0,
+          "timeout": 0
+        },
+        "16": {
+          "success": 9,
+          "collision": 0,
+          "timeout": 21
+        }
+      }
+    },
+    "logs": [
+      "evidence/inputs/bank-witness-1mps.log",
+      "evidence/inputs/bank-witness-1.5mps.log"
+    ]
+  },
+  "figure_sources": {
+    "training-broad-validation": {
+      "input": "evidence/inputs/training.tsv",
+      "filter": "checkpoint basename raw-broad.bin or pooled-broad.bin; recorded validation rows; elapsed wall time from training invocation"
+    },
+    "static-scene-policy-comparison": {
+      "input": "evidence/inputs/evaluation.csv",
+      "filter": "group=baseline, seed=800001, families 7/8/5/3, modes 17/13/2"
+    },
+    "clean-and-stress-transfer": {
+      "inputs": [
+        "evidence/inputs/evaluation.csv",
+        "evidence/inputs/continuation-evaluation.csv"
+      ],
+      "filter": "mode=17, seed=800001; clean baseline and combined stress for families 8 and 5; candidates from continuation CSV"
+    },
+    "controlled-threat-before-after": {
+      "inputs": [
+        "evidence/inputs/threat-evaluation.csv",
+        "evidence/inputs/threat-joint-controlled.csv"
+      ],
+      "filter": "guided mode 17; exact matched 24-case family-0 threat matrix"
+    },
+    "cpu-gpu-training-scaling": {
+      "input": "docs/BENCHMARKS.md",
+      "filter": "recorded environment ladder for three complete training rollouts"
+    },
+    "paired-crossing-scene": {
+      "inputs": [
+        "evidence/inputs/early-crossing.json",
+        "evidence/inputs/early-crossing.csv",
+        "evidence/inputs/later-crossing.json",
+        "evidence/inputs/later-crossing.csv"
+      ],
+      "filter": "same family 11, seed 800001, environment 0, world seed, obstacle list, and clean timing"
+    },
+    "paired-crossing-scene.gif": {
+      "inputs": [
+        "evidence/inputs/early-crossing.json",
+        "evidence/inputs/early-crossing.csv",
+        "evidence/inputs/later-crossing.json",
+        "evidence/inputs/later-crossing.csv"
+      ],
+      "filter": "recorded 20 Hz poses and logged obstacle motion; playback at 8 fps; ground truth is display-only"
+    },
+    "challenge-bank-held-dev-outcomes": {
+      "inputs": [
+        "evidence/inputs/challenge-bank-v1.jsonl",
+        "evidence/inputs/bank-original.csv",
+        "evidence/inputs/bank-static.csv",
+        "evidence/inputs/bank-dynamic.csv",
+        "evidence/inputs/bank-geometry.csv",
+        "evidence/inputs/bank-goal.csv"
+      ],
+      "filter": "the same 90 frozen dev IDs; 30 per family; 1.5 m/s; max 400 steps; final split has no result rows"
+    },
+    "challenge-bank-witness-worlds": {
+      "input": "evidence/inputs/challenge-bank-v1.jsonl",
+      "filter": "one dev level per family nearest medium difficulty 0.5, tie-broken by larger witness clearance"
+    },
+    "corner-control-training-failure": {
+      "inputs": [
+        "evidence/inputs/corner-control.log",
+        "evidence/inputs/corner-control-training.tsv"
+      ],
+      "filter": "family-14 warm-start run; before/after seed-700001 validation and ten-rollout training history records"
+    },
+    "inference-history-and-speed-ablations": {
+      "input": "evidence/inputs/threat-joint-ablations.csv",
+      "filter": "same checkpoint, modes 17/18/19; table and held-door clean/combined-stress cases"
+    },
+    "static-policy-speed-cap-sweep": {
+      "input": "evidence/inputs/static-speed.csv",
+      "filter": "same checkpoint weights and seed; five requested caps; three clean and two combined-stress static families"
+    }
+  },
+  "training_tsv_schema": [
+    "checkpoint",
+    "rollout",
+    "elapsed_wall_s",
+    "gpu_s",
+    "validation_success",
+    "collision",
+    "timeout",
+    "goal_time_s"
+  ],
+  "metric_definitions": {
+    "validation_success": "The score returned by evaluate_training_policy at the recorded rollout. For ordinary families it is one fixed-seed evaluation; for training families 12/13 it is minimum success across their documented clean/stress profiles.",
+    "episode_success": "Success fraction from the CSV row; each plotted row is 128 completed episodes unless stated otherwise.",
+    "wilson_intervals": "Two-sided 95% Wilson score intervals for a binomial episode rate; they show finite-sample uncertainty, not seed-to-seed variance.",
+    "wall_time": "Training TSV elapsed wall seconds are measured since the training invocation at each logged validation. Scaling values are the recorded complete three-rollout workload wall times.",
+    "threat_ttc": "Nominal initial scene time-to-collision parameter. It is not actual closest-approach or policy-path collision time.",
+    "speed_sweep": "speed_mps is the requested 3D velocity-intent norm cap under contract 1, not measured speed. mean_speed_mps is path divided by elapsed time across successes and failures. peak_speed_mps is the maximum vehicle speed observed in the case and can reflect an outlier.",
+    "corner_control": "Training TSV rows are periodic fixed-seed selection evaluations. The initial and final evaluations use the same family-14 configuration; this is one targeted warm-start experiment."
+  },
+  "limitations": [
+    "All evidence is from simulation. No real camera, transport, or flight validation is represented.",
+    "The baseline static matrix uses seed 800001 and 128 episodes per row; Wilson intervals do not capture seed variance.",
+    "Clean/stress candidates were selected using different profile sets. The figure compares per-profile outcomes and does not claim a matched training trial or a universal aggregate score.",
+    "The training TSV records sparse validation checkpoints, not every rollout. Its wall time includes periodic validation work.",
+    "CPU/GPU scaling is the full PPO workload recorded in docs/BENCHMARKS.md. Do not compare it with depth-only microbenchmarks.",
+    "The fixed-weight cap sweep is an inference stress test, not a trained speed curriculum or safe-speed certification. Its 10-second limit causes timeouts at some low caps, and measured vehicle speed can exceed the requested cap.",
+    "The family-14 PPO control is one warm-start/schedule result. It shows that this added family and schedule did not teach detours; it does not show that corners are unlearnable.",
+    "Separate PPO runs on the mirrored bank are tracked outside this figure package. Their preliminary development scores are not included here; no final split has been evaluated.",
+    "The 3D view and GIF render recorded simulator traces and logged scene geometry. They are not camera footage. Pose paths are sampled at 20 Hz; terminal state metadata records the exact final 100 Hz state.",
+    "Challenge-bank outcome bars use 30 levels per family from the frozen development split. They are not final holdout results, and the five policy/inference variants were not trained as a single matched experiment.",
+    "Challenge-bank witness routes are geometric feasibility witnesses only; they are not learned trajectories or evidence that the tested policy can fly them."
+  ],
+  "visualization_trace_contract": {
+    "sources": [
+      "evidence/inputs/early-crossing.json",
+      "evidence/inputs/early-crossing.csv",
+      "evidence/inputs/later-crossing.json",
+      "evidence/inputs/later-crossing.csv"
+    ],
+    "metadata": [
+      "family/mode/seed/environment/world_seed",
+      "dt_s/native_dt_s/sensor_interval_s",
+      "world frame and units",
+      "room bounds",
+      "goal xyz",
+      "drone radius",
+      "obstacle type/center/size/velocity",
+      "outcome/path/clearance",
+      "exact terminal state at 100 Hz"
+    ],
+    "time_series": [
+      "20 Hz t_s/position xyz/quaternion wxyz/world velocity/body omega/reference/executed intent/yaw",
+      "instantaneous clearance",
+      "sensor readiness/capture time",
+      "80 row-major pooled depth ranges in metres"
+    ],
+    "separation": "Ground-truth obstacle fields support display only and are not policy inputs. The GIF uses logged poses and obstacle motion at 8 fps; it does not represent camera footage."
+  }
+}

@@ -1,0 +1,26 @@
+[1/25] speed_f7_v0.75_speed_clean
+[2/25] speed_f7_v1_speed_clean
+[3/25] speed_f7_v1.5_speed_clean
+[4/25] speed_f7_v2_speed_clean
+[5/25] speed_f7_v3_speed_clean
+[6/25] speed_f8_v0.75_speed_clean
+[7/25] speed_f8_v1_speed_clean
+[8/25] speed_f8_v1.5_speed_clean
+[9/25] speed_f8_v2_speed_clean
+[10/25] speed_f8_v3_speed_clean
+[11/25] speed_f5_v0.75_speed_clean
+[12/25] speed_f5_v1_speed_clean
+[13/25] speed_f5_v1.5_speed_clean
+[14/25] speed_f5_v2_speed_clean
+[15/25] speed_f5_v3_speed_clean
+[16/25] speed_f8_v0.75_speed_stressed
+[17/25] speed_f8_v1_speed_stressed
+[18/25] speed_f8_v1.5_speed_stressed
+[19/25] speed_f8_v2_speed_stressed
+[20/25] speed_f8_v3_speed_stressed
+[21/25] speed_f5_v0.75_speed_stressed
+[22/25] speed_f5_v1_speed_stressed
+[23/25] speed_f5_v1.5_speed_stressed
+[24/25] speed_f5_v2_speed_stressed
+[25/25] speed_f5_v3_speed_stressed
+wrote=/Users/muadhsambul/RL/results/static-speed.csv cases=25 skipped=0

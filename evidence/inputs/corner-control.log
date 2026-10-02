@@ -1,0 +1,506 @@
+device=Apple M3 FP32 safe/precise
+warmstart parameters from results/guided-table-memory.bin.best; reset optimizer, exploration_log_std=-1
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.1848 mean_goal_time=0 mean_speed=1.23345 peak_speed=3.11739 min_clearance=-0.0126662 wall_s=0.207324
+eval_GPU_s=0.200874
+PPO training device=Apple M3 family=14 envs=128 horizon=32 speed=1.5 distance=8 risk=0.1 entropy=0.0005 lr=0.0001 sensor_delay=0 command_delay=0 wind_accel=0 depth_noise=0 dropout=0 selection_mode=17
+train rollout=10 policy_loss=-6.56173e-05 value_loss=1.22404 entropy_loss=-0.000834656 ratio=0.998753 optimizer_step=320 gpu_s=0.0437732
+train episodes=840 success=0 collision=1 timeout=0 progress=0.180558 mean_goal_time=0 mean_speed=1.32915 peak_speed=2.40757 min_clearance=0.0118565 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.181643 mean_goal_time=0 mean_speed=1.25166 peak_speed=3.3535 min_clearance=-0.0119319 wall_s=0.228592
+eval_GPU_s=0.224558
+train rollout=20 policy_loss=-0.000946265 value_loss=0.160232 entropy_loss=-0.000827997 ratio=1.00042 optimizer_step=640 gpu_s=0.0296334
+train episodes=1756 success=0 collision=1 timeout=0 progress=0.180855 mean_goal_time=0 mean_speed=1.33743 peak_speed=2.43414 min_clearance=0.00536719 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.184381 mean_goal_time=0 mean_speed=1.22186 peak_speed=2.88483 min_clearance=-0.0114402 wall_s=0.168228
+eval_GPU_s=0.16551
+train rollout=30 policy_loss=-0.00209328 value_loss=0.0529179 entropy_loss=-0.000817206 ratio=1.00063 optimizer_step=960 gpu_s=0.0354784
+train episodes=2781 success=0 collision=1 timeout=0 progress=0.18303 mean_goal_time=0 mean_speed=1.34799 peak_speed=2.32683 min_clearance=0.00258234 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.188601 mean_goal_time=0 mean_speed=1.23493 peak_speed=3.05883 min_clearance=-0.0113482 wall_s=0.202085
+eval_GPU_s=0.199551
+train rollout=40 policy_loss=-0.00143955 value_loss=0.0443597 entropy_loss=-0.000811018 ratio=1.00086 optimizer_step=1280 gpu_s=0.0308632
+train episodes=3948 success=0 collision=1 timeout=0 progress=0.186972 mean_goal_time=0 mean_speed=1.35817 peak_speed=2.29435 min_clearance=0.000172406 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.197066 mean_goal_time=0 mean_speed=1.23379 peak_speed=2.81745 min_clearance=-0.0136412 wall_s=0.176381
+eval_GPU_s=0.173758
+train rollout=50 policy_loss=-0.00262472 value_loss=0.0416833 entropy_loss=-0.000801977 ratio=0.998561 optimizer_step=1600 gpu_s=0.0336664
+train episodes=5269 success=0 collision=1 timeout=0 progress=0.19201 mean_goal_time=0 mean_speed=1.36607 peak_speed=2.37389 min_clearance=0.0220703 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.205 mean_goal_time=0 mean_speed=1.22526 peak_speed=3.02129 min_clearance=-0.0117541 wall_s=0.215431
+eval_GPU_s=0.212729
+train rollout=60 policy_loss=-0.00218275 value_loss=0.0358529 entropy_loss=-0.000793876 ratio=0.999014 optimizer_step=1920 gpu_s=0.0279501
+train episodes=6651 success=0 collision=1 timeout=0 progress=0.196294 mean_goal_time=0 mean_speed=1.37328 peak_speed=2.42703 min_clearance=0.0143582 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.207605 mean_goal_time=0 mean_speed=1.26253 peak_speed=2.63699 min_clearance=-0.00964245 wall_s=0.151207
+eval_GPU_s=0.148466
+train rollout=70 policy_loss=-5.90635e-05 value_loss=0.0375445 entropy_loss=-0.000787746 ratio=1.00106 optimizer_step=2240 gpu_s=0.0352515
+train episodes=8051 success=0 collision=1 timeout=0 progress=0.199672 mean_goal_time=0 mean_speed=1.38336 peak_speed=2.44187 min_clearance=0.020353 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.210005 mean_goal_time=0 mean_speed=1.31473 peak_speed=2.5323 min_clearance=-0.00785789 wall_s=0.226864
+eval_GPU_s=0.224201
+train rollout=80 policy_loss=-0.00173784 value_loss=0.0280571 entropy_loss=-0.000780259 ratio=1.00176 optimizer_step=2560 gpu_s=0.0292465
+train episodes=9455 success=0 collision=1 timeout=0 progress=0.202063 mean_goal_time=0 mean_speed=1.39118 peak_speed=2.44864 min_clearance=0.00959697 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213528 mean_goal_time=0 mean_speed=1.33122 peak_speed=2.60455 min_clearance=-0.00774345 wall_s=0.150239
+eval_GPU_s=0.147708
+train rollout=90 policy_loss=-0.000762154 value_loss=0.0295792 entropy_loss=-0.000772316 ratio=1.00022 optimizer_step=2880 gpu_s=0.0355035
+train episodes=10863 success=0 collision=1 timeout=0 progress=0.203653 mean_goal_time=0 mean_speed=1.39892 peak_speed=2.50524 min_clearance=0.00162259 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213805 mean_goal_time=0 mean_speed=1.3498 peak_speed=2.71857 min_clearance=-0.00921485 wall_s=0.172628
+eval_GPU_s=0.169858
+train rollout=100 policy_loss=-0.000503375 value_loss=0.0216084 entropy_loss=-0.000760178 ratio=0.998044 optimizer_step=3200 gpu_s=0.0304374
+train episodes=12241 success=0 collision=1 timeout=0 progress=0.204841 mean_goal_time=0 mean_speed=1.40255 peak_speed=2.37594 min_clearance=0.0132104 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.214291 mean_goal_time=0 mean_speed=1.36134 peak_speed=2.59912 min_clearance=-0.0119508 wall_s=0.163617
+eval_GPU_s=0.160936
+train rollout=110 policy_loss=-0.000510249 value_loss=0.0172878 entropy_loss=-0.000753024 ratio=1.0006 optimizer_step=3520 gpu_s=0.0331248
+train episodes=13674 success=0 collision=1 timeout=0 progress=0.205811 mean_goal_time=0 mean_speed=1.4046 peak_speed=2.45748 min_clearance=0.0252329 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.214423 mean_goal_time=0 mean_speed=1.35916 peak_speed=2.59148 min_clearance=-0.0114395 wall_s=0.15707
+eval_GPU_s=0.154383
+train rollout=120 policy_loss=-0.00184822 value_loss=0.0138024 entropy_loss=-0.000750572 ratio=0.998203 optimizer_step=3840 gpu_s=0.0312854
+train episodes=15144 success=0 collision=1 timeout=0 progress=0.206687 mean_goal_time=0 mean_speed=1.40546 peak_speed=2.42892 min_clearance=0.000457317 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.214256 mean_goal_time=0 mean_speed=1.33703 peak_speed=2.64725 min_clearance=-0.0113245 wall_s=0.168848
+eval_GPU_s=0.166233
+train rollout=130 policy_loss=-0.000643348 value_loss=0.0126653 entropy_loss=-0.000744155 ratio=0.999953 optimizer_step=4160 gpu_s=0.0316408
+train episodes=16691 success=0 collision=1 timeout=0 progress=0.207553 mean_goal_time=0 mean_speed=1.40576 peak_speed=2.28803 min_clearance=0.00469616 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213436 mean_goal_time=0 mean_speed=1.29502 peak_speed=2.67839 min_clearance=-0.00933942 wall_s=0.149651
+eval_GPU_s=0.146978
+train rollout=140 policy_loss=-0.00145672 value_loss=0.0106199 entropy_loss=-0.000739515 ratio=0.999262 optimizer_step=4480 gpu_s=0.0305769
+train episodes=18239 success=0 collision=1 timeout=0 progress=0.208252 mean_goal_time=0 mean_speed=1.40639 peak_speed=2.2919 min_clearance=0.00982121 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213315 mean_goal_time=0 mean_speed=1.27884 peak_speed=2.65817 min_clearance=-0.009783 wall_s=0.174834
+eval_GPU_s=0.172397
+train rollout=150 policy_loss=-0.00213241 value_loss=0.0105048 entropy_loss=-0.000735334 ratio=0.997646 optimizer_step=4800 gpu_s=0.0308577
+train episodes=19774 success=0 collision=1 timeout=0 progress=0.208712 mean_goal_time=0 mean_speed=1.40864 peak_speed=2.2959 min_clearance=0.00782195 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213463 mean_goal_time=0 mean_speed=1.27739 peak_speed=2.50471 min_clearance=-0.00891241 wall_s=0.151529
+eval_GPU_s=0.148741
+train rollout=160 policy_loss=-0.000442467 value_loss=0.00814324 entropy_loss=-0.000729611 ratio=0.998865 optimizer_step=5120 gpu_s=0.0297239
+train episodes=21272 success=0 collision=1 timeout=0 progress=0.208845 mean_goal_time=0 mean_speed=1.41154 peak_speed=2.33308 min_clearance=0.0289154 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.214542 mean_goal_time=0 mean_speed=1.27081 peak_speed=2.67759 min_clearance=-0.00908336 wall_s=0.169676
+eval_GPU_s=0.167113
+train rollout=170 policy_loss=-0.00212841 value_loss=0.00806782 entropy_loss=-0.000725226 ratio=1.00041 optimizer_step=5440 gpu_s=0.0315003
+train episodes=22722 success=0 collision=1 timeout=0 progress=0.208731 mean_goal_time=0 mean_speed=1.41463 peak_speed=2.29166 min_clearance=0.00407889 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213705 mean_goal_time=0 mean_speed=1.24104 peak_speed=2.52055 min_clearance=-0.0093039 wall_s=0.153389
+eval_GPU_s=0.150638
+train rollout=180 policy_loss=0.000280197 value_loss=0.0067083 entropy_loss=-0.000717644 ratio=1.00025 optimizer_step=5760 gpu_s=0.0316701
+train episodes=24119 success=0 collision=1 timeout=0 progress=0.208481 mean_goal_time=0 mean_speed=1.41802 peak_speed=2.4429 min_clearance=0.011382 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.214298 mean_goal_time=0 mean_speed=1.26398 peak_speed=2.56325 min_clearance=-0.00865754 wall_s=0.191894
+eval_GPU_s=0.18887
+train rollout=190 policy_loss=-0.00104912 value_loss=0.00673435 entropy_loss=-0.000707292 ratio=1.0004 optimizer_step=6080 gpu_s=0.043447
+train episodes=25464 success=0 collision=1 timeout=0 progress=0.208092 mean_goal_time=0 mean_speed=1.42144 peak_speed=2.40509 min_clearance=0.000417262 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.214072 mean_goal_time=0 mean_speed=1.23508 peak_speed=2.57275 min_clearance=-0.00757882 wall_s=0.192603
+eval_GPU_s=0.18964
+train rollout=200 policy_loss=-0.0026662 value_loss=0.00745682 entropy_loss=-0.000695467 ratio=0.998631 optimizer_step=6400 gpu_s=0.0339699
+train episodes=26787 success=0 collision=1 timeout=0 progress=0.207633 mean_goal_time=0 mean_speed=1.42494 peak_speed=2.3841 min_clearance=0.00710037 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213803 mean_goal_time=0 mean_speed=1.22661 peak_speed=2.59735 min_clearance=-0.00705144 wall_s=0.183824
+eval_GPU_s=0.181094
+train rollout=210 policy_loss=-0.00138297 value_loss=0.00602947 entropy_loss=-0.000682583 ratio=1.00021 optimizer_step=6720 gpu_s=0.0306535
+train episodes=28062 success=0 collision=1 timeout=0 progress=0.20708 mean_goal_time=0 mean_speed=1.42844 peak_speed=2.37295 min_clearance=0.00135675 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213919 mean_goal_time=0 mean_speed=1.23235 peak_speed=2.55559 min_clearance=-0.00776252 wall_s=0.1737
+eval_GPU_s=0.171078
+train rollout=220 policy_loss=-0.00148709 value_loss=0.00690905 entropy_loss=-0.000674797 ratio=1.0004 optimizer_step=7040 gpu_s=0.0334992
+train episodes=29316 success=0 collision=1 timeout=0 progress=0.206494 mean_goal_time=0 mean_speed=1.43167 peak_speed=2.35824 min_clearance=0.00353363 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213845 mean_goal_time=0 mean_speed=1.23404 peak_speed=2.30187 min_clearance=-0.00549218 wall_s=0.159901
+eval_GPU_s=0.157126
+train rollout=230 policy_loss=6.61856e-06 value_loss=0.00487939 entropy_loss=-0.000666842 ratio=0.999888 optimizer_step=7360 gpu_s=0.0301285
+train episodes=30530 success=0 collision=1 timeout=0 progress=0.205861 mean_goal_time=0 mean_speed=1.43446 peak_speed=2.37729 min_clearance=0.0102023 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213663 mean_goal_time=0 mean_speed=1.23376 peak_speed=2.50808 min_clearance=-0.00611195 wall_s=0.157547
+eval_GPU_s=0.154856
+train rollout=240 policy_loss=0.000217172 value_loss=0.00491955 entropy_loss=-0.000659818 ratio=0.999618 optimizer_step=7680 gpu_s=0.0331745
+train episodes=31748 success=0 collision=1 timeout=0 progress=0.20524 mean_goal_time=0 mean_speed=1.43707 peak_speed=2.42935 min_clearance=0.00360528 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213304 mean_goal_time=0 mean_speed=1.24573 peak_speed=2.53197 min_clearance=-0.00615427 wall_s=0.166323
+eval_GPU_s=0.163603
+train rollout=250 policy_loss=-0.000663463 value_loss=0.00373831 entropy_loss=-0.000649849 ratio=0.999577 optimizer_step=8000 gpu_s=0.0291258
+train episodes=32953 success=0 collision=1 timeout=0 progress=0.204689 mean_goal_time=0 mean_speed=1.43941 peak_speed=2.37627 min_clearance=0.00163011 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213051 mean_goal_time=0 mean_speed=1.23206 peak_speed=2.20883 min_clearance=-0.00602636 wall_s=0.159413
+eval_GPU_s=0.156638
+train rollout=260 policy_loss=-0.00153604 value_loss=0.00348589 entropy_loss=-0.000640587 ratio=0.999239 optimizer_step=8320 gpu_s=0.0315546
+train episodes=34181 success=0 collision=1 timeout=0 progress=0.204117 mean_goal_time=0 mean_speed=1.44139 peak_speed=2.41748 min_clearance=0.0310483 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212848 mean_goal_time=0 mean_speed=1.23902 peak_speed=2.46405 min_clearance=-0.00664815 wall_s=0.155997
+eval_GPU_s=0.153439
+train rollout=270 policy_loss=-0.000718139 value_loss=0.00363179 entropy_loss=-0.000629563 ratio=0.999681 optimizer_step=8640 gpu_s=0.0308369
+train episodes=35384 success=0 collision=1 timeout=0 progress=0.203561 mean_goal_time=0 mean_speed=1.44314 peak_speed=2.44451 min_clearance=0.000415593 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212432 mean_goal_time=0 mean_speed=1.23337 peak_speed=2.16873 min_clearance=-0.00615761 wall_s=0.186365
+eval_GPU_s=0.1836
+train rollout=280 policy_loss=-0.000930678 value_loss=0.00358865 entropy_loss=-0.000623757 ratio=0.998473 optimizer_step=8960 gpu_s=0.0318428
+train episodes=36557 success=0 collision=1 timeout=0 progress=0.202944 mean_goal_time=0 mean_speed=1.44468 peak_speed=2.43154 min_clearance=0.00578156 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212196 mean_goal_time=0 mean_speed=1.25142 peak_speed=2.1735 min_clearance=-0.00587305 wall_s=0.159152
+eval_GPU_s=0.156539
+train rollout=290 policy_loss=-0.00200793 value_loss=0.00304504 entropy_loss=-0.000617152 ratio=1.00009 optimizer_step=9280 gpu_s=0.0500295
+train episodes=37758 success=0 collision=1 timeout=0 progress=0.202392 mean_goal_time=0 mean_speed=1.44607 peak_speed=2.40193 min_clearance=0.00122276 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213089 mean_goal_time=0 mean_speed=1.26245 peak_speed=2.33902 min_clearance=-0.00622329 wall_s=0.246048
+eval_GPU_s=0.243488
+train rollout=300 policy_loss=-0.000264096 value_loss=0.00292374 entropy_loss=-0.00060826 ratio=1.00028 optimizer_step=9600 gpu_s=0.0328471
+train episodes=38955 success=0 collision=1 timeout=0 progress=0.201929 mean_goal_time=0 mean_speed=1.44721 peak_speed=2.4034 min_clearance=0.0159371 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212883 mean_goal_time=0 mean_speed=1.25061 peak_speed=2.13946 min_clearance=-0.00687942 wall_s=0.184255
+eval_GPU_s=0.181758
+train rollout=310 policy_loss=-0.00221457 value_loss=0.00319445 entropy_loss=-0.000599679 ratio=0.998786 optimizer_step=9920 gpu_s=0.0332596
+train episodes=40155 success=0 collision=1 timeout=0 progress=0.201528 mean_goal_time=0 mean_speed=1.44812 peak_speed=2.45255 min_clearance=0.00835159 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213045 mean_goal_time=0 mean_speed=1.25863 peak_speed=2.20714 min_clearance=-0.00600454 wall_s=0.16891
+eval_GPU_s=0.1664
+train rollout=320 policy_loss=-0.000234904 value_loss=0.00331888 entropy_loss=-0.000591808 ratio=0.999348 optimizer_step=10240 gpu_s=0.0321931
+train episodes=41356 success=0 collision=1 timeout=0 progress=0.201114 mean_goal_time=0 mean_speed=1.44884 peak_speed=2.39435 min_clearance=0.00165048 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.21347 mean_goal_time=0 mean_speed=1.27435 peak_speed=2.2204 min_clearance=-0.00862393 wall_s=0.18249
+eval_GPU_s=0.179697
+train rollout=330 policy_loss=-0.00193909 value_loss=0.00269078 entropy_loss=-0.000585169 ratio=1.00193 optimizer_step=10560 gpu_s=0.0338849
+train episodes=42582 success=0 collision=1 timeout=0 progress=0.20079 mean_goal_time=0 mean_speed=1.44938 peak_speed=2.49313 min_clearance=0.00909153 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.213028 mean_goal_time=0 mean_speed=1.28989 peak_speed=2.26591 min_clearance=-0.00666055 wall_s=0.155563
+eval_GPU_s=0.152868
+train rollout=340 policy_loss=-0.000235732 value_loss=0.00283594 entropy_loss=-0.000574036 ratio=1.00045 optimizer_step=10880 gpu_s=0.0300443
+train episodes=43837 success=0 collision=1 timeout=0 progress=0.200595 mean_goal_time=0 mean_speed=1.44985 peak_speed=2.39879 min_clearance=0.00532797 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212979 mean_goal_time=0 mean_speed=1.29947 peak_speed=2.55962 min_clearance=-0.00696084 wall_s=0.153685
+eval_GPU_s=0.15103
+train rollout=350 policy_loss=-0.00144432 value_loss=0.00232256 entropy_loss=-0.000567157 ratio=1.00045 optimizer_step=11200 gpu_s=0.0330021
+train episodes=45103 success=0 collision=1 timeout=0 progress=0.200425 mean_goal_time=0 mean_speed=1.4503 peak_speed=2.35382 min_clearance=0.0302177 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212862 mean_goal_time=0 mean_speed=1.29411 peak_speed=2.574 min_clearance=-0.00583205 wall_s=0.156911
+eval_GPU_s=0.154238
+train rollout=360 policy_loss=-0.000210285 value_loss=0.00235857 entropy_loss=-0.000561128 ratio=1.00131 optimizer_step=11520 gpu_s=0.0335085
+train episodes=46398 success=0 collision=1 timeout=0 progress=0.200345 mean_goal_time=0 mean_speed=1.45071 peak_speed=2.50626 min_clearance=0.00104967 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212362 mean_goal_time=0 mean_speed=1.29706 peak_speed=2.63576 min_clearance=-0.00701103 wall_s=0.157805
+eval_GPU_s=0.155218
+train rollout=370 policy_loss=0.000551525 value_loss=0.00236905 entropy_loss=-0.000551068 ratio=1.00019 optimizer_step=11840 gpu_s=0.0331355
+train episodes=47674 success=0 collision=1 timeout=0 progress=0.200299 mean_goal_time=0 mean_speed=1.45099 peak_speed=2.34041 min_clearance=0.0758754 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212651 mean_goal_time=0 mean_speed=1.29934 peak_speed=2.38813 min_clearance=-0.00736853 wall_s=0.180901
+eval_GPU_s=0.177987
+train rollout=380 policy_loss=-0.000114222 value_loss=0.00243005 entropy_loss=-0.000540304 ratio=0.999057 optimizer_step=12160 gpu_s=0.0303283
+train episodes=48945 success=0 collision=1 timeout=0 progress=0.200235 mean_goal_time=0 mean_speed=1.45124 peak_speed=2.32641 min_clearance=0.00610426 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212834 mean_goal_time=0 mean_speed=1.30701 peak_speed=2.38136 min_clearance=-0.00766405 wall_s=0.14513
+eval_GPU_s=0.142524
+train rollout=390 policy_loss=-0.00119817 value_loss=0.00205891 entropy_loss=-0.000531759 ratio=1.00029 optimizer_step=12480 gpu_s=0.0538783
+train episodes=50224 success=0 collision=1 timeout=0 progress=0.200184 mean_goal_time=0 mean_speed=1.45149 peak_speed=2.33041 min_clearance=0.0216807 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.211988 mean_goal_time=0 mean_speed=1.31728 peak_speed=2.26835 min_clearance=-0.00685045 wall_s=0.325936
+eval_GPU_s=0.322369
+train rollout=400 policy_loss=-0.0015605 value_loss=0.00213719 entropy_loss=-0.000524444 ratio=1.00113 optimizer_step=12800 gpu_s=0.0448203
+train episodes=51506 success=0 collision=1 timeout=0 progress=0.20015 mean_goal_time=0 mean_speed=1.45168 peak_speed=2.28595 min_clearance=0.00428179 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.211285 mean_goal_time=0 mean_speed=1.32486 peak_speed=2.36477 min_clearance=-0.00686237 wall_s=0.27671
+eval_GPU_s=0.273987
+train rollout=410 policy_loss=5.28549e-05 value_loss=0.00220859 entropy_loss=-0.000517452 ratio=1.00076 optimizer_step=13120 gpu_s=0.0298828
+train episodes=52794 success=0 collision=1 timeout=0 progress=0.200158 mean_goal_time=0 mean_speed=1.45185 peak_speed=2.28323 min_clearance=0.00309482 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.21133 mean_goal_time=0 mean_speed=1.33071 peak_speed=2.40694 min_clearance=-0.00712404 wall_s=0.144509
+eval_GPU_s=0.14189
+train rollout=420 policy_loss=-0.00194239 value_loss=0.00213778 entropy_loss=-0.000511296 ratio=1.00182 optimizer_step=13440 gpu_s=0.0487561
+train episodes=54069 success=0 collision=1 timeout=0 progress=0.200179 mean_goal_time=0 mean_speed=1.45183 peak_speed=2.36769 min_clearance=0.00695029 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.21176 mean_goal_time=0 mean_speed=1.33442 peak_speed=2.53333 min_clearance=-0.00754449 wall_s=0.241813
+eval_GPU_s=0.237649
+train rollout=430 policy_loss=-9.54469e-05 value_loss=0.00209246 entropy_loss=-0.000500807 ratio=1.00117 optimizer_step=13760 gpu_s=0.035091
+train episodes=55352 success=0 collision=1 timeout=0 progress=0.200209 mean_goal_time=0 mean_speed=1.45182 peak_speed=2.24953 min_clearance=0.0235532 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.211613 mean_goal_time=0 mean_speed=1.35588 peak_speed=2.55928 min_clearance=-0.00835571 wall_s=0.169079
+eval_GPU_s=0.166569
+train rollout=440 policy_loss=-0.00139207 value_loss=0.00181348 entropy_loss=-0.000491749 ratio=0.999964 optimizer_step=14080 gpu_s=0.0332272
+train episodes=56614 success=0 collision=1 timeout=0 progress=0.200237 mean_goal_time=0 mean_speed=1.45165 peak_speed=2.28999 min_clearance=0.0087885 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.21164 mean_goal_time=0 mean_speed=1.38001 peak_speed=2.56276 min_clearance=-0.00856289 wall_s=0.189992
+eval_GPU_s=0.187443
+train rollout=450 policy_loss=0.000109278 value_loss=0.00176416 entropy_loss=-0.000480312 ratio=1.00054 optimizer_step=14400 gpu_s=0.0300987
+train episodes=57890 success=0 collision=1 timeout=0 progress=0.200303 mean_goal_time=0 mean_speed=1.4515 peak_speed=2.3234 min_clearance=0.0628453 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.211775 mean_goal_time=0 mean_speed=1.37679 peak_speed=2.61097 min_clearance=-0.00801298 wall_s=0.152304
+eval_GPU_s=0.149618
+train rollout=460 policy_loss=-0.00106978 value_loss=0.00198094 entropy_loss=-0.000474234 ratio=0.999198 optimizer_step=14720 gpu_s=0.0353828
+train episodes=59144 success=0 collision=1 timeout=0 progress=0.200352 mean_goal_time=0 mean_speed=1.45127 peak_speed=2.28545 min_clearance=0.0149755 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212162 mean_goal_time=0 mean_speed=1.38581 peak_speed=2.68918 min_clearance=-0.00899896 wall_s=0.177115
+eval_GPU_s=0.174419
+train rollout=470 policy_loss=-0.00131167 value_loss=0.00198421 entropy_loss=-0.000466367 ratio=1.00053 optimizer_step=15040 gpu_s=0.0326904
+train episodes=60394 success=0 collision=1 timeout=0 progress=0.200398 mean_goal_time=0 mean_speed=1.45108 peak_speed=2.63593 min_clearance=0.00159469 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.21226 mean_goal_time=0 mean_speed=1.4153 peak_speed=2.64036 min_clearance=-0.00840828 wall_s=0.169866
+eval_GPU_s=0.167195
+train rollout=480 policy_loss=-0.000931607 value_loss=0.00211567 entropy_loss=-0.000458239 ratio=1.0016 optimizer_step=15360 gpu_s=0.0357491
+train episodes=61637 success=0 collision=1 timeout=0 progress=0.200446 mean_goal_time=0 mean_speed=1.45086 peak_speed=2.42371 min_clearance=0.0195059 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.212507 mean_goal_time=0 mean_speed=1.46179 peak_speed=2.66503 min_clearance=-0.00918028 wall_s=0.172551
+eval_GPU_s=0.169912
+train rollout=490 policy_loss=0.000365955 value_loss=0.00250582 entropy_loss=-0.000450783 ratio=0.999824 optimizer_step=15680 gpu_s=0.0299876
+train episodes=62853 success=0 collision=1 timeout=0 progress=0.200494 mean_goal_time=0 mean_speed=1.45071 peak_speed=2.70046 min_clearance=0.0428555 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.211421 mean_goal_time=0 mean_speed=1.48842 peak_speed=2.68109 min_clearance=-0.00972149 wall_s=0.160552
+eval_GPU_s=0.157761
+train rollout=500 policy_loss=-0.000484907 value_loss=0.00261896 entropy_loss=-0.00044741 ratio=1.00081 optimizer_step=16000 gpu_s=0.0344627
+train episodes=64080 success=0 collision=1 timeout=0 progress=0.200569 mean_goal_time=0 mean_speed=1.45041 peak_speed=2.30859 min_clearance=0.0194401 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.210887 mean_goal_time=0 mean_speed=1.49953 peak_speed=2.65935 min_clearance=-0.0100217 wall_s=0.181931
+eval_GPU_s=0.179332
+train rollout=510 policy_loss=-0.00140156 value_loss=0.00241601 entropy_loss=-0.000442723 ratio=1.00029 optimizer_step=16320 gpu_s=0.0319987
+train episodes=65246 success=0 collision=1 timeout=0 progress=0.200594 mean_goal_time=0 mean_speed=1.45022 peak_speed=2.67325 min_clearance=0.00541881 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.210142 mean_goal_time=0 mean_speed=1.51021 peak_speed=2.69704 min_clearance=-0.0094547 wall_s=0.164373
+eval_GPU_s=0.161716
+train rollout=520 policy_loss=-0.000723415 value_loss=0.00241581 entropy_loss=-0.000433876 ratio=0.998549 optimizer_step=16640 gpu_s=0.032812
+train episodes=66413 success=0 collision=1 timeout=0 progress=0.200646 mean_goal_time=0 mean_speed=1.45007 peak_speed=2.64466 min_clearance=0.0194893 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.209298 mean_goal_time=0 mean_speed=1.48902 peak_speed=2.73395 min_clearance=-0.00897226 wall_s=0.163893
+eval_GPU_s=0.161406
+train rollout=530 policy_loss=-0.00255093 value_loss=0.00283946 entropy_loss=-0.000426508 ratio=0.999434 optimizer_step=16960 gpu_s=0.0385828
+train episodes=67544 success=0 collision=1 timeout=0 progress=0.20066 mean_goal_time=0 mean_speed=1.44967 peak_speed=2.69741 min_clearance=0.0283424 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.207038 mean_goal_time=0 mean_speed=1.47888 peak_speed=2.77184 min_clearance=-0.00860927 wall_s=0.259285
+eval_GPU_s=0.255806
+train rollout=540 policy_loss=-0.00328167 value_loss=0.00885832 entropy_loss=-0.000418985 ratio=1.00091 optimizer_step=17280 gpu_s=0.0301092
+train episodes=68526 success=0 collision=1 timeout=0 progress=0.200593 mean_goal_time=0 mean_speed=1.44898 peak_speed=3.04317 min_clearance=0.00647619 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.203943 mean_goal_time=0 mean_speed=1.43319 peak_speed=2.86213 min_clearance=-0.00775298 wall_s=0.159242
+eval_GPU_s=0.156757
+train rollout=550 policy_loss=6.58339e-05 value_loss=0.0165496 entropy_loss=-0.000413187 ratio=0.998885 optimizer_step=17600 gpu_s=0.0347374
+train episodes=69381 success=0 collision=1 timeout=0 progress=0.200544 mean_goal_time=0 mean_speed=1.44794 peak_speed=2.98759 min_clearance=0.00389066 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.201294 mean_goal_time=0 mean_speed=1.38263 peak_speed=2.818 min_clearance=-0.0125086 wall_s=0.179105
+eval_GPU_s=0.176584
+train rollout=560 policy_loss=-0.00398286 value_loss=0.0571563 entropy_loss=-0.000407323 ratio=0.998682 optimizer_step=17920 gpu_s=0.0319854
+train episodes=69950 success=0 collision=1 timeout=0 progress=0.200502 mean_goal_time=0 mean_speed=1.44715 peak_speed=3.22388 min_clearance=0.0235311 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.204079 mean_goal_time=0 mean_speed=1.40097 peak_speed=2.89649 min_clearance=-0.00886461 wall_s=0.182682
+eval_GPU_s=0.18004
+train rollout=570 policy_loss=-0.00358174 value_loss=0.0578808 entropy_loss=-0.000405332 ratio=0.998537 optimizer_step=18240 gpu_s=0.0355843
+train episodes=70360 success=0 collision=1 timeout=0 progress=0.200466 mean_goal_time=0 mean_speed=1.44782 peak_speed=3.82126 min_clearance=0.00179127 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.201281 mean_goal_time=0 mean_speed=1.39648 peak_speed=2.94425 min_clearance=-0.0100774 wall_s=0.221934
+eval_GPU_s=0.219183
+train rollout=580 policy_loss=-0.00190848 value_loss=0.0903803 entropy_loss=-0.000403491 ratio=0.999391 optimizer_step=18560 gpu_s=0.0427253
+train episodes=70737 success=0 collision=1 timeout=0 progress=0.200363 mean_goal_time=0 mean_speed=1.44981 peak_speed=3.63701 min_clearance=0.0120595 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200499 mean_goal_time=0 mean_speed=1.41066 peak_speed=3.01712 min_clearance=-0.0156287 wall_s=0.219714
+eval_GPU_s=0.217009
+train rollout=590 policy_loss=-0.00155926 value_loss=0.0362046 entropy_loss=-0.00040088 ratio=1.00003 optimizer_step=18880 gpu_s=0.0315825
+train episodes=71085 success=0 collision=1 timeout=0 progress=0.200258 mean_goal_time=0 mean_speed=1.45246 peak_speed=3.52115 min_clearance=0.0244514 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200945 mean_goal_time=0 mean_speed=1.42268 peak_speed=3.07191 min_clearance=-0.0133446 wall_s=0.21526
+eval_GPU_s=0.212554
+train rollout=600 policy_loss=-0.00137398 value_loss=0.0385411 entropy_loss=-0.000401244 ratio=0.998421 optimizer_step=19200 gpu_s=0.03425
+train episodes=71430 success=0 collision=1 timeout=0 progress=0.200153 mean_goal_time=0 mean_speed=1.45513 peak_speed=3.23739 min_clearance=0.0219587 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200684 mean_goal_time=0 mean_speed=1.42001 peak_speed=3.06936 min_clearance=-0.00878224 wall_s=0.222802
+eval_GPU_s=0.220168
+train rollout=610 policy_loss=-7.89887e-05 value_loss=0.0221045 entropy_loss=-0.000402379 ratio=1.00014 optimizer_step=19520 gpu_s=0.0337601
+train episodes=71762 success=0 collision=1 timeout=0 progress=0.200086 mean_goal_time=0 mean_speed=1.45756 peak_speed=3.75202 min_clearance=0.00646892 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.199724 mean_goal_time=0 mean_speed=1.41496 peak_speed=3.04694 min_clearance=-0.00670168 wall_s=0.242754
+eval_GPU_s=0.239992
+train rollout=620 policy_loss=0.000143467 value_loss=0.0265445 entropy_loss=-0.000398852 ratio=0.999472 optimizer_step=19840 gpu_s=0.032031
+train episodes=72103 success=0 collision=1 timeout=0 progress=0.200034 mean_goal_time=0 mean_speed=1.45981 peak_speed=3.22351 min_clearance=0.0248897 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.199484 mean_goal_time=0 mean_speed=1.40304 peak_speed=3.07969 min_clearance=-0.0128369 wall_s=0.233015
+eval_GPU_s=0.230313
+train rollout=630 policy_loss=0.00184638 value_loss=0.0164279 entropy_loss=-0.00039769 ratio=1.00035 optimizer_step=20160 gpu_s=0.0378982
+train episodes=72452 success=0 collision=1 timeout=0 progress=0.199963 mean_goal_time=0 mean_speed=1.46203 peak_speed=3.36116 min_clearance=0.0329694 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200531 mean_goal_time=0 mean_speed=1.39094 peak_speed=3.03631 min_clearance=-0.00908479 wall_s=0.232913
+eval_GPU_s=0.230264
+train rollout=640 policy_loss=-0.00064505 value_loss=0.0309079 entropy_loss=-0.000389502 ratio=1.00092 optimizer_step=20480 gpu_s=0.0330883
+train episodes=72805 success=0 collision=1 timeout=0 progress=0.199905 mean_goal_time=0 mean_speed=1.464 peak_speed=3.40785 min_clearance=0.00739327 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200739 mean_goal_time=0 mean_speed=1.41097 peak_speed=3.07356 min_clearance=-0.0228287 wall_s=0.23091
+eval_GPU_s=0.228272
+train rollout=650 policy_loss=-0.00217315 value_loss=0.0217855 entropy_loss=-0.000383022 ratio=0.998928 optimizer_step=20800 gpu_s=0.0369204
+train episodes=73160 success=0 collision=1 timeout=0 progress=0.19987 mean_goal_time=0 mean_speed=1.46583 peak_speed=3.42629 min_clearance=0.00806788 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.202427 mean_goal_time=0 mean_speed=1.41347 peak_speed=3.30969 min_clearance=-0.0162184 wall_s=0.231437
+eval_GPU_s=0.228946
+train rollout=660 policy_loss=-0.00100314 value_loss=0.0248919 entropy_loss=-0.000383232 ratio=1.00019 optimizer_step=21120 gpu_s=0.034212
+train episodes=73505 success=0 collision=1 timeout=0 progress=0.199843 mean_goal_time=0 mean_speed=1.46719 peak_speed=3.22288 min_clearance=0.00982729 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200505 mean_goal_time=0 mean_speed=1.40528 peak_speed=3.32381 min_clearance=-0.0189572 wall_s=0.23958
+eval_GPU_s=0.236933
+train rollout=670 policy_loss=0.0013151 value_loss=0.0133424 entropy_loss=-0.000381382 ratio=0.999543 optimizer_step=21440 gpu_s=0.0312637
+train episodes=73853 success=0 collision=1 timeout=0 progress=0.199841 mean_goal_time=0 mean_speed=1.46834 peak_speed=3.36948 min_clearance=0.00706854 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.201061 mean_goal_time=0 mean_speed=1.43221 peak_speed=3.17814 min_clearance=-0.0122206 wall_s=0.204263
+eval_GPU_s=0.201442
+train rollout=680 policy_loss=-0.00227168 value_loss=0.0128142 entropy_loss=-0.000379959 ratio=0.998747 optimizer_step=21760 gpu_s=0.0370965
+train episodes=74208 success=0 collision=1 timeout=0 progress=0.199811 mean_goal_time=0 mean_speed=1.46944 peak_speed=3.52895 min_clearance=0.0406765 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.199062 mean_goal_time=0 mean_speed=1.40844 peak_speed=3.07884 min_clearance=-0.0206221 wall_s=0.225879
+eval_GPU_s=0.223237
+train rollout=690 policy_loss=0.000895093 value_loss=0.0124942 entropy_loss=-0.000376835 ratio=1.00142 optimizer_step=22080 gpu_s=0.0343921
+train episodes=74557 success=0 collision=1 timeout=0 progress=0.199757 mean_goal_time=0 mean_speed=1.4705 peak_speed=3.56892 min_clearance=0.00980023 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.198718 mean_goal_time=0 mean_speed=1.4093 peak_speed=3.12538 min_clearance=-0.0179939 wall_s=0.28921
+eval_GPU_s=0.284776
+train rollout=700 policy_loss=4.9151e-05 value_loss=0.0108073 entropy_loss=-0.000374098 ratio=0.999935 optimizer_step=22400 gpu_s=0.0332278
+train episodes=74912 success=0 collision=1 timeout=0 progress=0.19971 mean_goal_time=0 mean_speed=1.47161 peak_speed=3.68441 min_clearance=0.0704418 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.199715 mean_goal_time=0 mean_speed=1.41792 peak_speed=3.27989 min_clearance=-0.017895 wall_s=0.228394
+eval_GPU_s=0.225651
+train rollout=710 policy_loss=0.000649557 value_loss=0.00866883 entropy_loss=-0.000372892 ratio=1.00062 optimizer_step=22720 gpu_s=0.0343103
+train episodes=75267 success=0 collision=1 timeout=0 progress=0.199681 mean_goal_time=0 mean_speed=1.47265 peak_speed=3.45244 min_clearance=0.00051181 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.199478 mean_goal_time=0 mean_speed=1.4096 peak_speed=3.22399 min_clearance=-0.0235481 wall_s=0.225129
+eval_GPU_s=0.222589
+train rollout=720 policy_loss=0.000654666 value_loss=0.0127626 entropy_loss=-0.000370118 ratio=0.997969 optimizer_step=23040 gpu_s=0.0325297
+train episodes=75623 success=0 collision=1 timeout=0 progress=0.199684 mean_goal_time=0 mean_speed=1.47341 peak_speed=3.27312 min_clearance=0.0503265 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.202637 mean_goal_time=0 mean_speed=1.43154 peak_speed=3.04201 min_clearance=-0.0144751 wall_s=0.235718
+eval_GPU_s=0.232874
+train rollout=730 policy_loss=0.000582228 value_loss=0.018023 entropy_loss=-0.000371707 ratio=0.999818 optimizer_step=23360 gpu_s=0.0345391
+train episodes=75972 success=0 collision=1 timeout=0 progress=0.199687 mean_goal_time=0 mean_speed=1.47392 peak_speed=3.34993 min_clearance=0.00326601 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.205849 mean_goal_time=0 mean_speed=1.43887 peak_speed=3.03208 min_clearance=-0.0140048 wall_s=0.252073
+eval_GPU_s=0.249487
+train rollout=740 policy_loss=0.00232659 value_loss=0.01078 entropy_loss=-0.000369807 ratio=1.00108 optimizer_step=23680 gpu_s=0.0368968
+train episodes=76304 success=0 collision=1 timeout=0 progress=0.199687 mean_goal_time=0 mean_speed=1.47444 peak_speed=3.29165 min_clearance=0.0256932 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.205087 mean_goal_time=0 mean_speed=1.43549 peak_speed=3.05054 min_clearance=-0.0150675 wall_s=0.230111
+eval_GPU_s=0.227525
+train rollout=750 policy_loss=-0.00113642 value_loss=0.0201111 entropy_loss=-0.000366921 ratio=0.99906 optimizer_step=24000 gpu_s=0.0352653
+train episodes=76650 success=0 collision=1 timeout=0 progress=0.199696 mean_goal_time=0 mean_speed=1.47531 peak_speed=3.34662 min_clearance=0.0650878 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.204191 mean_goal_time=0 mean_speed=1.43232 peak_speed=3.27433 min_clearance=-0.0199606 wall_s=0.234859
+eval_GPU_s=0.232368
+train rollout=760 policy_loss=-0.000304255 value_loss=0.013137 entropy_loss=-0.000364304 ratio=1.00033 optimizer_step=24320 gpu_s=0.0400497
+train episodes=76973 success=0 collision=1 timeout=0 progress=0.19969 mean_goal_time=0 mean_speed=1.47599 peak_speed=3.49117 min_clearance=0.0479075 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.20504 mean_goal_time=0 mean_speed=1.42157 peak_speed=3.07383 min_clearance=-0.0120578 wall_s=0.252364
+eval_GPU_s=0.249993
+train rollout=770 policy_loss=0.00137889 value_loss=0.0110766 entropy_loss=-0.000363428 ratio=1.00209 optimizer_step=24640 gpu_s=0.0387116
+train episodes=77294 success=0 collision=1 timeout=0 progress=0.199683 mean_goal_time=0 mean_speed=1.4765 peak_speed=3.78933 min_clearance=1.49012e-07 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.203185 mean_goal_time=0 mean_speed=1.41098 peak_speed=3.14637 min_clearance=-0.0157361 wall_s=0.258579
+eval_GPU_s=0.255873
+train rollout=780 policy_loss=-0.00129722 value_loss=0.0117539 entropy_loss=-0.000358201 ratio=0.997891 optimizer_step=24960 gpu_s=0.0336279
+train episodes=77617 success=0 collision=1 timeout=0 progress=0.199677 mean_goal_time=0 mean_speed=1.47702 peak_speed=3.39139 min_clearance=0.0220999 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200977 mean_goal_time=0 mean_speed=1.40826 peak_speed=3.30395 min_clearance=-0.0181836 wall_s=0.245438
+eval_GPU_s=0.242759
+train rollout=790 policy_loss=-0.000489993 value_loss=0.0133538 entropy_loss=-0.000358941 ratio=1.00114 optimizer_step=25280 gpu_s=0.039519
+train episodes=77937 success=0 collision=1 timeout=0 progress=0.199665 mean_goal_time=0 mean_speed=1.47775 peak_speed=3.17269 min_clearance=0.00540248 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.201218 mean_goal_time=0 mean_speed=1.40966 peak_speed=3.20809 min_clearance=-0.0154655 wall_s=0.261757
+eval_GPU_s=0.258415
+train rollout=800 policy_loss=-0.00100207 value_loss=0.0204199 entropy_loss=-0.000354928 ratio=0.999323 optimizer_step=25600 gpu_s=0.0408328
+train episodes=78258 success=0 collision=1 timeout=0 progress=0.19966 mean_goal_time=0 mean_speed=1.4781 peak_speed=3.34912 min_clearance=0.0122431 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.200278 mean_goal_time=0 mean_speed=1.39954 peak_speed=3.07775 min_clearance=-0.02004 wall_s=0.24373
+eval_GPU_s=0.240176
+train rollout=810 policy_loss=-0.000649079 value_loss=0.0286232 entropy_loss=-0.00035173 ratio=0.998922 optimizer_step=25920 gpu_s=0.0395833
+train episodes=78587 success=0 collision=1 timeout=0 progress=0.199647 mean_goal_time=0 mean_speed=1.4784 peak_speed=3.03127 min_clearance=0.0634405 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.198227 mean_goal_time=0 mean_speed=1.40716 peak_speed=3.23249 min_clearance=-0.0124522 wall_s=0.373709
+eval_GPU_s=0.371169
+train rollout=820 policy_loss=0.00145625 value_loss=0.016391 entropy_loss=-0.000349333 ratio=0.998025 optimizer_step=26240 gpu_s=0.0350835
+train episodes=78900 success=0 collision=1 timeout=0 progress=0.199624 mean_goal_time=0 mean_speed=1.47878 peak_speed=3.31137 min_clearance=0.033889 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.199947 mean_goal_time=0 mean_speed=1.40121 peak_speed=3.15764 min_clearance=-0.0101847 wall_s=0.282783
+eval_GPU_s=0.280321
+train rollout=830 policy_loss=0.00225343 value_loss=0.013102 entropy_loss=-0.000346305 ratio=1.00108 optimizer_step=26560 gpu_s=0.0369791
+train episodes=79199 success=0 collision=1 timeout=0 progress=0.199594 mean_goal_time=0 mean_speed=1.4792 peak_speed=3.61918 min_clearance=0.0287827 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.202105 mean_goal_time=0 mean_speed=1.38811 peak_speed=3.04741 min_clearance=-0.0128748 wall_s=0.263678
+eval_GPU_s=0.261159
+train rollout=840 policy_loss=0.00104488 value_loss=0.0196775 entropy_loss=-0.000347014 ratio=1.0011 optimizer_step=26880 gpu_s=0.0349823
+train episodes=79456 success=0 collision=1 timeout=0 progress=0.199508 mean_goal_time=0 mean_speed=1.47974 peak_speed=3.04938 min_clearance=0.0336185 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.20028 mean_goal_time=0 mean_speed=1.39399 peak_speed=3.321 min_clearance=-0.0222708 wall_s=0.254316
+eval_GPU_s=0.25157
+train rollout=850 policy_loss=0.000514118 value_loss=0.0103403 entropy_loss=-0.000347824 ratio=0.997942 optimizer_step=27200 gpu_s=0.0596159
+train episodes=79714 success=0 collision=1 timeout=0 progress=0.199386 mean_goal_time=0 mean_speed=1.48037 peak_speed=3.36332 min_clearance=0.0202329 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.196787 mean_goal_time=0 mean_speed=1.39827 peak_speed=3.35945 min_clearance=-0.0144231 wall_s=0.36063
+eval_GPU_s=0.354793
+train rollout=860 policy_loss=-0.00193398 value_loss=0.0201956 entropy_loss=-0.000344982 ratio=1.00005 optimizer_step=27520 gpu_s=0.0445558
+train episodes=79972 success=0 collision=1 timeout=0 progress=0.199221 mean_goal_time=0 mean_speed=1.48114 peak_speed=3.7195 min_clearance=0.109814 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.19593 mean_goal_time=0 mean_speed=1.38998 peak_speed=3.08705 min_clearance=-0.0148636 wall_s=0.318144
+eval_GPU_s=0.314674
+train rollout=870 policy_loss=-0.000117918 value_loss=0.0294733 entropy_loss=-0.000344077 ratio=0.999611 optimizer_step=27840 gpu_s=0.0366786
+train episodes=80223 success=0 collision=1 timeout=0 progress=0.199066 mean_goal_time=0 mean_speed=1.48147 peak_speed=3.41052 min_clearance=0.0316052 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.194077 mean_goal_time=0 mean_speed=1.3877 peak_speed=3.07318 min_clearance=-0.0172283 wall_s=0.419418
+eval_GPU_s=0.398331
+train rollout=880 policy_loss=-0.00131131 value_loss=0.0257937 entropy_loss=-0.000345256 ratio=1.00079 optimizer_step=28160 gpu_s=0.043686
+train episodes=80429 success=0 collision=1 timeout=0 progress=0.198844 mean_goal_time=0 mean_speed=1.48156 peak_speed=3.26477 min_clearance=0.017067 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.193855 mean_goal_time=0 mean_speed=1.40821 peak_speed=3.28377 min_clearance=-0.00722405 wall_s=0.333326
+eval_GPU_s=0.329553
+train rollout=890 policy_loss=-0.000713239 value_loss=0.0160925 entropy_loss=-0.000342394 ratio=0.999254 optimizer_step=28480 gpu_s=0.0360747
+train episodes=80631 success=0 collision=0.999975 timeout=2.48044e-05 progress=0.198632 mean_goal_time=0 mean_speed=1.48103 peak_speed=3.53073 min_clearance=0.0367116 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.191281 mean_goal_time=0 mean_speed=1.39916 peak_speed=3.09112 min_clearance=-0.0113672 wall_s=0.279785
+eval_GPU_s=0.277291
+train rollout=900 policy_loss=0.000614209 value_loss=0.0146438 entropy_loss=-0.000340856 ratio=1.00116 optimizer_step=28800 gpu_s=0.048213
+train episodes=80826 success=0 collision=0.999975 timeout=2.47445e-05 progress=0.198412 mean_goal_time=0 mean_speed=1.48056 peak_speed=3.65697 min_clearance=0.00659993 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.185584 mean_goal_time=0 mean_speed=1.3774 peak_speed=3.02075 min_clearance=-0.00878164 wall_s=0.427415
+eval_GPU_s=0.420565
+train rollout=910 policy_loss=-0.000169219 value_loss=0.0109349 entropy_loss=-0.000339363 ratio=1.00008 optimizer_step=29120 gpu_s=0.0387057
+train episodes=81022 success=0 collision=0.999975 timeout=2.46847e-05 progress=0.198206 mean_goal_time=0 mean_speed=1.48033 peak_speed=3.45301 min_clearance=0.0383363 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.185191 mean_goal_time=0 mean_speed=1.38936 peak_speed=3.19649 min_clearance=-0.00700364 wall_s=0.330717
+eval_GPU_s=0.327259
+train rollout=920 policy_loss=-0.00140123 value_loss=0.0438495 entropy_loss=-0.000334006 ratio=1.00086 optimizer_step=29440 gpu_s=0.0354314
+train episodes=81213 success=0 collision=0.999975 timeout=2.46266e-05 progress=0.198006 mean_goal_time=0 mean_speed=1.47995 peak_speed=3.81092 min_clearance=0.000859767 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.185189 mean_goal_time=0 mean_speed=1.38742 peak_speed=2.9585 min_clearance=-0.00714526 wall_s=0.25801
+eval_GPU_s=0.255092
+train rollout=930 policy_loss=-0.000288759 value_loss=0.0222787 entropy_loss=-0.000332321 ratio=1.00017 optimizer_step=29760 gpu_s=0.0369448
+train episodes=81399 success=0 collision=0.999975 timeout=2.45703e-05 progress=0.197805 mean_goal_time=0 mean_speed=1.4794 peak_speed=3.15425 min_clearance=0.0459835 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.184952 mean_goal_time=0 mean_speed=1.38555 peak_speed=3.01016 min_clearance=-0.00637969 wall_s=0.22181
+eval_GPU_s=0.219109
+train rollout=940 policy_loss=-0.000408306 value_loss=0.073 entropy_loss=-0.000331372 ratio=1.00131 optimizer_step=30080 gpu_s=0.047543
+train episodes=81586 success=0 collision=0.999975 timeout=2.4514e-05 progress=0.197572 mean_goal_time=0 mean_speed=1.47877 peak_speed=3.24781 min_clearance=0.0220388 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.185245 mean_goal_time=0 mean_speed=1.36178 peak_speed=3.19683 min_clearance=-0.00979242 wall_s=0.305784
+eval_GPU_s=0.299484
+train rollout=950 policy_loss=-0.00140436 value_loss=0.0182774 entropy_loss=-0.00033051 ratio=1.0007 optimizer_step=30400 gpu_s=0.0488772
+train episodes=81784 success=0 collision=0.999976 timeout=2.44547e-05 progress=0.197411 mean_goal_time=0 mean_speed=1.47842 peak_speed=3.16956 min_clearance=0.00707176 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.181343 mean_goal_time=0 mean_speed=1.3635 peak_speed=3.26426 min_clearance=-0.00878248 wall_s=0.302613
+eval_GPU_s=0.297927
+train rollout=960 policy_loss=0.000193886 value_loss=0.0191733 entropy_loss=-0.000329173 ratio=0.999571 optimizer_step=30720 gpu_s=0.0377628
+train episodes=81987 success=0 collision=0.999976 timeout=2.43941e-05 progress=0.197243 mean_goal_time=0 mean_speed=1.47809 peak_speed=3.51333 min_clearance=0.00609377 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.181565 mean_goal_time=0 mean_speed=1.34569 peak_speed=3.09861 min_clearance=-0.00980088 wall_s=0.239653
+eval_GPU_s=0.236855
+train rollout=970 policy_loss=-0.00104025 value_loss=0.0140681 entropy_loss=-0.000331174 ratio=1.00051 optimizer_step=31040 gpu_s=0.0346829
+train episodes=82174 success=0 collision=0.999951 timeout=4.86772e-05 progress=0.197087 mean_goal_time=0 mean_speed=1.47769 peak_speed=4.09421 min_clearance=0.00366035 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.180933 mean_goal_time=0 mean_speed=1.34255 peak_speed=3.17109 min_clearance=-0.00710055 wall_s=0.273325
+eval_GPU_s=0.270753
+train rollout=980 policy_loss=0.000656539 value_loss=0.0373365 entropy_loss=-0.000327067 ratio=0.999769 optimizer_step=31360 gpu_s=0.0370719
+train episodes=82356 success=0 collision=0.999951 timeout=4.85696e-05 progress=0.196898 mean_goal_time=0 mean_speed=1.47707 peak_speed=3.35633 min_clearance=0.00106063 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.180059 mean_goal_time=0 mean_speed=1.34882 peak_speed=3.02742 min_clearance=-0.00699434 wall_s=0.189652
+eval_GPU_s=0.187009
+train rollout=990 policy_loss=0.000313672 value_loss=0.025873 entropy_loss=-0.000326827 ratio=1.00101 optimizer_step=31680 gpu_s=0.0423482
+train episodes=82546 success=0 collision=0.999952 timeout=4.84578e-05 progress=0.196741 mean_goal_time=0 mean_speed=1.47651 peak_speed=3.47686 min_clearance=0.0707892 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.177942 mean_goal_time=0 mean_speed=1.35385 peak_speed=3.27215 min_clearance=-0.00627157 wall_s=0.303665
+eval_GPU_s=0.300918
+train rollout=1000 policy_loss=0.00139024 value_loss=0.0114356 entropy_loss=-0.000326504 ratio=0.999691 optimizer_step=32000 gpu_s=0.0305164
+train episodes=82729 success=0 collision=0.99994 timeout=6.04383e-05 progress=0.196573 mean_goal_time=0 mean_speed=1.47588 peak_speed=3.33724 min_clearance=0.00286773 wall_s=0
+eval_budget_s=20 speed_intent_cap=1.5
+eval family=14 mode=17 episodes=128 success=0 collision=1 timeout=0 progress=0.178799 mean_goal_time=0 mean_speed=1.34188 peak_speed=3.31527 min_clearance=-0.00778779 wall_s=0.206141
+eval_GPU_s=0.2036
