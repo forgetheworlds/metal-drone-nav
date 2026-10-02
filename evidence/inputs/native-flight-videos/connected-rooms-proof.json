@@ -1,0 +1,1238 @@
+{
+  "name": "connected-rooms",
+  "video": "artifacts/videos/native-connected-rooms.mp4",
+  "preview": "artifacts/videos/native-connected-rooms-preview.jpg",
+  "trajectory": "evidence/inputs/native-flight-videos/connected-rooms-trace.csv",
+  "episode": {
+    "phase": "navigation",
+    "seed": 1588395091,
+    "success": true,
+    "collision": false,
+    "timeout": false,
+    "steps": 523,
+    "time_s": 5.23,
+    "path_m": 8.11153,
+    "final_error_m": 0.337287,
+    "peak_speed_mps": 2.24666,
+    "min_sensor_range_m": 0.254642,
+    "altitude_min_m": 1.13013,
+    "altitude_max_m": 1.78795,
+    "tracking_rms_mps": 0.33681,
+    "sensor_updates": 104,
+    "raptor_loaded": true,
+    "navigation_loaded": true,
+    "goal_objective": "entry",
+    "goal_radius_entry_count": 1,
+    "goal_radius_entry_first_time_s": 5.23,
+    "goal_radius_entry_last_time_s": 5.23,
+    "goal_dwell_s": 0,
+    "final_world_speed_mps": 1.56434,
+    "trajectory_trace": true,
+    "movie_recording": true,
+    "movie_failed": false,
+    "movie_file": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/flight.mp4",
+    "view_snapshot_file": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/view-at-1s.jpg",
+    "view_snapshot_written": true,
+    "trajectory_samples": 523,
+    "trajectory_sample_rate_hz": 100,
+    "trajectory_frame": "Webots ENU world",
+    "quaternion_order": "wxyz",
+    "world": "recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf",
+    "policy": "navigation-rooms-experimental.bin",
+    "physics_step_ms": 1,
+    "motor_sampling": "average",
+    "physics_profile": "hover",
+    "movie_bytes": 5415902,
+    "view_snapshot": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/view-at-1s.jpg",
+    "view_snapshot_bytes": 89131,
+    "scene_metadata": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/scene-metadata.json"
+  },
+  "scene_metadata": {
+    "actor_inputs": "Depth, ego sensors, goal and local geometry prior only; bank obstacles and witness are not sent through Robot.customData or observations.",
+    "basic_time_step_ms": 1,
+    "body_collision_radius_m": 0.18,
+    "controller_policy": "../assets/navigation-rooms-experimental.bin",
+    "failure_id": "f15-dev-0000-s5eacfc53-w5e651fdf",
+    "family": 15,
+    "family_name": "connected_rooms_offset_doors_furniture",
+    "goal_xyz_m": [
+      7.2475810050964355,
+      0.05787992477416992,
+      1.2636064291000366
+    ],
+    "motor_sampling": "average",
+    "navigation_period_ms": 50,
+    "obstacles": [
+      {
+        "center": [
+          1.217847228050232,
+          -3.308385133743286,
+          2.5
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          1.6916148662567139,
+          2.5
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          1.217847228050232,
+          2.4415526390075684,
+          2.5
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          2.5584473609924316,
+          2.5
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          1.217847228050232,
+          0.0,
+          0.3416770398616791
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          5.0,
+          0.3416770398616791
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          1.217847228050232,
+          0.0,
+          3.658322811126709
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          5.0,
+          1.3416770696640015
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          6.1604437828063965,
+          -2.4415526390075684,
+          2.5
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          2.5584473609924316,
+          2.5
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          6.1604437828063965,
+          3.308385133743286,
+          2.5
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          1.6916148662567139,
+          2.5
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          6.1604437828063965,
+          0.0,
+          0.3416770398616791
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          5.0,
+          0.3416770398616791
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          6.1604437828063965,
+          0.0,
+          3.658322811126709
+        ],
+        "half_extent": [
+          0.11999999731779099,
+          5.0,
+          1.3416770696640015
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          3.6237905025482178,
+          0.08247174322605133,
+          1.533385157585144
+        ],
+        "half_extent": [
+          0.4348548650741577,
+          0.6667081117630005,
+          0.07999999821186066
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          3.3089356422424316,
+          -0.46423637866973877,
+          0.7266925573348999
+        ],
+        "half_extent": [
+          0.07999999821186066,
+          0.07999999821186066,
+          0.7266925573348999
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          3.3089356422424316,
+          0.629179835319519,
+          0.7266925573348999
+        ],
+        "half_extent": [
+          0.07999999821186066,
+          0.07999999821186066,
+          0.7266925573348999
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          3.938645362854004,
+          -0.46423637866973877,
+          0.7266925573348999
+        ],
+        "half_extent": [
+          0.07999999821186066,
+          0.07999999821186066,
+          0.7266925573348999
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          3.938645362854004,
+          0.629179835319519,
+          0.7266925573348999
+        ],
+        "half_extent": [
+          0.07999999821186066,
+          0.07999999821186066,
+          0.7266925573348999
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          2.7540807723999023,
+          3.75,
+          0.550000011920929
+        ],
+        "half_extent": [
+          0.2199999988079071,
+          0.3499999940395355,
+          0.550000011920929
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          3.6237905025482178,
+          -3.799999952316284,
+          0.800000011920929
+        ],
+        "half_extent": [
+          0.25,
+          0.3499999940395355,
+          0.800000011920929
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "center": [
+          4.493500232696533,
+          3.700000047683716,
+          0.5
+        ],
+        "half_extent": [
+          0.2199999988079071,
+          0.4000000059604645,
+          0.5
+        ],
+        "kind": 0,
+        "velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "raptor_control_period_ms": 10,
+    "raptor_proto_sha256": "ea23cf4e1adf13b320f4230e4a6c931cb621eb251742113b164ab0d3c3d27edf",
+    "room_bounds_m": {
+      "x": [
+        -2.0,
+        14.0
+      ],
+      "y": [
+        -5.0,
+        5.0
+      ],
+      "z": [
+        0.0,
+        5.0
+      ]
+    },
+    "scene_name": "metal_f15-dev-0000-s5eacfc53-w5e651fdf",
+    "schema": "webots-metal-scene-v1",
+    "scoring_metadata": {
+      "body_radius_m": 0.18,
+      "coordinate_transform": "identity",
+      "difficulty": 0.33354055881500244,
+      "difficulty_band": "medium",
+      "direct_route_clearance_m": -0.2768230736255646,
+      "environment_index": 0,
+      "failure_id": "f15-dev-0000-s5eacfc53-w5e651fdf",
+      "family": 15,
+      "family_name": "connected_rooms_offset_doors_furniture",
+      "geometry_contract": "offset doors with intermediate table detour",
+      "goal": [
+        7.2475810050964355,
+        0.05787992477416992,
+        1.2636064291000366
+      ],
+      "obstacles": [
+        {
+          "center": [
+            1.217847228050232,
+            -3.308385133743286,
+            2.5
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            1.6916148662567139,
+            2.5
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            1.217847228050232,
+            2.4415526390075684,
+            2.5
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            2.5584473609924316,
+            2.5
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            1.217847228050232,
+            0.0,
+            0.3416770398616791
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            5.0,
+            0.3416770398616791
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            1.217847228050232,
+            0.0,
+            3.658322811126709
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            5.0,
+            1.3416770696640015
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            6.1604437828063965,
+            -2.4415526390075684,
+            2.5
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            2.5584473609924316,
+            2.5
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            6.1604437828063965,
+            3.308385133743286,
+            2.5
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            1.6916148662567139,
+            2.5
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            6.1604437828063965,
+            0.0,
+            0.3416770398616791
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            5.0,
+            0.3416770398616791
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            6.1604437828063965,
+            0.0,
+            3.658322811126709
+          ],
+          "half_extent": [
+            0.11999999731779099,
+            5.0,
+            1.3416770696640015
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            3.6237905025482178,
+            0.08247174322605133,
+            1.533385157585144
+          ],
+          "half_extent": [
+            0.4348548650741577,
+            0.6667081117630005,
+            0.07999999821186066
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            3.3089356422424316,
+            -0.46423637866973877,
+            0.7266925573348999
+          ],
+          "half_extent": [
+            0.07999999821186066,
+            0.07999999821186066,
+            0.7266925573348999
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            3.3089356422424316,
+            0.629179835319519,
+            0.7266925573348999
+          ],
+          "half_extent": [
+            0.07999999821186066,
+            0.07999999821186066,
+            0.7266925573348999
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            3.938645362854004,
+            -0.46423637866973877,
+            0.7266925573348999
+          ],
+          "half_extent": [
+            0.07999999821186066,
+            0.07999999821186066,
+            0.7266925573348999
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            3.938645362854004,
+            0.629179835319519,
+            0.7266925573348999
+          ],
+          "half_extent": [
+            0.07999999821186066,
+            0.07999999821186066,
+            0.7266925573348999
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            2.7540807723999023,
+            3.75,
+            0.550000011920929
+          ],
+          "half_extent": [
+            0.2199999988079071,
+            0.3499999940395355,
+            0.550000011920929
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            3.6237905025482178,
+            -3.799999952316284,
+            0.800000011920929
+          ],
+          "half_extent": [
+            0.25,
+            0.3499999940395355,
+            0.800000011920929
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "center": [
+            4.493500232696533,
+            3.700000047683716,
+            0.5
+          ],
+          "half_extent": [
+            0.2199999988079071,
+            0.4000000059604645,
+            0.5
+          ],
+          "kind": 0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "parameters": {
+        "door_1_x_m": 1.217847228050232,
+        "door_2_x_m": 6.1604437828063965,
+        "door_clear_width_m": 1.4998756647109985,
+        "door_gap_centers_y_m": [
+          -0.866832435131073,
+          0.866832435131073
+        ],
+        "table_center_m": [
+          3.6237905025482178,
+          0.08247174322605133,
+          1.533385157585144
+        ],
+        "table_half_extent_xy_m": [
+          0.4348548650741577,
+          0.6667081117630005
+        ]
+      },
+      "record_type": "challenge",
+      "room_bounds": {
+        "x": [
+          -2.0,
+          14.0
+        ],
+        "y": [
+          -5.0,
+          5.0
+        ],
+        "z": [
+          0.0,
+          5.0
+        ]
+      },
+      "scene_sha256": "a03967c143fb6311d06ad71f7b5c95146c0e9657aea67868bd24374974d32885",
+      "schema_version": 1,
+      "seed": 1588395091,
+      "selection_policy": "development split may be used for training or checkpoint selection",
+      "sim_config": {
+        "distance": 8.0,
+        "environment_index": 0,
+        "family": 15,
+        "seed": 946453977
+      },
+      "split": "dev",
+      "wind": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "witness_min_clearance_m": 0.3048885464668274,
+      "witness_route": [
+        [
+          0.0,
+          0.0,
+          1.5
+        ],
+        [
+          0.8978472352027893,
+          -0.866832435131073,
+          1.5
+        ],
+        [
+          1.5378472805023193,
+          -0.866832435131073,
+          1.5
+        ],
+        [
+          2.9389357566833496,
+          1.2491798400878906,
+          1.5
+        ],
+        [
+          4.308645248413086,
+          1.2491798400878906,
+          1.5
+        ],
+        [
+          5.8404436111450195,
+          0.866832435131073,
+          1.5
+        ],
+        [
+          6.480443954467773,
+          0.866832435131073,
+          1.5
+        ],
+        [
+          7.2475810050964355,
+          0.05787992477416992,
+          1.2636064291000366
+        ]
+      ],
+      "witness_sample_count": 192,
+      "world_source_sha256": "5e651fdf2dcb2d252b64d688a46ab0b793849356bd10a1c205d2b7cd9fabffa2"
+    },
+    "source_bank": "/Users/muadhsambul/RL/results/challenge-bank-mirrored-v1.jsonl",
+    "source_bank_sha256": "e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e",
+    "source_record_sha256": "7e42825f313cef3e83b9fa7aa71fd827a764e2004df00daf2ff161badd33349e",
+    "split": "dev",
+    "start_xyz_m": [
+      0.0,
+      0.0,
+      1.5
+    ],
+    "witness_usage": "Scoring metadata only; never written to the world or controller customData.",
+    "world_sha256": "fd617ecab4b5188a858981fb942ac9801a0b4bedfeb8f7da4c0bae2e178500a7"
+  },
+  "exact_recording_world": "#VRML_SIM R2025a utf8\nEXTERNPROTO \"../protos/RaptorCrazyflie.proto\"\nWorldInfo { title \"metal_f15-dev-0000-s5eacfc53-w5e651fdf\" basicTimeStep 1 gravity 9.81 coordinateSystem \"ENU\" physicsDisableTime -1 }\nDEF RLRecordingViewpoint Viewpoint { position -2.000000000 -4.000000000 4.500000000 orientation -0.156972507 0.488645580 0.858245378 0.716311120 fieldOfView 1.2 }\nBackground { skyColor [ 0.62 0.77 0.92 ] }\nDirectionalLight { direction -0.4 -0.3 -1 intensity 0.85 }\n# Interior bounds match world.hpp: x[-2,14], y[-5,5], z[0,5].\nSolid { name \"Floor\" translation 6 0 -0.05 children [ Shape { appearance PBRAppearance { baseColor 0.72 0.74 0.76 roughness 1 } geometry Box { size 16 10 0.1 } } ] boundingObject Box { size 16 10 0.1 } locked TRUE }\nSolid { name \"WallXMin\" translation -2.05 0 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.62 0.66 0.70 } geometry Box { size 0.1 10 5 } } ] boundingObject Box { size 0.1 10 5 } locked TRUE }\nSolid { name \"WallXMax\" translation 14.05 0 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.62 0.66 0.70 } geometry Box { size 0.1 10 5 } } ] boundingObject Box { size 0.1 10 5 } locked TRUE }\nSolid { name \"WallYMin\" translation 6 -5.05 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.62 0.66 0.70 } geometry Box { size 16 0.1 5 } } ] boundingObject Box { size 16 0.1 5 } locked TRUE }\nSolid { name \"WallYMax\" translation 6 5.05 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.62 0.66 0.70 } geometry Box { size 16 0.1 5 } } ] boundingObject Box { size 16 0.1 5 } locked TRUE }\nSolid { name \"Ceiling\" translation 6 0 5.05 children [ Shape { appearance PBRAppearance { baseColor 0.62 0.66 0.70 } geometry Box { size 16 10 0.1 } } ] boundingObject Box { size 16 10 0.1 } locked TRUE }\nDEF ChallengeObstacle00 Solid { name \"metal_00_kind0\" translation 1.21784723 -3.30838513 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 3.38322974 5 } } ] boundingObject Box { size 0.239999994 3.38322974 5 } locked TRUE }\nDEF ChallengeObstacle01 Solid { name \"metal_01_kind0\" translation 1.21784723 2.44155264 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 5.11689472 5 } } ] boundingObject Box { size 0.239999994 5.11689472 5 } locked TRUE }\nDEF ChallengeObstacle02 Solid { name \"metal_02_kind0\" translation 1.21784723 0 0.34167704 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 10 0.68335408 } } ] boundingObject Box { size 0.239999994 10 0.68335408 } locked TRUE }\nDEF ChallengeObstacle03 Solid { name \"metal_03_kind0\" translation 1.21784723 0 3.65832281 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 10 2.68335414 } } ] boundingObject Box { size 0.239999994 10 2.68335414 } locked TRUE }\nDEF ChallengeObstacle04 Solid { name \"metal_04_kind0\" translation 6.16044378 -2.44155264 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 5.11689472 5 } } ] boundingObject Box { size 0.239999994 5.11689472 5 } locked TRUE }\nDEF ChallengeObstacle05 Solid { name \"metal_05_kind0\" translation 6.16044378 3.30838513 2.5 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 3.38322974 5 } } ] boundingObject Box { size 0.239999994 3.38322974 5 } locked TRUE }\nDEF ChallengeObstacle06 Solid { name \"metal_06_kind0\" translation 6.16044378 0 0.34167704 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 10 0.68335408 } } ] boundingObject Box { size 0.239999994 10 0.68335408 } locked TRUE }\nDEF ChallengeObstacle07 Solid { name \"metal_07_kind0\" translation 6.16044378 0 3.65832281 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.239999994 10 2.68335414 } } ] boundingObject Box { size 0.239999994 10 2.68335414 } locked TRUE }\nDEF ChallengeObstacle08 Solid { name \"metal_08_kind0\" translation 3.6237905 0.0824717432 1.53338516 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.86970973 1.33341622 0.159999996 } } ] boundingObject Box { size 0.86970973 1.33341622 0.159999996 } locked TRUE }\nDEF ChallengeObstacle09 Solid { name \"metal_09_kind0\" translation 3.30893564 -0.464236379 0.726692557 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.159999996 0.159999996 1.45338511 } } ] boundingObject Box { size 0.159999996 0.159999996 1.45338511 } locked TRUE }\nDEF ChallengeObstacle10 Solid { name \"metal_10_kind0\" translation 3.30893564 0.629179835 0.726692557 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.159999996 0.159999996 1.45338511 } } ] boundingObject Box { size 0.159999996 0.159999996 1.45338511 } locked TRUE }\nDEF ChallengeObstacle11 Solid { name \"metal_11_kind0\" translation 3.93864536 -0.464236379 0.726692557 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.159999996 0.159999996 1.45338511 } } ] boundingObject Box { size 0.159999996 0.159999996 1.45338511 } locked TRUE }\nDEF ChallengeObstacle12 Solid { name \"metal_12_kind0\" translation 3.93864536 0.629179835 0.726692557 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.159999996 0.159999996 1.45338511 } } ] boundingObject Box { size 0.159999996 0.159999996 1.45338511 } locked TRUE }\nDEF ChallengeObstacle13 Solid { name \"metal_13_kind0\" translation 2.75408077 3.75 0.550000012 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.439999998 0.699999988 1.10000002 } } ] boundingObject Box { size 0.439999998 0.699999988 1.10000002 } locked TRUE }\nDEF ChallengeObstacle14 Solid { name \"metal_14_kind0\" translation 3.6237905 -3.79999995 0.800000012 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.5 0.699999988 1.60000002 } } ] boundingObject Box { size 0.5 0.699999988 1.60000002 } locked TRUE }\nDEF ChallengeObstacle15 Solid { name \"metal_15_kind0\" translation 4.49350023 3.70000005 0.5 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.439999998 0.800000012 1 } } ] boundingObject Box { size 0.439999998 0.800000012 1 } locked TRUE }\nRaptorCrazyflie { translation 0 0 1.5 name \"RaptorCrazyflie\" controller \"raptor_webots\" supervisor TRUE customData \"phase=navigation;seed=1588395091;policy=../assets/navigation-rooms-experimental.bin;speed=1.5;distance=7.25166618;goal=7.24758101,0.0578799248,1.26360643;max_steps=2000;motor_sampling=average;goal_objective=entry;profile=hover;sensor_audit=0;capture_trajectory=1;movie_file=/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/flight.mp4;view_snapshot_file=/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/view-at-1s.jpg\" }\n",
+  "recording_log": "INFO: raptor_webots: Starting controller: /Users/muadhsambul/RL/webots/controllers/raptor_webots/raptor_webots\nWEBOTS_START phase=navigation objective=entry seed=1588395091 step_ms=10 custom=phase=navigation;seed=1588395091;policy=../assets/navigation-rooms-experimental.bin;speed=1.5;distance=7.25166618;goal=7.24758101,0.0578799248,1.26360643;max_steps=2000;motor_sampling=average;goal_objective=entry;profile=hover;sensor_audit=0;capture_trajectory=1;movie_file=/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/flight.mp4;view_snapshot_file=/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/view-at-1s.jpg\nWEBOTS_SENSORS range=20x16 fov=1.571 self=0x600000420410\nWEBOTS_MODELS raptor=loaded path=/Users/muadhsambul/RL/webots/../assets/raptor.bin project=/Users/muadhsambul/RL/webots\nWEBOTS_MOVIE_START file=/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/flight.mp4 resolution=1280x720 acceleration=1\nWEBOTS_STEP first\nWEBOTS_READ sensors 0,0,1.49946 q=2.01077e-22,-2.83864e-19,0.00258639,0.999997 v=0,0,-0.0981\nWEBOTS_RAPTOR action=0.606952,-0.0627792,0.748479,-0.428998\nWEBOTS_SET motors=-43.3122,43.0009,-43.5874,42.831 throttle=0.80602\nWEBOTS_CONTACT count=0\nWEBOTS_VIEW_SNAPSHOT file=/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/view-at-1s.jpg step=99 time_s=1.000\nWEBOTS_PROGRESS step=100 pz=1.38204 vz=-0.0368836 error=5.97842\nWEBOTS_PROGRESS step=200 pz=1.686 vz=0.0344308 error=4.82232\nWEBOTS_PROGRESS step=300 pz=1.57819 vz=-0.105375 error=3.29808\nWEBOTS_PROGRESS step=400 pz=1.44361 vz=-0.312958 error=2.0464\nWEBOTS_PROGRESS step=500 pz=1.1313 vz=0.0702877 error=0.696895\nINFO: Creating video...\nRecording at 25 FPS, 8550000 bit/s.\nVideo encoding stage 1... (please wait)\nVideo encoding stage 2... (please wait)\nINFO: Video creation finished.\nINFO: raptor_webots: Terminating.\nUNSUPPORTED (log once): POSSIBLE ISSUE: unit 0 GLD_TEXTURE_INDEX_2D is unloadable and bound to sampler type (Float) - using zero texture because texture unloadable\n",
+  "verification": {
+    "schema": "flight-video-verification-v1",
+    "verdict": "verified_navigation_evidence",
+    "verified": true,
+    "evidence_class": "navigation",
+    "provenance": {
+      "kind": "webots_native_recording",
+      "label_source": "cli --provenance",
+      "camera_footage_claim": false
+    },
+    "generated_utc": "2026-10-02T22:35:19+00:00",
+    "inputs": {
+      "video": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/flight.mp4",
+      "episode": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/episode.json",
+      "trajectory": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/trace.csv",
+      "scene": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/route.wbt",
+      "policy": "assets/navigation-rooms-experimental.bin",
+      "objective": "auto",
+      "samples": 96
+    },
+    "video_metadata": {
+      "codec": "h264",
+      "width": 1280,
+      "height": 720,
+      "fps": 25.0,
+      "duration_s": 5.2,
+      "nb_frames": 130
+    },
+    "visual_metrics": {
+      "frames_decoded": 130,
+      "frames_analyzed": 65,
+      "stride": 2,
+      "visible_fraction": 1.0,
+      "frozen_pair_fraction": 0.0,
+      "median_frame_delta": 6.354930555555556,
+      "frame_mean_min": 65.3562240600586,
+      "frame_mean_max": 104.74059295654297,
+      "frame_std_median": 35.22462844848633
+    },
+    "episode_summary": {
+      "world": "recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf",
+      "seed": 1588395091,
+      "policy": "navigation-rooms-experimental.bin",
+      "goal_objective": "entry",
+      "success": true,
+      "collision": false,
+      "timeout": false,
+      "steps": 523,
+      "time_s": 5.23,
+      "final_error_m": 0.337287,
+      "goal_dwell_s": 0,
+      "final_world_speed_mps": 1.56434,
+      "goal_radius_entry_count": 1,
+      "movie_recording": true,
+      "movie_failed": false,
+      "movie_bytes": 5415902,
+      "trajectory_samples": 523
+    },
+    "hashes": {
+      "video_sha256": "5e0069a1d677d78a7ed755488a025e1230e9d889a349a4113da8743256543704",
+      "video_bytes": 5415902,
+      "episode_sha256": "81e431b9dcc973c7418b4f513e9dd9c55976058fe798241851b5fbe2a9012acd",
+      "scene_sha256": "861c74cbdee75ad86198a8b25025aba608b6311e43a7db2b01529d45e2e9c278",
+      "scene_metadata_sha256": "4e0d6e65fefaef924818ec6f1f8f294f868d7af064f64c0e13882a176d1249b5",
+      "trajectory_sha256": "f65a3621e1ae9ff013a3e25ef3a1f8b40caed7249a9be994dd6f9e4f87819080",
+      "policy_sha256": "234c776de8dec15e9fb01bd2d718581356e67426c30c721472f048a1ed7a9282"
+    },
+    "thresholds": {
+      "goal_radius_m": {
+        "value": 0.35,
+        "source": "webots/controllers/raptor_webots/raptor_webots.cpp:435,457 (inside_goal / entry success); frozen scorer constant"
+      },
+      "hold_speed_max_mps": {
+        "value": 0.5,
+        "source": "webots/controllers/raptor_webots/raptor_webots.cpp:446,459; frozen scorer constant"
+      },
+      "hold_dwell_min_s": {
+        "value": 0.2,
+        "source": "webots/controllers/raptor_webots/raptor_webots.cpp:459 (0.2f-1e-6f); frozen scorer constant"
+      },
+      "visible_mean_min": {
+        "value": 2.0,
+        "source": "calibrated: flat-black x264 frames measure mean 0.000; frame 0 of a real Webots render measures mean 141"
+      },
+      "visible_std_min": {
+        "value": 1.0,
+        "source": "calibrated: codec noise on flat black measures spatial std 0.055; real render measures std 36"
+      },
+      "visible_frac_above16_min": {
+        "value": 0.01,
+        "source": "calibrated: flat-black frames light 0.01% of pixels above luma 16; real render lights 99.98%"
+      },
+      "visible_fraction_required": {
+        "value": 0.9,
+        "source": "a watchable run must be visibly rendered nearly throughout; margin covers fades/overlays"
+      },
+      "frozen_pair_fraction_max": {
+        "value": 0.98,
+        "source": "rejects static-image loops; tolerance allows a steady hover stretch inside an otherwise moving flight"
+      },
+      "frame_min_width": {
+        "value": 320,
+        "source": "watchability floor"
+      },
+      "frame_min_height": {
+        "value": 180,
+        "source": "watchability floor"
+      },
+      "frames_min": {
+        "value": 2,
+        "source": "a single frame is not a run"
+      },
+      "duration_ratio_min": {
+        "value": 0.5,
+        "source": "video must cover the episode; Webots native movies run ~1.0x episode time"
+      },
+      "duration_ratio_max": {
+        "value": 2.0,
+        "source": "guards against pairing the movie with an unrelated episode receipt"
+      },
+      "trace_goal_error_tol_m": {
+        "value": 0.005,
+        "source": "trace goal_error column is written at 6 significant digits; recompute from pose+goal"
+      },
+      "trace_step_gap_max": {
+        "value": 100,
+        "source": "sparse traces log every 100 steps (raptor_webots.cpp:449); dense traces log every step"
+      }
+    },
+    "checks": [
+      {
+        "id": "probe",
+        "status": "pass",
+        "detail": "container parsed",
+        "measured": {
+          "codec": "h264",
+          "width": 1280,
+          "height": 720,
+          "fps": 25.0,
+          "duration_s": 5.2,
+          "nb_frames": 130
+        },
+        "threshold": null
+      },
+      {
+        "id": "dimensions",
+        "status": "pass",
+        "detail": "frame dimensions usable",
+        "measured": {
+          "width": 1280,
+          "height": 720
+        },
+        "threshold": {
+          "min_width": 320,
+          "min_height": 180
+        }
+      },
+      {
+        "id": "decode",
+        "status": "pass",
+        "detail": "every frame decoded cleanly",
+        "measured": {
+          "frames_decoded": 130,
+          "stride": 2,
+          "frames_analyzed": 65
+        },
+        "threshold": null
+      },
+      {
+        "id": "frame_count",
+        "status": "pass",
+        "detail": "decoded frame count matches container",
+        "measured": {
+          "decoded": 130
+        },
+        "threshold": null
+      },
+      {
+        "id": "visible_frames",
+        "status": "pass",
+        "detail": "sampled frames are visibly rendered",
+        "measured": {
+          "visible_fraction": 1.0,
+          "samples": 65
+        },
+        "threshold": {
+          "min": 0.9
+        }
+      },
+      {
+        "id": "temporal_content",
+        "status": "pass",
+        "detail": "frame content changes over time",
+        "measured": {
+          "frozen_pair_fraction": 0.0,
+          "median_frame_delta": 6.354930555555556
+        },
+        "threshold": {
+          "max": 0.98
+        }
+      },
+      {
+        "id": "episode",
+        "status": "pass",
+        "detail": "episode receipt parsed",
+        "measured": {
+          "path": "/Users/muadhsambul/RL/webots/results/navigation-rooms-experimental/recording_metal_f15-dev-0000-s5eacfc53-w5e651fdf-seed-1588395091-recording-trajectory/episode.json"
+        },
+        "threshold": null
+      },
+      {
+        "id": "objective_declared",
+        "status": "pass",
+        "detail": "evaluating entry objective",
+        "measured": {
+          "objective": "entry"
+        },
+        "threshold": null
+      },
+      {
+        "id": "success",
+        "status": "pass",
+        "detail": "episode reports success=true",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "collision",
+        "status": "pass",
+        "detail": "episode reports collision=false",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "timeout",
+        "status": "pass",
+        "detail": "episode did not time out",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "episode_progress",
+        "status": "pass",
+        "detail": "episode recorded motion",
+        "measured": {
+          "steps": 523,
+          "time_s": 5.23
+        },
+        "threshold": null
+      },
+      {
+        "id": "goal_radius",
+        "status": "pass",
+        "detail": "entry objective: final_error_m strictly inside goal radius",
+        "measured": {
+          "final_error_m": 0.337287
+        },
+        "threshold": {
+          "goal_radius_m": 0.35
+        }
+      },
+      {
+        "id": "goal_entry",
+        "status": "pass",
+        "detail": "goal radius entry recorded within episode time",
+        "measured": {
+          "entries": 1,
+          "first_entry_s": 5.23
+        },
+        "threshold": null
+      },
+      {
+        "id": "movie_receipt",
+        "status": "pass",
+        "detail": "episode claims a native Webots movie that completed",
+        "measured": {
+          "movie_failed": false
+        },
+        "threshold": null
+      },
+      {
+        "id": "movie_bytes",
+        "status": "pass",
+        "detail": "video size matches episode movie_bytes",
+        "measured": {
+          "bytes": 5415902
+        },
+        "threshold": null
+      },
+      {
+        "id": "movie_file",
+        "status": "pass",
+        "detail": "video filename matches episode movie_file",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "duration_match",
+        "status": "pass",
+        "detail": "video duration covers the episode",
+        "measured": {
+          "video_duration_s": 5.2,
+          "episode_time_s": 5.23,
+          "ratio": 0.9942638623326959
+        },
+        "threshold": {
+          "range": [
+            0.5,
+            2.0
+          ]
+        }
+      },
+      {
+        "id": "route_episode_consistency",
+        "status": "pass",
+        "detail": "route.wbt customData agrees with episode receipt",
+        "measured": {
+          "fields_checked": [
+            "seed",
+            "policy",
+            "goal_objective",
+            "movie_file"
+          ]
+        },
+        "threshold": null
+      },
+      {
+        "id": "trajectory",
+        "status": "pass",
+        "detail": "trajectory trace parsed",
+        "measured": {
+          "rows": 523,
+          "columns": [
+            "step",
+            "time_s",
+            "x",
+            "y",
+            "z",
+            "vx",
+            "vy",
+            "vz",
+            "target_vx",
+            "target_vy",
+            "target_vz",
+            "goal_error",
+            "q_w",
+            "q_x",
+            "q_y",
+            "q_z",
+            "goal_dwell_s",
+            "actual_world_speed_mps"
+          ],
+          "last_step": 522,
+          "last_time_s": 5.23
+        },
+        "threshold": null
+      },
+      {
+        "id": "trace_goal_error",
+        "status": "pass",
+        "detail": "logged goal_error matches pose recomputed against route goal",
+        "measured": {
+          "max_abs_diff_m": 9.935050179432636e-06
+        },
+        "threshold": {
+          "tol_m": 0.005
+        }
+      },
+      {
+        "id": "trace_min_goal_error",
+        "status": "pass",
+        "detail": "minimum goal error observed in trace (informational)",
+        "measured": {
+          "min_goal_error_m": 0.33728625856353567
+        },
+        "threshold": null
+      },
+      {
+        "id": "trace_pairing",
+        "status": "pass",
+        "detail": "trace step coverage consistent with episode (sparse or dense logging)",
+        "measured": {
+          "trace_last_step": 522,
+          "episode_steps": 523
+        },
+        "threshold": {
+          "max_gap": 100
+        }
+      },
+      {
+        "id": "trace_final_state",
+        "status": "pass",
+        "detail": "dense trace final state matches episode final_error_m",
+        "measured": {
+          "diff_m": 7.414364643354432e-07
+        },
+        "threshold": {
+          "tol_m": 0.05
+        }
+      },
+      {
+        "id": "policy",
+        "status": "pass",
+        "detail": "policy binary provided",
+        "measured": {
+          "path": "assets/navigation-rooms-experimental.bin"
+        },
+        "threshold": null
+      },
+      {
+        "id": "encoder_log",
+        "status": "missing",
+        "detail": "webots.log has no WEBOTS_MOVIE_DONE line",
+        "measured": null,
+        "threshold": null
+      }
+    ],
+    "check_counts": {
+      "pass": 25,
+      "missing": 1
+    },
+    "failed_checks": [],
+    "missing_receipts": [],
+    "encoder_warnings": [],
+    "limits": [
+      "Frame statistics prove the movie is visibly rendered, non-constant content; they cannot prove the pixels depict this specific flight. Pairing rests on duration ratio, movie_bytes/movie_file agreement, route/episode field agreement, and SHA-256 binding.",
+      "ffprobe/container metadata alone never satisfies any visual gate: every visual verdict comes from decoded pixel buffers.",
+      "A very dark but real scene would be judged by the calibrated visibility floor (mean>=2, std>=1, frac>16 >=1%); scenes darker than that would need recalibration, which must be argued from measurements, not convenience.",
+      "Non-16:9 sources keep native dimensions (no letterbox introduced); the visibility metrics operate on native frames.",
+      "Collision status is taken from the controller receipt (contact points are not in the trace); this verifier does not independently re-derive collisions.",
+      "A Blender reconstruction from recorded poses is accepted only when labeled reconstructed_simulation (trajectory receipt or explicit --provenance), never as camera footage."
+    ],
+    "tool": {
+      "path": "/Users/muadhsambul/RL/webots/verify_flight_videos.py",
+      "sha256": "a9e089a866ab68ffddb24e53ac912cf0f10f6a9c2e75c172bd9c4ebccb24d1a0",
+      "version": "1.0.0",
+      "python": "3.14.7",
+      "ffmpeg": "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers"
+    }
+  },
+  "input_sha256": {
+    "flight.mp4": "5e0069a1d677d78a7ed755488a025e1230e9d889a349a4113da8743256543704",
+    "view-at-1s.jpg": "6d45f96e96da2aa3d997fb95834cefff5f7dca418913dd7bef13f712fcab8810",
+    "trace.csv": "f65a3621e1ae9ff013a3e25ef3a1f8b40caed7249a9be994dd6f9e4f87819080",
+    "episode.json": "81e431b9dcc973c7418b4f513e9dd9c55976058fe798241851b5fbe2a9012acd",
+    "route.wbt": "861c74cbdee75ad86198a8b25025aba608b6311e43a7db2b01529d45e2e9c278",
+    "scene-metadata.json": "4e0d6e65fefaef924818ec6f1f8f294f868d7af064f64c0e13882a176d1249b5",
+    "webots.log": "a696b3a9b85f482b2d17c1f01c39cd6e077fae714123938aaf5471ded150482c"
+  }
+}

@@ -1,0 +1,750 @@
+{
+  "name": "doorway",
+  "video": "artifacts/videos/native-doorway.mp4",
+  "preview": "artifacts/videos/native-doorway-preview.jpg",
+  "trajectory": "evidence/inputs/native-flight-videos/doorway-trace.csv",
+  "episode": {
+    "phase": "navigation",
+    "seed": 41001,
+    "success": true,
+    "collision": false,
+    "timeout": false,
+    "steps": 691,
+    "time_s": 6.91,
+    "path_m": 8.67123,
+    "final_error_m": 0.291938,
+    "peak_speed_mps": 3.22555,
+    "min_sensor_range_m": 0.661076,
+    "altitude_min_m": 0.593329,
+    "altitude_max_m": 2.60321,
+    "tracking_rms_mps": 0.775701,
+    "sensor_updates": 138,
+    "raptor_loaded": true,
+    "navigation_loaded": true,
+    "goal_objective": "hold",
+    "goal_radius_entry_count": 1,
+    "goal_radius_entry_first_time_s": 6.72,
+    "goal_radius_entry_last_time_s": 6.72,
+    "goal_dwell_s": 0.2,
+    "final_world_speed_mps": 0.450406,
+    "trajectory_trace": true,
+    "movie_recording": true,
+    "movie_failed": false,
+    "movie_file": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/flight.mp4",
+    "view_snapshot_file": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/view-at-1s.jpg",
+    "view_snapshot_written": true,
+    "trajectory_samples": 691,
+    "trajectory_sample_rate_hz": 100,
+    "trajectory_frame": "Webots ENU world",
+    "quaternion_order": "wxyz",
+    "world": "challenge_doorway_41001",
+    "policy": "navigation-arrival-experimental.bin",
+    "physics_step_ms": 1,
+    "motor_sampling": "average",
+    "physics_profile": "hover",
+    "movie_bytes": 7247993,
+    "view_snapshot": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/view-at-1s.jpg",
+    "view_snapshot_bytes": 61692,
+    "scene_metadata": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/scene-metadata.json"
+  },
+  "scene_metadata": {
+    "schema": "webots-challenge-v1",
+    "family": "doorway",
+    "seed": 41001,
+    "bounded_room": false,
+    "start_xyz_m": [
+      0.0,
+      0.0,
+      1.5
+    ],
+    "goal_xyz_m": [
+      4.0,
+      0.0,
+      1.5
+    ],
+    "body_collision_radius_m": 0.18,
+    "planner_clearance_m": 0.04,
+    "generator_parameters": {
+      "wall_x_m": 2.081,
+      "opening_center_y_m": 0.897,
+      "opening_center_z_m": 1.619,
+      "opening_width_m": 1.294,
+      "opening_height_m": 1.665
+    },
+    "obstacles": [
+      {
+        "kind": "box",
+        "name": "door_left",
+        "center": [
+          2.081,
+          -2.125,
+          1.9749999999999999
+        ],
+        "size": [
+          0.28,
+          4.75,
+          3.65
+        ]
+      },
+      {
+        "kind": "box",
+        "name": "door_right",
+        "center": [
+          2.081,
+          3.0220000000000002,
+          1.9749999999999999
+        ],
+        "size": [
+          0.28,
+          2.956,
+          3.65
+        ]
+      },
+      {
+        "kind": "box",
+        "name": "door_sill",
+        "center": [
+          2.081,
+          0.897,
+          0.46825
+        ],
+        "size": [
+          0.28,
+          1.294,
+          0.6365
+        ]
+      },
+      {
+        "kind": "box",
+        "name": "door_header",
+        "center": [
+          2.081,
+          0.897,
+          3.12575
+        ],
+        "size": [
+          0.28,
+          1.294,
+          1.3484999999999996
+        ]
+      }
+    ],
+    "route_witness": {
+      "grid_step_m": 0.2,
+      "waypoint_count": 27,
+      "length_m": 5.2,
+      "points_xyz_m": [
+        [
+          0.0,
+          0.0,
+          1.5
+        ],
+        [
+          0.2,
+          0.0,
+          1.5
+        ],
+        [
+          0.4,
+          0.0,
+          1.5
+        ],
+        [
+          0.6,
+          0.0,
+          1.5
+        ],
+        [
+          0.8,
+          0.0,
+          1.5
+        ],
+        [
+          1.0,
+          0.0,
+          1.5
+        ],
+        [
+          1.2,
+          0.0,
+          1.5
+        ],
+        [
+          1.4,
+          0.0,
+          1.5
+        ],
+        [
+          1.6,
+          0.0,
+          1.5
+        ],
+        [
+          1.6,
+          0.2,
+          1.5
+        ],
+        [
+          1.6,
+          0.4,
+          1.5
+        ],
+        [
+          1.6,
+          0.6,
+          1.5
+        ],
+        [
+          1.8,
+          0.6,
+          1.5
+        ],
+        [
+          2.0,
+          0.6,
+          1.5
+        ],
+        [
+          2.2,
+          0.6,
+          1.5
+        ],
+        [
+          2.4,
+          0.6,
+          1.5
+        ],
+        [
+          2.6,
+          0.6,
+          1.5
+        ],
+        [
+          2.8,
+          0.6,
+          1.5
+        ],
+        [
+          3.0,
+          0.6,
+          1.5
+        ],
+        [
+          3.2,
+          0.6,
+          1.5
+        ],
+        [
+          3.4,
+          0.6,
+          1.5
+        ],
+        [
+          3.6,
+          0.6,
+          1.5
+        ],
+        [
+          3.8,
+          0.6,
+          1.5
+        ],
+        [
+          4.0,
+          0.6,
+          1.5
+        ],
+        [
+          4.0,
+          0.4,
+          1.5
+        ],
+        [
+          4.0,
+          0.2,
+          1.5
+        ],
+        [
+          4.0,
+          0.0,
+          1.5
+        ]
+      ]
+    },
+    "actor_observation_policy": "No obstacle geometry or witness points are provided in Robot.customData or policy inputs."
+  },
+  "exact_recording_world": "#VRML_SIM R2025a utf8\nEXTERNPROTO \"../protos/RaptorCrazyflie.proto\"\nWorldInfo {\n  title \"challenge_doorway_41001\"\n  basicTimeStep 1\n  gravity 9.81\n  coordinateSystem \"ENU\"\n  physicsDisableTime -1\n}\nDEF RLRecordingViewpoint Viewpoint { position -2.000000000 -1.000000000 3.300000000 orientation -0.138541841 0.626713934 0.766834926 0.561334370 fieldOfView 1.2 }\nBackground { skyColor [ 0.62 0.77 0.92 ] }\nDirectionalLight { direction -0.4 -0.3 -1 intensity 0.85 }\nSolid {\n  translation 2 0 -0.05\n  children [\n    Shape {\n      appearance PBRAppearance { baseColor 0.72 0.74 0.76 roughness 1 }\n      geometry Box { size 18 12 0.1 }\n    }\n  ]\n  boundingObject Box { size 18 12 0.1 }\n  locked TRUE\n}\nDEF ChallengeObstacle00 Solid { name \"door_left\" translation 2.081 -2.125 1.9749999999999999 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.28 4.75 3.65 } } ] boundingObject Box { size 0.28 4.75 3.65 } locked TRUE }\nDEF ChallengeObstacle01 Solid { name \"door_right\" translation 2.081 3.0220000000000002 1.9749999999999999 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.28 2.956 3.65 } } ] boundingObject Box { size 0.28 2.956 3.65 } locked TRUE }\nDEF ChallengeObstacle02 Solid { name \"door_sill\" translation 2.081 0.897 0.46825 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.28 1.294 0.6365 } } ] boundingObject Box { size 0.28 1.294 0.6365 } locked TRUE }\nDEF ChallengeObstacle03 Solid { name \"door_header\" translation 2.081 0.897 3.12575 children [ Shape { appearance PBRAppearance { baseColor 0.63 0.34 0.18 roughness 1 } geometry Box { size 0.28 1.294 1.3484999999999996 } } ] boundingObject Box { size 0.28 1.294 1.3484999999999996 } locked TRUE }\nRaptorCrazyflie {\n  translation 0 0 1.5\n  name \"RaptorCrazyflie\"\n  controller \"raptor_webots\"\n  supervisor TRUE\n  customData \"phase=navigation;seed=41001;policy=../assets/navigation-arrival-experimental.bin;speed=1.5;distance=4;goal=4,0,1.5;max_steps=2000;profile=hover;motor_sampling=average;sensor_audit=0;goal_objective=hold;capture_trajectory=1;movie_file=/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/flight.mp4;view_snapshot_file=/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/view-at-1s.jpg\"\n}\n",
+  "recording_log": "INFO: raptor_webots: Starting controller: /Users/muadhsambul/RL/webots/controllers/raptor_webots/raptor_webots\nWEBOTS_START phase=navigation objective=hold seed=41001 step_ms=10 custom=phase=navigation;seed=41001;policy=../assets/navigation-arrival-experimental.bin;speed=1.5;distance=4;goal=4,0,1.5;max_steps=2000;profile=hover;motor_sampling=average;sensor_audit=0;goal_objective=hold;capture_trajectory=1;movie_file=/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/flight.mp4;view_snapshot_file=/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/view-at-1s.jpg\nWEBOTS_SENSORS range=20x16 fov=1.571 self=0x600000b5c000\nWEBOTS_MODELS raptor=loaded path=/Users/muadhsambul/RL/webots/../assets/raptor.bin project=/Users/muadhsambul/RL/webots\nWEBOTS_MOVIE_START file=/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/flight.mp4 resolution=1280x720 acceleration=1\nWEBOTS_STEP first\nWEBOTS_READ sensors 0,0,1.49946 q=2.01077e-22,-2.83864e-19,0.00258639,0.999997 v=0,0,-0.0981\nWEBOTS_RAPTOR action=0.606952,-0.0627792,0.748479,-0.428998\nWEBOTS_SET motors=-43.3122,43.0009,-43.5874,42.831 throttle=0.80602\nWEBOTS_CONTACT count=0\nWEBOTS_VIEW_SNAPSHOT file=/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/view-at-1s.jpg step=99 time_s=1.000\nWEBOTS_PROGRESS step=100 pz=1.44095 vz=0.433681 error=2.82119\nWEBOTS_PROGRESS step=200 pz=1.92874 vz=-0.62897 error=1.40988\nWEBOTS_PROGRESS step=300 pz=0.626677 vz=-0.47439 error=0.878352\nWEBOTS_PROGRESS step=400 pz=1.50453 vz=1.44383 error=0.45754\nWEBOTS_PROGRESS step=500 pz=2.58583 vz=0.415657 error=1.13899\nWEBOTS_PROGRESS step=600 pz=2.06866 vz=-0.562906 error=0.58586\nINFO: Creating video...\nRecording at 25 FPS, 8550000 bit/s.\nVideo encoding stage 1... (please wait)\nVideo encoding stage 2... (please wait)\nINFO: Video creation finished.\nINFO: raptor_webots: Terminating.\nUNSUPPORTED (log once): POSSIBLE ISSUE: unit 0 GLD_TEXTURE_INDEX_2D is unloadable and bound to sampler type (Float) - using zero texture because texture unloadable\n\nVIEW_ACTIVATION_EXIT=1\n99:108: execution error: System Events got an error: Can\u2019t get application process 1 whose unix id = 42573. Invalid index. (-1719)\n",
+  "verification": {
+    "schema": "flight-video-verification-v1",
+    "verdict": "verified_navigation_evidence",
+    "verified": true,
+    "evidence_class": "navigation",
+    "provenance": {
+      "kind": "webots_native_recording",
+      "label_source": "cli --provenance",
+      "camera_footage_claim": false
+    },
+    "generated_utc": "2026-10-02T22:48:06+00:00",
+    "inputs": {
+      "video": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/flight.mp4",
+      "episode": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/episode.json",
+      "trajectory": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/trace.csv",
+      "scene": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/route.wbt",
+      "policy": "assets/navigation-arrival-experimental.bin",
+      "objective": "auto",
+      "samples": 96
+    },
+    "video_metadata": {
+      "codec": "h264",
+      "width": 1280,
+      "height": 720,
+      "fps": 25.0,
+      "duration_s": 6.88,
+      "nb_frames": 172
+    },
+    "visual_metrics": {
+      "frames_decoded": 172,
+      "frames_analyzed": 86,
+      "stride": 2,
+      "visible_fraction": 1.0,
+      "frozen_pair_fraction": 0.0,
+      "median_frame_delta": 1.3354340277777779,
+      "frame_mean_min": 66.0810775756836,
+      "frame_mean_max": 165.44888305664062,
+      "frame_std_median": 39.75128746032715
+    },
+    "episode_summary": {
+      "world": "challenge_doorway_41001",
+      "seed": 41001,
+      "policy": "navigation-arrival-experimental.bin",
+      "goal_objective": "hold",
+      "success": true,
+      "collision": false,
+      "timeout": false,
+      "steps": 691,
+      "time_s": 6.91,
+      "final_error_m": 0.291938,
+      "goal_dwell_s": 0.2,
+      "final_world_speed_mps": 0.450406,
+      "goal_radius_entry_count": 1,
+      "movie_recording": true,
+      "movie_failed": false,
+      "movie_bytes": 7247993,
+      "trajectory_samples": 691
+    },
+    "hashes": {
+      "video_sha256": "d6999483d47ead85787047cff1e2e7b5b47debb4e68791f53895491fbb6190a2",
+      "video_bytes": 7247993,
+      "episode_sha256": "52763af0d15c64f11eaa20e1274d007932eb432561638e5572e36dcc078a707d",
+      "scene_sha256": "cf8bcf5cc32080c4257551b2c4bf803fb3a98a47b1df7c87ef891b859f414441",
+      "scene_metadata_sha256": "78d08e37eb9e92c4c214dc5b282a4915a5fd7503f8bf1476f07bfd077cb3ae40",
+      "trajectory_sha256": "370bd4f627b0e205a32ce2445166d82147b4a7c7ec048672342f4b3fd682e83c",
+      "policy_sha256": "ab590a63fcea7bf035318e2e0fc52392eaafc8b6c4f1c00b87e4768db107b548"
+    },
+    "thresholds": {
+      "goal_radius_m": {
+        "value": 0.35,
+        "source": "webots/controllers/raptor_webots/raptor_webots.cpp:435,457 (inside_goal / entry success); frozen scorer constant"
+      },
+      "hold_speed_max_mps": {
+        "value": 0.5,
+        "source": "webots/controllers/raptor_webots/raptor_webots.cpp:446,459; frozen scorer constant"
+      },
+      "hold_dwell_min_s": {
+        "value": 0.2,
+        "source": "webots/controllers/raptor_webots/raptor_webots.cpp:459 (0.2f-1e-6f); frozen scorer constant"
+      },
+      "visible_mean_min": {
+        "value": 2.0,
+        "source": "calibrated: flat-black x264 frames measure mean 0.000; frame 0 of a real Webots render measures mean 141"
+      },
+      "visible_std_min": {
+        "value": 1.0,
+        "source": "calibrated: codec noise on flat black measures spatial std 0.055; real render measures std 36"
+      },
+      "visible_frac_above16_min": {
+        "value": 0.01,
+        "source": "calibrated: flat-black frames light 0.01% of pixels above luma 16; real render lights 99.98%"
+      },
+      "visible_fraction_required": {
+        "value": 0.9,
+        "source": "a watchable run must be visibly rendered nearly throughout; margin covers fades/overlays"
+      },
+      "frozen_pair_fraction_max": {
+        "value": 0.98,
+        "source": "rejects static-image loops; tolerance allows a steady hover stretch inside an otherwise moving flight"
+      },
+      "frame_min_width": {
+        "value": 320,
+        "source": "watchability floor"
+      },
+      "frame_min_height": {
+        "value": 180,
+        "source": "watchability floor"
+      },
+      "frames_min": {
+        "value": 2,
+        "source": "a single frame is not a run"
+      },
+      "duration_ratio_min": {
+        "value": 0.5,
+        "source": "video must cover the episode; Webots native movies run ~1.0x episode time"
+      },
+      "duration_ratio_max": {
+        "value": 2.0,
+        "source": "guards against pairing the movie with an unrelated episode receipt"
+      },
+      "trace_goal_error_tol_m": {
+        "value": 0.005,
+        "source": "trace goal_error column is written at 6 significant digits; recompute from pose+goal"
+      },
+      "trace_step_gap_max": {
+        "value": 100,
+        "source": "sparse traces log every 100 steps (raptor_webots.cpp:449); dense traces log every step"
+      }
+    },
+    "checks": [
+      {
+        "id": "probe",
+        "status": "pass",
+        "detail": "container parsed",
+        "measured": {
+          "codec": "h264",
+          "width": 1280,
+          "height": 720,
+          "fps": 25.0,
+          "duration_s": 6.88,
+          "nb_frames": 172
+        },
+        "threshold": null
+      },
+      {
+        "id": "dimensions",
+        "status": "pass",
+        "detail": "frame dimensions usable",
+        "measured": {
+          "width": 1280,
+          "height": 720
+        },
+        "threshold": {
+          "min_width": 320,
+          "min_height": 180
+        }
+      },
+      {
+        "id": "decode",
+        "status": "pass",
+        "detail": "every frame decoded cleanly",
+        "measured": {
+          "frames_decoded": 172,
+          "stride": 2,
+          "frames_analyzed": 86
+        },
+        "threshold": null
+      },
+      {
+        "id": "frame_count",
+        "status": "pass",
+        "detail": "decoded frame count matches container",
+        "measured": {
+          "decoded": 172
+        },
+        "threshold": null
+      },
+      {
+        "id": "visible_frames",
+        "status": "pass",
+        "detail": "sampled frames are visibly rendered",
+        "measured": {
+          "visible_fraction": 1.0,
+          "samples": 86
+        },
+        "threshold": {
+          "min": 0.9
+        }
+      },
+      {
+        "id": "temporal_content",
+        "status": "pass",
+        "detail": "frame content changes over time",
+        "measured": {
+          "frozen_pair_fraction": 0.0,
+          "median_frame_delta": 1.3354340277777779
+        },
+        "threshold": {
+          "max": 0.98
+        }
+      },
+      {
+        "id": "episode",
+        "status": "pass",
+        "detail": "episode receipt parsed",
+        "measured": {
+          "path": "/Users/muadhsambul/RL/webots/results/navigation-arrival-experimental/challenge_doorway_41001-seed-41001-hold-recording-trajectory/episode.json"
+        },
+        "threshold": null
+      },
+      {
+        "id": "objective_declared",
+        "status": "pass",
+        "detail": "evaluating hold objective",
+        "measured": {
+          "objective": "hold"
+        },
+        "threshold": null
+      },
+      {
+        "id": "success",
+        "status": "pass",
+        "detail": "episode reports success=true",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "collision",
+        "status": "pass",
+        "detail": "episode reports collision=false",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "timeout",
+        "status": "pass",
+        "detail": "episode did not time out",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "episode_progress",
+        "status": "pass",
+        "detail": "episode recorded motion",
+        "measured": {
+          "steps": 691,
+          "time_s": 6.91
+        },
+        "threshold": null
+      },
+      {
+        "id": "goal_radius",
+        "status": "pass",
+        "detail": "hold objective: final_error_m inside goal radius",
+        "measured": {
+          "final_error_m": 0.291938
+        },
+        "threshold": {
+          "goal_radius_m": 0.35
+        }
+      },
+      {
+        "id": "goal_entry",
+        "status": "pass",
+        "detail": "goal radius entry recorded within episode time",
+        "measured": {
+          "entries": 1,
+          "first_entry_s": 6.72
+        },
+        "threshold": null
+      },
+      {
+        "id": "hold_dwell",
+        "status": "pass",
+        "detail": "dwell requirement satisfied",
+        "measured": {
+          "goal_dwell_s": 0.2
+        },
+        "threshold": {
+          "min_s": 0.2
+        }
+      },
+      {
+        "id": "hold_speed",
+        "status": "pass",
+        "detail": "final speed within hold limit",
+        "measured": {
+          "final_world_speed_mps": 0.450406
+        },
+        "threshold": {
+          "max_mps": 0.5
+        }
+      },
+      {
+        "id": "movie_receipt",
+        "status": "pass",
+        "detail": "episode claims a native Webots movie that completed",
+        "measured": {
+          "movie_failed": false
+        },
+        "threshold": null
+      },
+      {
+        "id": "movie_bytes",
+        "status": "pass",
+        "detail": "video size matches episode movie_bytes",
+        "measured": {
+          "bytes": 7247993
+        },
+        "threshold": null
+      },
+      {
+        "id": "movie_file",
+        "status": "pass",
+        "detail": "video filename matches episode movie_file",
+        "measured": null,
+        "threshold": null
+      },
+      {
+        "id": "duration_match",
+        "status": "pass",
+        "detail": "video duration covers the episode",
+        "measured": {
+          "video_duration_s": 6.88,
+          "episode_time_s": 6.91,
+          "ratio": 0.9956584659913169
+        },
+        "threshold": {
+          "range": [
+            0.5,
+            2.0
+          ]
+        }
+      },
+      {
+        "id": "route_episode_consistency",
+        "status": "pass",
+        "detail": "route.wbt customData agrees with episode receipt",
+        "measured": {
+          "fields_checked": [
+            "seed",
+            "policy",
+            "goal_objective",
+            "movie_file"
+          ]
+        },
+        "threshold": null
+      },
+      {
+        "id": "trajectory",
+        "status": "pass",
+        "detail": "trajectory trace parsed",
+        "measured": {
+          "rows": 691,
+          "columns": [
+            "step",
+            "time_s",
+            "x",
+            "y",
+            "z",
+            "vx",
+            "vy",
+            "vz",
+            "target_vx",
+            "target_vy",
+            "target_vz",
+            "goal_error",
+            "q_w",
+            "q_x",
+            "q_y",
+            "q_z",
+            "goal_dwell_s",
+            "actual_world_speed_mps"
+          ],
+          "last_step": 690,
+          "last_time_s": 6.91
+        },
+        "threshold": null
+      },
+      {
+        "id": "trace_goal_error",
+        "status": "pass",
+        "detail": "logged goal_error matches pose recomputed against route goal",
+        "measured": {
+          "max_abs_diff_m": 8.89865665554268e-06
+        },
+        "threshold": {
+          "tol_m": 0.005
+        }
+      },
+      {
+        "id": "trace_min_goal_error",
+        "status": "pass",
+        "detail": "minimum goal error observed in trace (informational)",
+        "measured": {
+          "min_goal_error_m": 0.2919355279685056
+        },
+        "threshold": null
+      },
+      {
+        "id": "trace_pairing",
+        "status": "pass",
+        "detail": "trace step coverage consistent with episode (sparse or dense logging)",
+        "measured": {
+          "trace_last_step": 690,
+          "episode_steps": 691
+        },
+        "threshold": {
+          "max_gap": 100
+        }
+      },
+      {
+        "id": "trace_final_state",
+        "status": "pass",
+        "detail": "dense trace final state matches episode final_error_m",
+        "measured": {
+          "diff_m": 2.4720314943937893e-06
+        },
+        "threshold": {
+          "tol_m": 0.05
+        }
+      },
+      {
+        "id": "policy",
+        "status": "pass",
+        "detail": "policy binary provided",
+        "measured": {
+          "path": "assets/navigation-arrival-experimental.bin"
+        },
+        "threshold": null
+      },
+      {
+        "id": "encoder_log",
+        "status": "missing",
+        "detail": "webots.log has no WEBOTS_MOVIE_DONE line",
+        "measured": null,
+        "threshold": null
+      }
+    ],
+    "check_counts": {
+      "pass": 27,
+      "missing": 1
+    },
+    "failed_checks": [],
+    "missing_receipts": [],
+    "encoder_warnings": [],
+    "limits": [
+      "Frame statistics prove the movie is visibly rendered, non-constant content; they cannot prove the pixels depict this specific flight. Pairing rests on duration ratio, movie_bytes/movie_file agreement, route/episode field agreement, and SHA-256 binding.",
+      "ffprobe/container metadata alone never satisfies any visual gate: every visual verdict comes from decoded pixel buffers.",
+      "A very dark but real scene would be judged by the calibrated visibility floor (mean>=2, std>=1, frac>16 >=1%); scenes darker than that would need recalibration, which must be argued from measurements, not convenience.",
+      "Non-16:9 sources keep native dimensions (no letterbox introduced); the visibility metrics operate on native frames.",
+      "Collision status is taken from the controller receipt (contact points are not in the trace); this verifier does not independently re-derive collisions.",
+      "A Blender reconstruction from recorded poses is accepted only when labeled reconstructed_simulation (trajectory receipt or explicit --provenance), never as camera footage."
+    ],
+    "tool": {
+      "path": "/Users/muadhsambul/RL/webots/verify_flight_videos.py",
+      "sha256": "a9e089a866ab68ffddb24e53ac912cf0f10f6a9c2e75c172bd9c4ebccb24d1a0",
+      "version": "1.0.0",
+      "python": "3.14.7",
+      "ffmpeg": "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers"
+    }
+  },
+  "input_sha256": {
+    "flight.mp4": "d6999483d47ead85787047cff1e2e7b5b47debb4e68791f53895491fbb6190a2",
+    "view-at-1s.jpg": "ec5cd0971de8f6a2eba8921347ea0aa5f627c0d2c7ca5b1f639e84667ac016c4",
+    "trace.csv": "370bd4f627b0e205a32ce2445166d82147b4a7c7ec048672342f4b3fd682e83c",
+    "episode.json": "52763af0d15c64f11eaa20e1274d007932eb432561638e5572e36dcc078a707d",
+    "route.wbt": "cf8bcf5cc32080c4257551b2c4bf803fb3a98a47b1df7c87ef891b859f414441",
+    "scene-metadata.json": "78d08e37eb9e92c4c214dc5b282a4915a5fd7503f8bf1476f07bfd077cb3ae40",
+    "webots.log": "3a55dab64c7ab106594d36ad21a96a936900ff8d7cae0a2e0b275992e9046f96"
+  }
+}

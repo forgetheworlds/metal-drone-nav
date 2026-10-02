@@ -1,0 +1,73 @@
+{
+  "schema": "native-webots-flight-videos-v1",
+  "provenance": "Unmodified Webots R2025a Supervisor movie output of the live main 3D view",
+  "capture": "1280x720,25fps,realtime,quality95; actual opaque scene; Supervisor camera follows actual GPS body position",
+  "observer_camera_offset_world_m": [
+    -1.2,
+    -1.6,
+    0.8
+  ],
+  "trajectory_hz": 100,
+  "physics_step_ms": 1,
+  "raptor_period_ms": 10,
+  "navigation_period_ms": 50,
+  "rl_port": 23456,
+  "visual_review": "Root inspected native snapshots and decoded frames before/within/after doorway crossings and table passage. Automated checks detect blank frames but do not establish airframe or physics fidelity.",
+  "clips": [
+    {
+      "name": "doorway",
+      "video": "artifacts/videos/native-doorway.mp4",
+      "proof": "evidence/inputs/native-flight-videos/doorway-proof.json",
+      "objective": "hold",
+      "success": true,
+      "collision": false,
+      "time_s": 6.91,
+      "video_sha256": "d6999483d47ead85787047cff1e2e7b5b47debb4e68791f53895491fbb6190a2",
+      "post_recording_blank_frame_check": {
+        "passed": true,
+        "decoder_exit_code": 0,
+        "near_black_duration_s": 0,
+        "maximum_allowed_s": 0.2,
+        "decoder": "ffmpeg blackdetect; all frames decoded",
+        "scope": "blank-frame check; inspect drone visibility separately"
+      }
+    },
+    {
+      "name": "connected-rooms",
+      "video": "artifacts/videos/native-connected-rooms.mp4",
+      "proof": "evidence/inputs/native-flight-videos/connected-rooms-proof.json",
+      "objective": "entry",
+      "success": true,
+      "collision": false,
+      "time_s": 5.23,
+      "video_sha256": "5e0069a1d677d78a7ed755488a025e1230e9d889a349a4113da8743256543704",
+      "post_recording_blank_frame_check": {
+        "passed": true,
+        "decoder_exit_code": 0,
+        "near_black_duration_s": 0,
+        "maximum_allowed_s": 0.2,
+        "decoder": "ffmpeg blackdetect; all frames decoded",
+        "scope": "blank-frame check; inspect drone visibility separately"
+      }
+    }
+  ],
+  "source_sha256": {
+    "webots/benchmark.py": "169d5b8e5ea2b0ea955fe988b8af2a61c55f45ab7e20f053ad9d9d14d36f608d",
+    "webots/controllers/raptor_webots/raptor_webots.cpp": "6fbe9d60459eb4c2216ba317ea4fb1773e961b501034581d5599338b069e5ed5",
+    "webots/protos/RaptorCrazyflie.proto": "ea23cf4e1adf13b320f4230e4a6c931cb621eb251742113b164ab0d3c3d27edf",
+    "assets/navigation-arrival-experimental.bin": "ab590a63fcea7bf035318e2e0fc52392eaafc8b6c4f1c00b87e4768db107b548",
+    "assets/navigation-rooms-experimental.bin": "234c776de8dec15e9fb01bd2d718581356e67426c30c721472f048a1ed7a9282",
+    "webots/verify_flight_videos.py": "a9e089a866ab68ffddb24e53ac912cf0f10f6a9c2e75c172bd9c4ebccb24d1a0"
+  },
+  "limitations": [
+    "Two selected successful examples, not a generalization rate.",
+    "Room policy selected on development scenes; final split untouched.",
+    "Room success is first goal entry at final speed1.56434m/s, not a stable stop.",
+    "Airframe visualization uses simple primitives, not verified hardware CAD.",
+    "Collision uses a conservative0.18m sphere; clean depth and ideal ego sensors; unmodeled aerodynamic effects remain.",
+    "Discarded partial-black native capture preserved locally in results/native-recording-failures/doorway-partial-black.",
+    "Blender reconstruction artifacts are separate and do not satisfy this native recording request."
+  ],
+  "recording_source_commit": "6f5cd40",
+  "reproduction_instructions": "webots/README.md#native-scene-recordings"
+}
