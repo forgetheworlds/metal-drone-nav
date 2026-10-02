@@ -41,6 +41,7 @@ struct Config {
     float speed=1.5f;
     float distance=4.0f;
     float range_plane_x=2.0f;
+    bool sensor_audit=false;
     bool velocity_reference_is_world=false;
     float goal[3]={4,0,1.5f};
     float velocity[3]={0,0,0};
@@ -69,6 +70,7 @@ Config parse_config(const char* custom) {
             else if(key=="speed")parse_float(value,c.speed);
             else if(key=="distance")parse_float(value,c.distance);
             else if(key=="range_plane_x")parse_float(value,c.range_plane_x);
+            else if(key=="sensor_audit")c.sensor_audit=(value=="1"||value=="true");
             else if(key=="velocity_frame")c.velocity_reference_is_world=(value=="world");
             else if(key=="goal") {
                 size_t at=0;
@@ -218,6 +220,7 @@ int main(int argc,char** argv) {
     std::fill(current_ranges,current_ranges+320,kRangeMax);std::fill(pooled,pooled+80,kRangeMax);std::fill(previous_pooled,previous_pooled+80,kRangeMax);
     std::fill(range_ring,range_ring+8*320,kRangeMax);std::fill(pose_ring,pose_ring+8*12,0.0f);
     uint32_t capture_count=0,latest_frame=0,valid_frames=0;
+    bool sensor_audit_written=false;
     const uint32_t max_steps=config.max_steps;
     uint32_t steps=0;int completed=false,success=false,collision=false,timeout=false;
     double path=0.0,tracking_squared=0.0,minimum_sensor_range=kRangeMax;
@@ -258,6 +261,29 @@ int main(int argc,char** argv) {
         if(new_depth){
             const float* image=wb_range_finder_get_range_image(depth);
             if(image){normalize_ranges(image,width,height,hfov,current_ranges);
+                if(config.sensor_audit&&!sensor_audit_written){
+                    const double* camera_position=wb_supervisor_node_get_position(depth_node);
+                    const double* camera_rotation=wb_supervisor_node_get_orientation(depth_node);
+                    std::ofstream audit(result_dir/"range-ray-audit.json",std::ios::trunc);
+                    audit<<"{\"schema\":\"webots-native-range-audit-v1\",\"step\":"<<steps
+                         <<",\"time_s\":"<<current_time<<",\"width\":"<<width<<",\"height\":"<<height
+                         <<",\"horizontal_fov_rad\":"<<hfov<<",\"native_vertical_tangent\":"
+                         <<std::tan(0.5f*hfov)*float(height)/float(width)<<",\"body_position_gps_xyz_m\":["
+                         <<position[0]<<','<<position[1]<<','<<position[2]<<"],\"camera_position_supervisor_xyz_m\":["
+                         <<camera_position[0]<<','<<camera_position[1]<<','<<camera_position[2]<<"],\"body_rotation_sensor_row_major\":[";
+                    for(int i=0;i<9;i++){if(i)audit<<',';audit<<rotation[i];}
+                    audit<<"],\"camera_rotation_supervisor_row_major\":[";
+                    for(int i=0;i<9;i++){if(i)audit<<',';audit<<camera_rotation[i];}
+                    audit<<"],\"native_axial_depth_m\":[";
+                    for(int i=0;i<width*height;i++){
+                        if(i)audit<<',';
+                        audit<<(std::isfinite(image[i])?image[i]:12.0f);
+                    }
+                    audit<<"],\"normalized_ray_range_m\":[";
+                    for(int i=0;i<width*height;i++){if(i)audit<<',';audit<<current_ranges[i];}
+                    audit<<"]}\n";audit.flush();audit.close();
+                    sensor_audit_written=true;
+                }
                 if(config.phase=="range-calibrate"){
                     float image_min=kRangeMax;
                     for(int k=0;k<width*height;k++)if(std::isfinite(image[k]))image_min=std::fmin(image_min,image[k]);

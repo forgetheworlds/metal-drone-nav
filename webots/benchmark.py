@@ -32,7 +32,9 @@ def with_custom_data(source: str, updates: dict[str, str]) -> str:
     return source[: match.start()] + replacement + source[match.end() :]
 
 
-def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, port: int = 23456) -> dict:
+def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, port: int = 23456,
+            physics_step_ms: int = 1, motor_sampling: str = "average", physics_profile: str = "hover",
+            sensor_audit: bool = False) -> dict:
     base = WORLDS / f"{world_name}.wbt"
     if not base.is_file():
         raise FileNotFoundError(base)
@@ -44,8 +46,12 @@ def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, p
         "seed": str(seed),
         "policy": policy,
         "max_steps": str(steps),
+        "profile": physics_profile,
+        "motor_sampling": motor_sampling,
+        "sensor_audit": "1" if sensor_audit else "0",
     }
     source = base.read_text()
+    source = source.replace("basicTimeStep 10", f"basicTimeStep {physics_step_ms}", 1)
     world_parameters = {}
     if world_name == "a_to_b_offset_box":
         rng = random.Random(seed)
@@ -59,7 +65,8 @@ def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, p
     world.write_text(with_custom_data(source, updates))
     shutil.copy2(world, output_dir / "route.wbt")
     try:
-        for stale in (RESULTS / "last-run.json", RESULTS / "last-run-exit.marker", RESULTS / "last-run-trace.csv"):
+        for stale in (RESULTS / "last-run.json", RESULTS / "last-run-exit.marker", RESULTS / "last-run-trace.csv",
+                      RESULTS / "range-ray-audit.json"):
             stale.unlink(missing_ok=True)
         process = subprocess.run(
             [str(webots), f"--port={port}", "--minimize", "--batch", "--mode=fast", "--no-rendering", "--stdout", "--stderr", str(world)],
@@ -78,11 +85,16 @@ def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, p
         if not result_path.is_file() or not marker_path.is_file():
             raise RuntimeError(f"controller did not write its result marker; see {output_dir / 'webots.log'}")
         result = json.loads(result_path.read_text())
-        shutil.copy2(result_path, output_dir / "episode.json")
         shutil.copy2(marker_path, output_dir / "exit.marker")
         if trace_path.is_file():
             shutil.copy2(trace_path, output_dir / "trace.csv")
-        result.update(world=world_name, policy=Path(policy).name, seed=seed, **world_parameters)
+        audit_path = RESULTS / "range-ray-audit.json"
+        if sensor_audit and audit_path.is_file():
+            shutil.copy2(audit_path, output_dir / "range-ray-audit.json")
+        result.update(world=world_name, policy=Path(policy).name, seed=seed,
+                      physics_step_ms=physics_step_ms, motor_sampling=motor_sampling,
+                      physics_profile=physics_profile, **world_parameters)
+        (output_dir / "episode.json").write_text(json.dumps(result, indent=2) + "\n")
         return result
     finally:
         world.unlink(missing_ok=True)
@@ -96,6 +108,10 @@ def main() -> int:
     parser.add_argument("--policies", default="../assets/navigation.bin")
     parser.add_argument("--steps", type=int, default=800)
     parser.add_argument("--port", type=int, default=23456, help="isolated Webots controller port")
+    parser.add_argument("--physics-step-ms", type=int, default=1)
+    parser.add_argument("--motor-sampling", choices=("end", "average"), default="average")
+    parser.add_argument("--physics-profile", default="hover")
+    parser.add_argument("--sensor-audit", action="store_true", help="save one native RangeFinder frame and capture pose for raycast audit")
     args = parser.parse_args()
     if not args.webots.is_file():
         parser.error(f"Webots executable not found: {args.webots}")
@@ -105,12 +121,15 @@ def main() -> int:
             for seed_text in args.seeds.split(","):
                 seed = int(seed_text)
                 print(f"run policy={policy} world={world} seed={seed}", flush=True)
-                rows.append(run_one(args.webots, world, seed, policy, args.steps, args.port))
+                rows.append(run_one(args.webots, world, seed, policy, args.steps, args.port,
+                                    args.physics_step_ms, args.motor_sampling, args.physics_profile,
+                                    args.sensor_audit))
     summary = RESULTS / "benchmark.csv"
     fields = [
         "policy", "world", "seed", "success", "collision", "timeout", "steps", "time_s",
         "path_m", "final_error_m", "peak_speed_mps", "min_sensor_range_m", "altitude_min_m",
         "altitude_max_m", "tracking_rms_mps", "sensor_updates", "navigation_loaded", "box_y_offset_m",
+        "physics_step_ms", "motor_sampling", "physics_profile",
     ]
     accumulated: dict[tuple[str, str, str], dict] = {}
     if summary.exists():

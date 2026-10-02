@@ -20,6 +20,20 @@ Built on Apple M3 (10 GPU cores, 16 GB unified memory). Numerical parity is chec
 
 ---
 
+## Current generalization work
+
+Numerical parity does not establish a realistic vehicle or transferable navigation. The richer development bank still exposes major failures: the selected source policies do not solve bent hallways or connected rooms. The final bank split remains untouched.
+
+The next pipeline experiment varies start position, 3D goal direction, yaw, initial velocity, mass, inertia, rotor thrust gain and motor lag. Arrival requires distance ≤0.35 m and actual speed ≤0.5 m/s for 0.2 s. The dynamics ranges are declared stress settings, not identified hardware uncertainty. Contact still uses the historical 18 cm sphere; a separate pose-aware mechanical model is an audit, not a changed scoring rule.
+
+A single open-room training run used 4.096 million transitions in 34.75 s. Its selected checkpoint reached 128/128 on a fresh open-room seed under nominal and varied dynamics, compared with 95/128 for the original policy. Under varied dynamics, mean successful arrival time fell from 8.19 to 4.39 s. New near-goal tasks also reached 128/128. These are foundation results, not general navigation proof.
+
+The candidate is **not a replacement**: the old tabletop test regressed to 101/128, and the richer development bank remained 25/90 with zero corner or connected-room successes. The original, static and moving-threat policies are preserved. Training curves, per-episode results, source hashes and limits are in [the arrival experiment evidence](evidence/inputs/arrival-training/manifest.json).
+
+Independent Webots runs now use ODE physics, native RangeFinder sensing, RAPTOR and Propeller motors at 1 ms physics / 10 ms control / 50 ms navigation periods. Across 36 short static episodes, the original policy reached 16/18 and the static policy 14/18, with two contacts and four timeouts overall. Both passed all six table cases; mixed clutter remains a failure. Sensor origin, sampling and actuator startup still differ from Metal. See [the full protocol and failures](docs/BENCHMARKS.md#independent-webots-transfer-check) and [raw evidence](evidence/inputs/webots-raptor-1ms-average/manifest.json).
+
+Common-command pulse tests separated actuator sampling errors from plant errors. Interval-average thrust and a 1 ms ODE step reduced the roll/pitch pose discrepancy to below 0.2 mm on those tests. This aligns two idealized plants; it does not validate missing aerodynamics, hardware thrust or noisy state estimation.
+
 ## Headline results
 
 ### Performance
@@ -210,13 +224,13 @@ Actor weights cannot be loaded across different input dimensions.
 
 This is stated plainly because it matters more than the scores:
 
-- **Simulation only.** Real-flight performance has **not** been tested. There is no sensor front-end and no flight-controller connection in this repository.
+- **Simulation only.** Real-flight performance has **not** been tested. The Webots sensor front-end is implemented; hardware stereo and a physical flight-controller connection remain unvalidated.
 - **The geometry-only baseline is strong and sometimes wins.** Mode 13 (no learned residual) reaches 96.1% on held two-doorways vs 89.1% for the learned mode 17, and 91.4% vs 89.8% on mixed. Learning clearly adds value on table/counter (96.9% vs 74.2%) and moving spheres, but it is *not* uniformly better than the prior it builds on. Both are reported side by side rather than only the flattering number.
 - **Doorway performance is sensitive to command delay** (50 ms command delay alone: 85.2% → 76.6% on held two-door).
 - **Desired speed is bounded; actual vehicle speed can overshoot it.**
 - **Wind is a force-equivalent simulator disturbance**, not a measured wind velocity.
-- **Transfer to real sensors is an open problem.** Depth-domain gap between simulated and stereo depth is a known issue in the literature (Depth Transfer, RA-L 2025) and is out of scope here.
-- **Webots transfer is not validated.** Camera calibration and integration remain in progress; no Webots generalization result is included here.
+- **Transfer to real sensors is an open problem.** Depth-domain gap between simulated and stereo depth is a known issue in the literature (Depth Transfer, RA-L 2025) and remains required work for the current goal.
+- **Webots transfer is limited to the recorded static matrix.** This is independent simulator evidence with ideal ego sensors, remaining startup/sensor differences, and unresolved failures. It is not broad generalization or hardware validation.
 - **No GR2PO experiment has been run.** The learning results in this repository are PPO results.
 
 ---

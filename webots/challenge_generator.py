@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent
 WORLDS = ROOT / "worlds"
 RESULTS = ROOT / "results"
 BASE_WORLD = WORLDS / "a_to_b.wbt"
+BOUNDED_WORLD = WORLDS / "a_to_b_bounded.wbt"
 BODY_RADIUS_M = 0.18
 PLANNER_MARGIN_M = 0.04
 GRID_STEP_M = 0.2
@@ -183,7 +184,8 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def save_run_manifest(policy: str, world_name: str, seed: int) -> None:
+def save_run_manifest(policy: str, world_name: str, seed: int, physics_step_ms: int,
+                      motor_sampling: str, physics_profile: str) -> None:
     run_dir = RESULTS / Path(policy).stem / f"{world_name}-seed-{seed}"
     actor = (ROOT / policy).resolve()
     if not actor.is_file():
@@ -208,6 +210,11 @@ def save_run_manifest(policy: str, world_name: str, seed: int) -> None:
         "policy": Path(policy).name,
         "family": json.loads(metadata_path.read_text())["family"],
         "seed": seed,
+        "physics_basic_time_step_ms": physics_step_ms,
+        "raptor_control_period_ms": 10,
+        "navigation_period_ms": 50,
+        "motor_sampling": motor_sampling,
+        "physics_profile": physics_profile,
         "files_sha256": {name: sha256(path) for name, path in files.items()},
         "collision_radius_m": 0.18,
         "range_noise_stddev_m": 0.0,
@@ -274,7 +281,7 @@ def render_trace_reconstruction(world_name: str, policy: str, seed: int) -> Path
     return output
 
 
-def create_case(family: str, seed: int, write_world: bool = True) -> tuple[str, dict]:
+def create_case(family: str, seed: int, write_world: bool = True, bounded_room: bool = False) -> tuple[str, dict]:
     if family == "doorway":
         obstacles, parameters = generate_doorway(seed)
     elif family == "table_overhang":
@@ -284,8 +291,8 @@ def create_case(family: str, seed: int, write_world: bool = True) -> tuple[str, 
     else:
         raise ValueError(f"unknown family: {family}")
     witness = route_witness(obstacles)
-    name = f"challenge_{family}_{seed}"
-    source = BASE_WORLD.read_text()
+    name = f"challenge_{family}_{seed}{'_bounded' if bounded_room else ''}"
+    source = (BOUNDED_WORLD if bounded_room else BASE_WORLD).read_text()
     source = source.replace("# WEBOTS_OBSTACLES_INSERTION_POINT", world_nodes(obstacles), 1)
     source = re.sub(r'title "[^"]*"', f'title "{name}"', source, count=1)
     source = re.sub(r'customData "[^"]*"',
@@ -299,6 +306,7 @@ def create_case(family: str, seed: int, write_world: bool = True) -> tuple[str, 
         "schema": "webots-challenge-v1",
         "family": family,
         "seed": seed,
+        "bounded_room": bounded_room,
         "start_xyz_m": list(START),
         "goal_xyz_m": list(GOAL),
         "body_collision_radius_m": BODY_RADIUS_M,
@@ -309,6 +317,8 @@ def create_case(family: str, seed: int, write_world: bool = True) -> tuple[str, 
                           "length_m": round(witness_length, 3), "points_xyz_m": witness},
         "actor_observation_policy": "No obstacle geometry or witness points are provided in Robot.customData or policy inputs.",
     }
+    if bounded_room:
+        metadata["room_bounds_m"] = {"x": [-2, 14], "y": [-5, 5], "z": [0, 5]}
     meta_path = RESULTS / "challenges" / f"{name}.json"
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.write_text(json.dumps(metadata, indent=2) + "\n")
@@ -322,19 +332,23 @@ def main() -> int:
     parser.add_argument("--policies", default="../assets/navigation.bin,../assets/navigation-static.bin")
     parser.add_argument("--run", action="store_true", help="run generated worlds with Webots")
     parser.add_argument("--summary-only", action="store_true", help="summarize saved episodes without launching Webots")
+    parser.add_argument("--bounded-room", action="store_true", help="use walls at the exact Metal bounds [-2,14] x [-5,5] x [0,5]")
     parser.add_argument("--webots", type=Path, default=Path("/Users/muadhsambul/embodied/work/Webots.app/Contents/MacOS/webots"))
     parser.add_argument("--port", type=int, default=23456, help="isolated Webots controller port")
+    parser.add_argument("--physics-step-ms", type=int, default=1)
+    parser.add_argument("--motor-sampling", choices=("end", "average"), default="average")
+    parser.add_argument("--physics-profile", default="hover")
     args = parser.parse_args()
     cases = []
     for family in args.families.split(","):
         for seed_text in args.seeds.split(","):
             seed = int(seed_text)
-            name = f"challenge_{family}_{seed}"
+            name = f"challenge_{family}_{seed}{'_bounded' if args.bounded_room else ''}"
             metadata_path = RESULTS / "challenges" / f"{name}.json"
             if args.summary_only and metadata_path.is_file():
                 cases.append((name, json.loads(metadata_path.read_text())))
             else:
-                cases.append(create_case(family, seed, write_world=not args.summary_only))
+                cases.append(create_case(family, seed, write_world=not args.summary_only,bounded_room=args.bounded_room))
     print(f"generated {len(cases)} cases with valid 3D route witnesses", flush=True)
     if not args.run and not args.summary_only:
         print("Pass --run to execute each case with the requested policies.")
@@ -347,8 +361,10 @@ def main() -> int:
             for world_name, metadata in cases:
                 seed = int(metadata["seed"])
                 print(f"run policy={policy} family={metadata['family']} seed={seed}", flush=True)
-                result = run_one(args.webots, world_name, seed, policy, 800, args.port)
-                save_run_manifest(policy, world_name, seed)
+                result = run_one(args.webots, world_name, seed, policy, 800, args.port,
+                                 args.physics_step_ms, args.motor_sampling, args.physics_profile)
+                save_run_manifest(policy, world_name, seed, args.physics_step_ms,
+                                  args.motor_sampling, args.physics_profile)
                 result.update(
                     family=metadata["family"],
                     obstacle_count=len(metadata["obstacles"]),
@@ -381,7 +397,8 @@ def main() -> int:
     fields = ["policy", "world", "seed", "success", "collision", "timeout", "steps", "time_s",
               "path_m", "final_error_m", "peak_speed_mps", "min_sensor_range_m", "altitude_min_m",
               "altitude_max_m", "tracking_rms_mps", "sensor_updates", "navigation_loaded", "family",
-              "obstacle_count", "route_witness_length_m", "generator_parameters"]
+              "obstacle_count", "route_witness_length_m", "generator_parameters", "physics_step_ms",
+              "motor_sampling", "physics_profile"]
     summary = RESULTS / "challenge-matrix.csv"
     with summary.open("w", newline="") as output:
         writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore", lineterminator="\n")
