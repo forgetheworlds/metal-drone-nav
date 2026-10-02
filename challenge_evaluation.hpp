@@ -51,6 +51,19 @@ struct Result {
     float mean_speed_mps = 0, peak_speed_mps = 0, min_clearance_m = 0;
 };
 
+struct BankScore {
+    uint64_t episodes=0, successes=0, collisions=0, timeouts=0;
+    std::array<uint64_t,3> family_episodes{}, family_successes{};
+    double successful_time_s=0;
+    double success_rate() const { return episodes?double(successes)/episodes:0; }
+    double worst_family_success() const {
+        double worst=1;
+        for(size_t i=0;i<3;i++) if(family_episodes[i])
+            worst=std::min(worst,double(family_successes[i])/family_episodes[i]);
+        return worst;
+    }
+};
+
 [[noreturn]] inline void fail(const std::string& message) {
     throw std::runtime_error("challenge bank: " + message);
 }
@@ -165,7 +178,16 @@ inline Level parse_level(NSDictionary* record, uint32_t line_number) {
     const char* expected_name = level.family == 14 ? "bent_hallway_corner" :
                                level.family == 15 ? "connected_rooms_offset_doors_furniture" :
                                                     "vertical_over_under_choice";
-    const char* expected_contract = level.family == 14 ? "connected partitions force north turn, east hall, then south turn" :
+    id transform_field=[record objectForKey:@"coordinate_transform"];
+    const std::string transform=transform_field?
+        required_string(transform_field,where + ".coordinate_transform"):"identity";
+    const bool mirrored=transform=="mirror_y";
+    if(transform!="identity" && !mirrored)
+        fail(where + " unsupported coordinate transform");
+    const char* corner_contract=mirrored?
+        "connected partitions force south turn, east hall, then north turn":
+        "connected partitions force north turn, east hall, then south turn";
+    const char* expected_contract = level.family == 14 ? corner_contract :
                                    level.family == 15 ? "offset doors with intermediate table detour" :
                                                         "cross low barrier above, overhang below, then choose over or under slab";
     if (level.family_name != expected_name || level.geometry_contract != expected_contract)
@@ -328,7 +350,7 @@ inline void write_csv_row(std::ofstream& file, const std::vector<std::string>& c
     file << '\n';
 }
 
-inline void run(Metal& metal, const std::string& checkpoint_path,
+inline BankScore run(Metal& metal, const std::string& checkpoint_path,
                 const std::string& bank_path, const std::string& split,
                 const std::string& output_path, uint32_t mode = 17,
                 float speed = 1.5f, uint32_t max_steps = 400) {
@@ -374,6 +396,7 @@ inline void run(Metal& metal, const std::string& checkpoint_path,
         "checkpoint_sha256", "bank_sha256", "world_source_sha256"});
 
     uint64_t total_success = 0, total_collision = 0, total_timeout = 0;
+    BankScore score;
     for (size_t begin = 0; begin < levels.size(); begin += kMaxBatch) {
         const uint32_t count = uint32_t(std::min<size_t>(kMaxBatch, levels.size() - begin));
         SimConfig config;
@@ -436,6 +459,12 @@ inline void run(Metal& metal, const std::string& checkpoint_path,
             total_success += run.successes;
             total_collision += run.collisions;
             total_timeout += run.timeouts;
+            score.episodes+=run.episodes;score.successes+=run.successes;
+            score.collisions+=run.collisions;score.timeouts+=run.timeouts;
+            score.successful_time_s+=run.success_time;
+            const size_t family_slot=level.family-14;
+            score.family_episodes.at(family_slot)+=run.episodes;
+            score.family_successes.at(family_slot)+=run.successes;
             write_csv_row(csv, {level.failure_id, level.scene_sha256, level.split,
                 uint_cell(level.family), level.family_name, uint_cell(level.seed),
                 uint_cell(level.base_seed), uint_cell(level.environment_index), number_cell(level.distance),
@@ -466,6 +495,86 @@ inline void run(Metal& metal, const std::string& checkpoint_path,
               << " timeout=" << double(total_timeout) / levels.size()
               << " output=" << output_path << " bank_sha256=" << bank_hash
               << " checkpoint_sha256=" << checkpoint_hash << "\n";
+    return score;
+}
+
+// Privileged route diagnostic, not navigation-policy performance. The saved
+// witness supplies intermediate goals. RAPTOR, motors, physics and collision
+// scoring remain live. This checks that geometrically valid routes are flyable.
+inline void run_witness(Metal& metal,const std::string& bank_path,
+                        const std::string& split,const std::string& output_path,
+                        float speed=1.0f,uint32_t max_steps=1200,
+                        const std::string& policy_checkpoint="") {
+    if(split=="final")fail("witness diagnostics use train/dev; leave final untouched");
+    if(!std::isfinite(speed) || speed<=0 || speed>1.5f || !max_steps)
+        fail("invalid witness speed/budget");
+    std::string bank_hash;
+    const auto levels=load_split(bank_path,split,
+        sha256_file(std::string(SOURCE_DIR)+"/world.hpp"),bank_hash);
+    std::vector<float> policy;
+    const bool standard_goal_script=policy_checkpoint=="goal-script";
+    if(!policy_checkpoint.empty() && !standard_goal_script) {
+        std::ifstream file(policy_checkpoint,std::ios::binary);
+        const auto header=read_checkpoint_header(file);
+        if(header.actor_count!=fixed_ppo::actor_param_count || header.config.velocity_contract!=1)
+            fail("waypoint diagnostic requires the guided actor and current velocity contract");
+        policy.resize(header.actor_count);
+        file.read(reinterpret_cast<char*>(policy.data()),policy.size()*sizeof(float));
+        if(!file || !std::all_of(policy.begin(),policy.end(),[](float x){return std::isfinite(x);}))
+            fail("waypoint actor weights invalid");
+    }
+    const std::string policy_hash=policy.empty()?"none":sha256_file(policy_checkpoint);
+    const std::filesystem::path output(output_path);
+    if(output.has_parent_path())std::filesystem::create_directories(output.parent_path());
+    std::ofstream csv(output_path);
+    if(!csv)fail("cannot write witness result");
+    const uint32_t control_mode=policy.empty()?(standard_goal_script?2:20):21;
+    const float acceptance=control_mode==20?.10f:.35f;
+    csv<<"failure_id,family,split,controller,privileged_route,speed_cap_mps,budget_s,success,collision,timeout,waypoints_reached,waypoints_total,elapsed_s,path_m,goal_error_m,min_clearance_m,bank_sha256,actor_sha256,waypoint_acceptance_m,control_mode\n";
+    uint32_t successes=0,collisions=0,timeouts=0;
+    for(const auto& level:levels) {
+        SimConfig config;config.n=1;config.family=0;config.mode=control_mode;
+        config.eval=1;config.seed=level.base_seed;config.distance=level.distance;
+        config.speed=speed;config.max_steps=max_steps;config.geometry_memory=policy.empty()?0:1;
+        Sim simulator(metal,config,1);
+        if(!policy.empty())std::memcpy(simulator.actor.contents,policy.data(),policy.size()*sizeof(float));
+        auto* world=static_cast<WWorld*>(simulator.worlds.contents);
+        auto* run=static_cast<SimRun*>(simulator.runs.contents);
+        auto* state=static_cast<RLPhysicsState*>(simulator.states.contents);
+        world[0]=level.world;
+        size_t waypoint=1;
+        for(uint32_t tick=0;tick<max_steps;tick++) {
+            if(run[0].collisions || run[0].timeouts)break;
+            if(run[0].successes) {
+                if(waypoint+1==level.witness_route.size())break;
+                waypoint++;
+                // Continue this single flight without resetting RAPTOR, pose,
+                // velocity, the persistent reference, or elapsed mission time.
+                run[0].successes=0;run[0].episodes=0;
+                run[0].success_time=0;run[0].final_progress=0;
+            }
+            for(uint32_t axis=0;axis<3;axis++)world[0].goal[axis]=level.witness_route[waypoint][axis];
+            auto commands=[metal.queue commandBuffer];
+            simulator.collect(commands,1);metal.finish(commands);
+        }
+        const bool success=run[0].successes && waypoint+1==level.witness_route.size();
+        const bool collision=run[0].collisions;
+        const bool timeout=!success && !collision;
+        const float dx=state[0].position[0]-level.world.goal[0];
+        const float dy=state[0].position[1]-level.world.goal[1];
+        const float dz=state[0].position[2]-level.world.goal[2];
+        successes+=success;collisions+=collision;timeouts+=timeout;
+        write_csv_row(csv,{level.failure_id,uint_cell(level.family),split,
+            "frozen_RAPTOR", "true",number_cell(speed),number_cell(max_steps*.05),
+            uint_cell(success),uint_cell(collision),uint_cell(timeout),
+            uint_cell(uint32_t(waypoint-1+success)),uint_cell(uint32_t(level.witness_route.size()-1)),
+            number_cell(run[0].elapsed),number_cell(run[0].path),number_cell(std::sqrt(dx*dx+dy*dy+dz*dz)),
+            number_cell(run[0].min_clearance),bank_hash,policy_hash,number_cell(acceptance),uint_cell(control_mode)});
+        csv.flush();if(!csv)fail("witness result write failed");
+    }
+    std::cout<<"witness_diagnostic privileged=true levels="<<levels.size()
+             <<" learned_local_policy="<<(!policy.empty())<<" success="<<successes<<" collision="<<collisions<<" timeout="<<timeouts
+             <<" speed="<<speed<<" budget_s="<<max_steps*.05<<" output="<<output_path<<"\n";
 }
 
 } // namespace challenge_evaluation

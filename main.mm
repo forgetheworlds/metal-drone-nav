@@ -423,17 +423,31 @@ static cpu_reference::Metrics cpu_reference_benchmark(uint32_t rollouts=1,
     return result;
 }
 
+struct ChallengeBankControl {
+    uint32_t enabled=0, bank_count=0, schedule_stride=0, horizon=0;
+};
+static_assert(sizeof(ChallengeBankControl)==16,"challenge bank control layout");
+
 struct Sim {
     Metal& m;SimConfig cfg;uint32_t horizon;
     id<MTLBuffer> states,runs,worlds,sensors,poses,commands,raptor,physics,actor,critic,obs,co,actions,logp,values,rewards,next_values,terminated,truncated,advantages,returns;
     std::vector<id<MTLBuffer>> configs;
     id<MTLComputePipelineState> reset_p,depth_p,observe_p,act_p,advance_p,actor_p;
     id<MTLBuffer> actor_workspace,env_count,memory_points,memory_clearances;
+    id<MTLBuffer> bank_worlds,bank_schedule,bank_control,bank_active_ids,bank_transition_ids;
     id<MTLComputePipelineState> memory_points_p,memory_candidates_p;
     bool simd_actor=true;
     Sim(Metal& metal,SimConfig config,uint32_t steps):m(metal),cfg(config),horizon(steps) {
         auto w=load_raptor();auto p=rl_physics_crazyflie_default();uint n=cfg.n;size_t rows=n*size_t(horizon);
         states=m.buffer(n*sizeof(RLPhysicsState));runs=m.buffer(n*sizeof(SimRun));worlds=m.buffer(n*sizeof(WWorld));sensors=m.buffer(n*8*320*4);poses=m.buffer(n*8*12*4);commands=m.buffer(n*8*4*4);raptor=m.buffer(sizeof(w),&w);physics=m.buffer(sizeof(p),&p);
+        // Disabled bank buffers keep ordinary procedural training unchanged.
+        // Bank training uploads a fixed table and a complete rollout reset schedule.
+        ChallengeBankControl bank_defaults;
+        bank_worlds=m.buffer(sizeof(WWorld));
+        bank_schedule=m.buffer(size_t(n)*(horizon+1)*sizeof(uint32_t));
+        bank_control=m.buffer(sizeof(bank_defaults),&bank_defaults);
+        bank_active_ids=m.buffer(size_t(n)*sizeof(uint32_t));
+        bank_transition_ids=m.buffer(rows*sizeof(uint32_t));
         fixed_ppo::ActorParams a;fixed_ppo::CriticParams c;uint seed=1789;
         auto normal=[&](){float u=std::max(wurand(seed),1e-7f);return std::sqrt(-2*std::log(u))*std::cos(6.2831853f*wurand(seed));};
         for(size_t i=0;i<fixed_ppo::actor_b1_offset;i++)a.values[i]=normal()*0.04f;
@@ -451,8 +465,8 @@ struct Sim {
         reset_p=m.pipeline("sim_reset");depth_p=m.pipeline("sim_depth");observe_p=m.pipeline("sim_observe");act_p=m.pipeline("sim_act");advance_p=m.pipeline("sim_advance");reset();
     }
     void set_config(SimConfig config){require(config.n==cfg.n,"cannot resize simulator");cfg=config;for(uint t=0;t<horizon;t++){cfg.tick=t;std::memcpy(configs[t].contents,&cfg,sizeof(cfg));}cfg.tick=0;}
-    void reset(){auto cb=[m.queue commandBuffer];m.dispatch(cb,reset_p,cfg.n,{states,runs,worlds,sensors,commands,raptor,physics,configs[0],poses},64);m.finish(cb);}
-    void collect(id<MTLCommandBuffer> cb,uint count=0){if(count==0)count=horizon;for(uint t=0;t<count;t++){auto c=configs[t%horizon];m.dispatch(cb,depth_p,cfg.n*320,{states,runs,worlds,sensors,physics,c,poses});if(cfg.geometry_memory){m.dispatch(cb,memory_points_p,cfg.n*640,{states,runs,sensors,poses,memory_points,physics,c});m.dispatch(cb,memory_candidates_p,cfg.n*85,{states,worlds,memory_points,memory_clearances,c});}m.dispatch(cb,observe_p,cfg.n,{states,runs,worlds,sensors,obs,co,physics,c,poses,memory_clearances},64);encode(m,cb,simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",simd_actor?((size_t(cfg.n)+7)/8)*256:cfg.n,{{obs,size_t(t%horizon)*cfg.n*fixed_ppo::actor_obs_dim*4},{actor,0},{actor_workspace,0},{actions,size_t(t%horizon)*cfg.n*4*4},{env_count,0}},simd_actor?256:64);m.dispatch(cb,act_p,cfg.n,{states,runs,worlds,obs,co,actor,critic,actions,logp,values,commands,physics,c},64);m.dispatch(cb,advance_p,cfg.n,{states,runs,worlds,sensors,commands,raptor,critic,rewards,next_values,terminated,truncated,physics,c},64);}}
+    void reset(){auto cb=[m.queue commandBuffer];m.dispatch(cb,reset_p,cfg.n,{states,runs,worlds,sensors,commands,raptor,physics,configs[0],poses,bank_worlds,bank_schedule,bank_control,bank_active_ids},64);m.finish(cb);}
+    void collect(id<MTLCommandBuffer> cb,uint count=0){if(count==0)count=horizon;for(uint t=0;t<count;t++){auto c=configs[t%horizon];m.dispatch(cb,depth_p,cfg.n*320,{states,runs,worlds,sensors,physics,c,poses});if(cfg.geometry_memory){m.dispatch(cb,memory_points_p,cfg.n*640,{states,runs,sensors,poses,memory_points,physics,c});m.dispatch(cb,memory_candidates_p,cfg.n*85,{states,worlds,memory_points,memory_clearances,c});}m.dispatch(cb,observe_p,cfg.n,{states,runs,worlds,sensors,obs,co,physics,c,poses,memory_clearances},64);encode(m,cb,simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",simd_actor?((size_t(cfg.n)+7)/8)*256:cfg.n,{{obs,size_t(t%horizon)*cfg.n*fixed_ppo::actor_obs_dim*4},{actor,0},{actor_workspace,0},{actions,size_t(t%horizon)*cfg.n*4*4},{env_count,0}},simd_actor?256:64);m.dispatch(cb,act_p,cfg.n,{states,runs,worlds,obs,co,actor,critic,actions,logp,values,commands,physics,c},64);m.dispatch(cb,advance_p,cfg.n,{states,runs,worlds,sensors,commands,raptor,critic,rewards,next_values,terminated,truncated,physics,c,bank_worlds,bank_schedule,bank_control,bank_active_ids,bank_transition_ids},64);}}
     void report(const std::string& label,double wall){const SimRun* r=(const SimRun*)runs.contents;uint64_t success=0,collision=0,timeout=0,ep=0;double time=0,path=0,total=0,progress=0;float clearance=12,peak=0;
         for(uint i=0;i<cfg.n;i++){success+=r[i].successes;collision+=r[i].collisions;timeout+=r[i].timeouts;ep+=r[i].episodes;time+=r[i].success_time;path+=r[i].total_path;total+=r[i].total_elapsed;progress+=r[i].final_progress;clearance=fmin(clearance,r[i].min_clearance);peak=fmax(peak,r[i].peak_speed);}
         std::cout<<label<<" episodes="<<ep<<" success="<<(ep?double(success)/ep:0)<<" collision="<<(ep?double(collision)/ep:0)<<" timeout="<<(ep?double(timeout)/ep:0)<<" progress="<<(ep?progress/ep:0)<<" mean_goal_time="<<(success?time/success:0)<<" mean_speed="<<(total?path/total:0)<<" peak_speed="<<peak<<" min_clearance="<<clearance<<" wall_s="<<wall<<"\n";
@@ -493,6 +507,31 @@ static void mixed_domain_tests(Metal& m) {
     }
     require(worst<3e-5f,"mixed-domain CPU/GPU observations differ");
     std::cout<<"mixed domains PASS clean/stress and flying reset CPU/GPU observation_error="<<worst<<"\n";
+}
+
+static void deployed_action_map_test(Metal& metal) {
+    if(fixed_ppo::actor_obs_dim!=184)return;
+    SimConfig config;config.n=32;config.family=4;config.eval=1;
+    config.speed=1.5f;config.distance=4;config.geometry_memory=1;
+    config.mode=17;Sim deployed(metal,config,1);
+    config.mode=22;Sim stochastic(metal,config,1);
+    for(uint32_t axis=0;axis<4;axis++)
+        static_cast<float*>(deployed.actor.contents)[fixed_ppo::actor_log_std_offset+axis]=-20;
+    std::memcpy(stochastic.actor.contents,deployed.actor.contents,deployed.actor.length);
+    auto commands=[metal.queue commandBuffer];
+    deployed.collect(commands,1);stochastic.collect(commands,1);metal.finish(commands);
+    const auto* expected=static_cast<const SimRun*>(deployed.runs.contents);
+    const auto* actual=static_cast<const SimRun*>(stochastic.runs.contents);
+    const float* observations=static_cast<const float*>(deployed.obs.contents);
+    float error=0;bool gate_active=false;
+    for(uint32_t env=0;env<config.n;env++) {
+        for(uint32_t pixel=0;pixel<20;pixel++)
+            gate_active|=observations[env*184+pixel]*12<=2.5f;
+        for(uint32_t axis=0;axis<4;axis++)
+            error=std::max(error,std::fabs(expected[env].previous_nav[axis]-actual[env].previous_nav[axis]));
+    }
+    require(gate_active && error<1e-6f,"stochastic deployment map differs from mode17 at negligible exploration");
+    std::cout<<"deployed action map PASS mode22 versus17 command_error="<<error<<"\n";
 }
 
 static void closed_loop_tests(Metal& m) {
@@ -586,7 +625,7 @@ static void loop_benchmark(Metal& m) {
         Sim sim(m,cfg,8);double batch=1e9,wall=1e9,sync=1e9;
         for(uint repeat=0;repeat<3;repeat++) {
             sim.reset();double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb);double g=m.finish(cb);batch=std::min(batch,g);wall=std::min(wall,seconds()-start);
-            sim.reset();start=seconds();for(uint t=0;t<8;t++){cb=[m.queue commandBuffer];auto c=sim.configs[t];m.dispatch(cb,sim.depth_p,n*320,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.physics,c,sim.poses});m.dispatch(cb,sim.observe_p,n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.obs,sim.co,sim.physics,c,sim.poses,sim.memory_clearances},64);encode(m,cb,sim.simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",sim.simd_actor?((size_t(n)+7)/8)*256:n,{{sim.obs,size_t(t)*n*fixed_ppo::actor_obs_dim*4},{sim.actor,0},{sim.actor_workspace,0},{sim.actions,size_t(t)*n*4*4},{sim.env_count,0}},sim.simd_actor?256:64);m.dispatch(cb,sim.act_p,n,{sim.states,sim.runs,sim.worlds,sim.obs,sim.co,sim.actor,sim.critic,sim.actions,sim.logp,sim.values,sim.commands,sim.physics,c},64);m.dispatch(cb,sim.advance_p,n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.commands,sim.raptor,sim.critic,sim.rewards,sim.next_values,sim.terminated,sim.truncated,sim.physics,c},64);m.finish(cb);}sync=std::min(sync,seconds()-start);
+            sim.reset();start=seconds();for(uint t=0;t<8;t++){cb=[m.queue commandBuffer];auto c=sim.configs[t];m.dispatch(cb,sim.depth_p,n*320,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.physics,c,sim.poses});m.dispatch(cb,sim.observe_p,n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.obs,sim.co,sim.physics,c,sim.poses,sim.memory_clearances},64);encode(m,cb,sim.simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",sim.simd_actor?((size_t(n)+7)/8)*256:n,{{sim.obs,size_t(t)*n*fixed_ppo::actor_obs_dim*4},{sim.actor,0},{sim.actor_workspace,0},{sim.actions,size_t(t)*n*4*4},{sim.env_count,0}},sim.simd_actor?256:64);m.dispatch(cb,sim.act_p,n,{sim.states,sim.runs,sim.worlds,sim.obs,sim.co,sim.actor,sim.critic,sim.actions,sim.logp,sim.values,sim.commands,sim.physics,c},64);m.dispatch(cb,sim.advance_p,n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.commands,sim.raptor,sim.critic,sim.rewards,sim.next_values,sim.terminated,sim.truncated,sim.physics,c,sim.bank_worlds,sim.bank_schedule,sim.bank_control,sim.bank_active_ids,sim.bank_transition_ids},64);m.finish(cb);}sync=std::min(sync,seconds()-start);
         }
         std::cout<<n<<","<<batch*1000<<","<<wall*1000<<","<<sync*1000<<","<<double(n)*8/wall<<"\n";
     }
@@ -797,6 +836,9 @@ struct PPOTrainer {
     id<MTLBuffer> d_means, d_log_stds, d_values, losses;
     id<MTLBuffer> actor_hidden_delta, actor_grad, critic_hidden_delta, critic_grad;
     id<MTLBuffer> actor_m, actor_v, critic_m, critic_v;
+    // Optional replay evidence. Copy before PPO normalization in the same
+    // command buffer; inspect only after the rollout and update complete.
+    id<MTLBuffer> raw_advantages=nil;
     id<MTLBuffer> actor_scale, critic_scale, metric_rows, metric_mean;
     id<MTLBuffer> rows_b, envs_b, horizon_b, gamma_b, lambda_b, gae_epsilon_b;
     id<MTLBuffer> clip_b, value_coef_b, entropy_coef_b, actor_count_b, critic_count_b;
@@ -889,7 +931,10 @@ struct PPOTrainer {
         if(path.empty())return;
         const std::filesystem::path checkpoint_path(path);
         if(checkpoint_path.has_parent_path())std::filesystem::create_directories(checkpoint_path.parent_path());
-        PpoCheckpointHeader h{};std::memcpy(h.magic,"PPOFIX1",7);h.version=6;
+        PpoCheckpointHeader h;
+        // The binary header has alignment padding. Initialize those bytes too
+        // so paired checkpoint hashes do not depend on the host stack.
+        std::memset(&h,0,sizeof(h));std::memcpy(h.magic,"PPOFIX1",7);h.version=6;
         h.actor_count=fixed_ppo::actor_param_count;h.critic_count=fixed_ppo::critic_param_count;
         h.horizon=sim.horizon;h.n=sim.cfg.n;h.family=family;h.base_seed=seed;h.completed_rollouts=completed_rollouts;
         h.optimizer_step=optimizer_step;h.config=sim.cfg;h.config.tick=0;
@@ -907,7 +952,15 @@ struct PPOTrainer {
     void rollout_update(id<MTLCommandBuffer> cb,uint32_t rollout_index) {
         dispatch(cb,gae_p,sim.cfg.n,{{sim.rewards,0},{sim.values,0},{sim.next_values,0},{sim.terminated,0},{sim.truncated,0},
                  {sim.advantages,0},{sim.returns,0},{horizon_b,0},{envs_b,0},{gamma_b,0},{lambda_b,0}},64);
+        if(raw_advantages) {
+            auto copy=[cb blitCommandEncoder];
+            [copy copyFromBuffer:sim.advantages sourceOffset:0 toBuffer:raw_advantages destinationOffset:0 size:sim.advantages.length];
+            [copy endEncoding];
+        }
         dispatch(cb,normalize_p,1,{{sim.advantages,0},{rows_b,0},{gae_epsilon_b,0}},1);
+        // Resume reconstructs this vector. Restore its canonical order before
+        // shuffling so the rollout seed fully determines minibatch order.
+        for(uint32_t batch=0;batch<starts.size();batch++)starts[batch]=batch*minibatch;
         std::mt19937 rng(0x9e3779b9u+rollout_index*0x85ebca6bu);std::shuffle(starts.begin(),starts.end(),rng);
         uint32_t update=0;
         for(uint32_t epoch=0;epoch<2;epoch++) {
@@ -1025,6 +1078,7 @@ static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode
 // Depends on Sim, SimRun, SimConfig, PpoCheckpointHeader and
 // read_checkpoint_header above.
 #include "challenge_evaluation.hpp"
+#include "challenge_training.hpp"
 
 static void challenge_bank_cli(Metal& m,int argc,char** argv) {
     require(argc>=6,"bank-eval CHECKPOINT BANK_JSONL SPLIT OUTPUT_CSV [MODE=17] [SPEED=1.5] [MAX_STEPS=400]");
@@ -1032,6 +1086,111 @@ static void challenge_bank_cli(Metal& m,int argc,char** argv) {
     const float speed=argc>7?std::stof(argv[7]):1.5f;
     const uint32_t max_steps=argc>8?uint32_t(std::stoul(argv[8])):400u;
     challenge_evaluation::run(m,argv[2],argv[3],argv[4],argv[5],mode,speed,max_steps);
+}
+
+// Controlled bank training uses the same PPO implementation and rollout size.
+// Only level selection changes between uniform and priority arms. The final
+// split is never loaded by the sampler or checkpoint selection.
+static void train_challenge_bank(Metal& metal, uint32_t iterations,
+                                 const std::string& bank_path,
+                                 const std::string& checkpoint,
+                                 const std::string& warmstart,
+                                 bool prioritized,uint32_t sampler_seed=42,uint32_t rehearsal_environments=0) {
+    require(iterations>0 && fixed_ppo::actor_obs_dim==184,"bank training needs guided build and positive rollouts");
+    constexpr uint32_t environments=128,horizon=32;
+    metal.compile(base_source()+PPO_TRAINER_MSL);
+    const auto selection=prioritized?challenge_training::SelectionMode::FailureWeighted:
+                                     challenge_training::SelectionMode::UniformBank;
+    challenge_training::Settings settings;
+    settings.environment_count=environments;settings.horizon=horizon;
+    settings.sampler_seed=sampler_seed;settings.selection=selection;
+    settings.rehearsal_environments=rehearsal_environments;
+    challenge_training::ChallengeTraining sampler(bank_path,
+        challenge_evaluation::sha256_file(std::string(SOURCE_DIR)+"/world.hpp"),settings);
+    SimConfig config;
+    config.n=environments;config.seed=sampler_seed;config.family=14;config.mode=22;config.distance=8;config.speed=1.5f;
+    config.max_steps=400;config.geometry_memory=1;config.risk_coef=.1f;
+    config.entropy_coef=.0005f;config.learning_rate=.0001f;
+    Sim simulator(metal,config,horizon);
+    const auto& worlds=sampler.worlds();
+    simulator.bank_worlds=metal.buffer(worlds.size()*sizeof(WWorld),worlds.data());
+    const auto control=sampler.control();
+    std::memcpy(simulator.bank_control.contents,&control,sizeof(control));
+    PPOTrainer trainer(simulator);
+    trainer.raw_advantages=metal.buffer(simulator.advantages.length);
+    const std::string replay_path=checkpoint+".replay.state";
+    const bool resume=std::filesystem::exists(checkpoint);
+    require(resume==std::filesystem::exists(replay_path),"bank checkpoint and replay state must both exist or both be absent");
+    std::vector<uint32_t> schedule;
+    if(resume) {
+        trainer.load_checkpoint(checkpoint,config.family,horizon,environments,config.seed);
+        sampler.load_state(replay_path,challenge_evaluation::sha256_file(checkpoint),trainer.completed_rollouts);
+        const auto& active=sampler.active_ids();
+        std::memcpy(simulator.bank_active_ids.contents,active.data(),active.size()*sizeof(uint32_t));
+    } else {
+        std::ifstream source(warmstart,std::ios::binary);
+        const auto header=read_checkpoint_header(source);
+        require(header.actor_count==fixed_ppo::actor_param_count && header.critic_count==fixed_ppo::critic_param_count,"bank warmstart dimensions");
+        source.read(static_cast<char*>(simulator.actor.contents),simulator.actor.length);
+        source.read(static_cast<char*>(simulator.critic.contents),simulator.critic.length);
+        require(bool(source),"bank warmstart read failed");
+        for(uint32_t axis=0;axis<4;axis++)
+            static_cast<float*>(simulator.actor.contents)[fixed_ppo::actor_log_std_offset+axis]=-1;
+        schedule=sampler.initial_schedule();
+        std::memcpy(simulator.bank_schedule.contents,schedule.data(),schedule.size()*sizeof(uint32_t));
+        simulator.reset();
+    }
+    const auto save=[&](const std::string& path,uint32_t rollout) {
+        trainer.save_checkpoint(path,config.family,config.seed,rollout);
+        const uint32_t* active=static_cast<const uint32_t*>(simulator.bank_active_ids.contents);
+        sampler.save_state(path+".replay.state",challenge_evaluation::sha256_file(path),rollout,
+                           std::vector<uint32_t>(active,active+environments));
+    };
+    auto best=challenge_evaluation::BankScore{};
+    if(std::filesystem::exists(checkpoint+".best"))
+        best=challenge_evaluation::run(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
+    else {
+        save(checkpoint+".best",trainer.completed_rollouts);
+        best=challenge_evaluation::run(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
+    }
+    std::ofstream history(checkpoint+".history.csv",std::ios::app);
+    require(bool(history),"cannot write bank history");
+    if(!resume)history<<"rollout,transitions,wall_s,gpu_s,success,worst_family_success,collision,timeout\n";
+    const double started=seconds();
+    const uint32_t finish=trainer.completed_rollouts+iterations;
+    std::cout<<"bank_train selection="<<(prioritized?"priority":"uniform")
+             <<" train_levels="<<worlds.size()<<" seed="<<sampler_seed<<" rehearsal_envs="<<rehearsal_environments<<" envs=128 horizon=32 start="<<trainer.completed_rollouts<<"\n";
+    for(uint32_t rollout=trainer.completed_rollouts;rollout<finish;rollout++) {@autoreleasepool {
+        if(resume || rollout>0) {
+            const uint32_t* active=static_cast<const uint32_t*>(simulator.bank_active_ids.contents);
+            schedule=sampler.next_schedule(std::vector<uint32_t>(active,active+environments),rollout);
+            std::memcpy(simulator.bank_schedule.contents,schedule.data(),schedule.size()*sizeof(uint32_t));
+        }
+        auto commands=[metal.queue commandBuffer];
+        simulator.collect(commands,horizon);trainer.rollout_update(commands,rollout);
+        const double gpu=metal.finish(commands);
+        sampler.observe_raw_gae(static_cast<const float*>(trainer.raw_advantages.contents),
+            static_cast<const uint8_t*>(simulator.terminated.contents),
+            static_cast<const uint8_t*>(simulator.truncated.contents),
+            static_cast<const uint32_t*>(simulator.bank_transition_ids.contents),rollout);
+        trainer.completed_rollouts=rollout+1;
+        if((rollout+1)%50==0 || rollout+1==finish) {
+            save(checkpoint,rollout+1);
+            const auto score=challenge_evaluation::run(metal,checkpoint,bank_path,"dev",checkpoint+".dev.csv");
+            history<<rollout+1<<','<<uint64_t(rollout+1)*environments*horizon<<','<<seconds()-started
+                   <<','<<gpu<<','<<score.success_rate()<<','<<score.worst_family_success()
+                   <<','<<double(score.collisions)/score.episodes<<','<<double(score.timeouts)/score.episodes<<'\n';
+            history.flush();require(bool(history),"bank history write failed");
+            if(score.worst_family_success()>best.worst_family_success() ||
+               (score.worst_family_success()==best.worst_family_success() && score.success_rate()>best.success_rate())) {
+                best=score;save(checkpoint+".best",rollout+1);
+                std::filesystem::copy_file(checkpoint+".dev.csv",checkpoint+".best-dev.csv",
+                                           std::filesystem::copy_options::overwrite_existing);
+            }
+            std::cout<<"bank_train rollout="<<rollout+1<<" wall_s="<<seconds()-started
+                     <<" success="<<score.success_rate()<<" worst_family="<<score.worst_family_success()<<"\n";
+        }
+    }}
 }
 
 static void trace_checkpoint(Metal& metal, const std::string& checkpoint, uint32_t family,
@@ -1191,6 +1350,22 @@ static void measure_reaction_latency(Metal& m,const std::string& checkpoint,uint
 
 int main(int argc,char** argv){@autoreleasepool{try{
     std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);mixed_domain_tests(m);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="bank-eval")challenge_bank_cli(m,argc,argv);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001,argc>6?argv[6]:"results/trace",argc>7?std::stoi(argv[7]):-1,argc>8?bool(std::stoi(argv[8])):false);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0,argc>14?std::stof(argv[14]):0,argc>15?std::stof(argv[15]):0,argc>16?std::stof(argv[16]):0,argc>17?std::stoul(argv[17]):0,argc>18?std::stoul(argv[18]):4,argc>19?std::stof(argv[19]):-1);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="bank-witness") {
+        require(argc>=5,"bank-witness BANK_JSONL train|dev OUTPUT_CSV [SPEED=1] [MAX_STEPS=1200] [LOCAL_POLICY_CHECKPOINT|goal-script]");
+        challenge_evaluation::run_witness(m,argv[2],argv[3],argv[4],argc>5?std::stof(argv[5]):1.0f,argc>6?std::stoul(argv[6]):1200,argc>7?argv[7]:"");
+    }else if(command=="train-bank") {
+        require(argc>=7,"train-bank ROLLOUTS BANK_JSONL CHECKPOINT WARMSTART uniform|priority [--seed N] [--rehearsal N]");
+        const std::string selection=argv[6];
+        require(selection=="uniform" || selection=="priority","bank selection must be uniform or priority");
+        uint32_t seed=42,rehearsal=0;
+        for(int argument=7;argument<argc;argument+=2) {
+            require(argument+1<argc,"bank option requires a value");
+            const std::string option=argv[argument];
+            if(option=="--seed")seed=std::stoul(argv[argument+1]);
+            else if(option=="--rehearsal")rehearsal=std::stoul(argv[argument+1]);
+            else throw std::runtime_error("unknown bank option "+option);
+        }
+        train_challenge_bank(m,std::stoul(argv[2]),argv[3],argv[4],argv[5],selection=="priority",seed,rehearsal);
+    }else if(command=="bank-eval")challenge_bank_cli(m,argc,argv);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001,argc>6?argv[6]:"results/trace",argc>7?std::stoi(argv[7]):-1,argc>8?bool(std::stoi(argv[8])):false);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0,argc>14?std::stof(argv[14]):0,argc>15?std::stof(argv[15]):0,argc>16?std::stof(argv[16]):0,argc>17?std::stoul(argv[17]):0,argc>18?std::stoul(argv[18]):4,argc>19?std::stof(argv[19]):-1);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}

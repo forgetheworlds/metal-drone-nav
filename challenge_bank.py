@@ -346,7 +346,7 @@ def scene_hash(world: dict[str, Any]) -> str:
 
 
 def build_records(master_seed: int, per_split: int, distance: float,
-                  families: list[int], world_hash: str) -> list[dict[str, Any]]:
+                  families: list[int], world_hash: str, mirror_y: bool = False) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     used_ids: set[str] = set()
     for split in SPLITS:
@@ -354,6 +354,21 @@ def build_records(master_seed: int, per_split: int, distance: float,
             base_seed = stable_base_seed(master_seed, split, family, per_split, distance)
             for env_index in range(per_split):
                 world = generate_world(base_seed, env_index, family, distance)
+                mirrored = mirror_y and env_index % 2 == 1
+                if mirrored:
+                    # Explicit geometry augmentation. Flight starts and body axes
+                    # stay fixed; the task requires the opposite lateral choice.
+                    world["goal"][1] = -world["goal"][1]
+                    world["wind"][1] = -world["wind"][1]
+                    for obstacle in world["obstacles"]:
+                        obstacle["center"][1] = -obstacle["center"][1]
+                        obstacle["velocity"][1] = -obstacle["velocity"][1]
+                    for point in world["witness_route"]:
+                        point[1] = -point[1]
+                    if family == 14:
+                        world["geometry_contract"] = "connected partitions force south turn, east hall, then north turn"
+                if mirror_y:
+                    world["coordinate_transform"] = "mirror_y" if mirrored else "identity"
                 validate_world(world)
                 world["record_type"] = "challenge"
                 world["schema_version"] = 1
@@ -367,6 +382,8 @@ def build_records(master_seed: int, per_split: int, distance: float,
                 world["witness_min_clearance_m"] = route_clearance(world, world["witness_route"])[0]
                 world["direct_route_clearance_m"] = route_clearance(world, [[0.0, 0.0, 1.5], world["goal"]])[0]
                 world["failure_id"] = f"f{family}-{split}-{env_index:04d}-s{world['seed']:08x}-w{world_hash[:8]}"
+                if mirrored:
+                    world["failure_id"] += "-mirror-y"
                 if world["failure_id"] in used_ids:
                     raise ValueError(f"duplicate failure id: {world['failure_id']}")
                 used_ids.add(world["failure_id"])
@@ -388,6 +405,7 @@ def main() -> int:
     parser.add_argument("--distance", type=float, default=8.0, help="maximum goal range in metres; values are capped at 10m")
     parser.add_argument("--families", default="14,15,16")
     parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--mirror-y", action="store_true", help="reflect alternate saved levels across Y=0; avoid a fixed detour-side bias")
     args = parser.parse_args()
     families = [int(value) for value in args.families.split(",") if value]
     if not families or any(family not in FAMILY_NAMES for family in families):
@@ -400,7 +418,7 @@ def main() -> int:
         parser.error("--seed must be an unsigned 32-bit integer")
 
     world_path = pathlib.Path(__file__).with_name("world.hpp")
-    records = build_records(args.seed, args.per_split, args.distance, families, source_hash(world_path))
+    records = build_records(args.seed, args.per_split, args.distance, families, source_hash(world_path), args.mirror_y)
     counts = Counter((record["family"], record["split"], record["difficulty_band"]) for record in records)
     print(f"validated {len(records)} levels; families={families}; per_split={args.per_split}; distance={args.distance:.1f}m")
     for family in families:
