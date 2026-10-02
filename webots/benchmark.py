@@ -32,7 +32,7 @@ def with_custom_data(source: str, updates: dict[str, str]) -> str:
     return source[: match.start()] + replacement + source[match.end() :]
 
 
-def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int) -> dict:
+def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int, port: int = 23456) -> dict:
     base = WORLDS / f"{world_name}.wbt"
     if not base.is_file():
         raise FileNotFoundError(base)
@@ -62,7 +62,7 @@ def run_one(webots: Path, world_name: str, seed: int, policy: str, steps: int) -
         for stale in (RESULTS / "last-run.json", RESULTS / "last-run-exit.marker", RESULTS / "last-run-trace.csv"):
             stale.unlink(missing_ok=True)
         process = subprocess.run(
-            [str(webots), "--batch", "--mode=fast", "--no-rendering", "--stdout", "--stderr", str(world)],
+            [str(webots), f"--port={port}", "--batch", "--mode=fast", "--no-rendering", "--stdout", "--stderr", str(world)],
             cwd=ROOT,
             capture_output=True,
             text=True,
@@ -95,6 +95,7 @@ def main() -> int:
     parser.add_argument("--seeds", default="1,2,3")
     parser.add_argument("--policies", default="../assets/navigation.bin")
     parser.add_argument("--steps", type=int, default=800)
+    parser.add_argument("--port", type=int, default=23456, help="isolated Webots controller port")
     args = parser.parse_args()
     if not args.webots.is_file():
         parser.error(f"Webots executable not found: {args.webots}")
@@ -104,7 +105,7 @@ def main() -> int:
             for seed_text in args.seeds.split(","):
                 seed = int(seed_text)
                 print(f"run policy={policy} world={world} seed={seed}", flush=True)
-                rows.append(run_one(args.webots, world, seed, policy, args.steps))
+                rows.append(run_one(args.webots, world, seed, policy, args.steps, args.port))
     summary = RESULTS / "benchmark.csv"
     fields = [
         "policy", "world", "seed", "success", "collision", "timeout", "steps", "time_s",

@@ -194,6 +194,23 @@ int main(int argc,char** argv) {
     while(true) {
         const int step_status=wb_robot_step(step_ms);
         if(step_status==-1){std::printf("WEBOTS_STEP_END steps=%u\n",steps);std::fflush(stdout);break;}
+        if(config.phase=="geometry-calibrate"){
+            std::printf("WEBOTS_GEOMETRY_CAL_BEGIN\n");
+            for(int index=0;index<8;index++){
+                char def_name[40];std::snprintf(def_name,sizeof(def_name),"ChallengeObstacle%02d",index);
+                const WbNodeRef obstacle=wb_supervisor_node_get_from_def(def_name);
+                if(!obstacle){if(index<2)std::printf("WEBOTS_GEOMETRY_CAL_MISSING def=%s\n",def_name);continue;}
+                const double* obstacle_position=wb_supervisor_node_get_position(obstacle);
+                const double* obstacle_rotation=wb_supervisor_node_get_orientation(obstacle);
+                std::printf("WEBOTS_GEOMETRY_CAL def=%s xyz=%g,%g,%g local_z_world=%g,%g,%g\n",
+                            def_name,obstacle_position[0],obstacle_position[1],obstacle_position[2],
+                            obstacle_rotation[2],obstacle_rotation[5],obstacle_rotation[8]);
+            }
+            std::fflush(stdout);
+            wb_supervisor_simulation_quit(0);
+            wb_robot_cleanup();
+            return 0;
+        }
         if(steps==0){std::printf("WEBOTS_STEP first\n");std::fflush(stdout);}
         current_time=wb_robot_get_time();
         const double* gps_position=wb_gps_get_values(gps);const double* gps_world_velocity=wb_gps_get_speed_vector(gps);
@@ -237,7 +254,10 @@ int main(int argc,char** argv) {
                     std::fflush(stdout);
                 }
                 if(capture_count>0)std::copy(pooled,pooled+80,previous_pooled);
-                pool_ranges(current_ranges,pooled);for(int i=0;i<80;i++)minimum_sensor_range=std::fmin(minimum_sensor_range,pooled[i]);
+                pool_ranges(current_ranges,pooled);
+                // The L2F reset state uses the first depth frame for both history slots.
+                if(capture_count==0)std::copy(pooled,pooled+80,previous_pooled);
+                for(int i=0;i<80;i++)minimum_sensor_range=std::fmin(minimum_sensor_range,pooled[i]);
                 const uint slot=capture_count%8;std::copy(current_ranges,current_ranges+320,range_ring+slot*320);
                 float camera_offset_body[3]={0.08f,0,0},camera_offset_world[3];
                 rotate_body_to_world(rotation,camera_offset_body,camera_offset_world);

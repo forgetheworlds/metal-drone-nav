@@ -1,7 +1,7 @@
 policy,world,seed,success,collision,timeout,steps,time_s,path_m,final_error_m,peak_speed_mps,min_sensor_range_m,altitude_min_m,altitude_max_m,tracking_rms_mps,sensor_updates,navigation_loaded,box_y_offset_m
-navigation.bin,a_to_b,1,True,False,False,279,2.79,4.2687,0.349863,2.21487,1.50402,1.32732,1.99045,0.386246,55,True,
+navigation.bin,a_to_b,1,True,False,False,280,2.8,4.29235,0.348513,2.2119,1.5067,1.32504,2.03012,0.391205,56,True,
 navigation.bin,a_to_b,2,True,False,False,279,2.79,4.2687,0.349863,2.21487,1.50402,1.32732,1.99045,0.386246,55,True,
 navigation.bin,a_to_b,3,True,False,False,279,2.79,4.2687,0.349863,2.21487,1.50402,1.32732,1.99045,0.386246,55,True,
-navigation.bin,a_to_b_offset_box,1,True,False,False,543,5.43,6.15695,0.343607,2.29851,0.582168,1.42053,2.13723,0.504226,108,True,-0.4022
+navigation.bin,a_to_b_offset_box,1,True,False,False,567,5.67,6.48252,0.338919,2.29982,0.570805,1.42451,2.19098,0.511477,113,True,-0.4022
 navigation.bin,a_to_b_offset_box,2,True,False,False,292,2.92,4.35822,0.348213,2.03297,0.725119,1.25393,1.83207,0.358792,58,True,0.50164
 navigation.bin,a_to_b_offset_box,3,True,False,False,598,5.98,6.75768,0.349617,2.30362,0.532577,1.4008,2.19217,0.542385,119,True,-0.28824
