@@ -22,7 +22,7 @@
 namespace challenge_training {
 
 constexpr uint32_t kInvalidLevel = UINT32_MAX;
-constexpr uint32_t kStateVersion = 2;
+constexpr uint32_t kStateVersion = 3;
 
 enum class SelectionMode : uint32_t {
     UniformBank = 0,
@@ -46,6 +46,7 @@ struct Settings {
     SelectionMode selection = SelectionMode::UniformBank;
     float uniform_floor = 0.50f;
     float score_staleness_mix = 0.50f;
+    uint32_t focus_family = 0; // 0 balances14/15/16; a family pins all bank slots.
 };
 
 // This sampler owns frozen train levels, family quotas, replay priorities,
@@ -60,6 +61,9 @@ public:
             throw std::runtime_error("challenge training needs nonzero environments and horizon");
         if (settings_.environment_count<3 || settings_.rehearsal_environments>settings_.environment_count-3)
             throw std::runtime_error("rehearsal must leave at least three bank environments");
+        if (settings_.focus_family!=0u && settings_.focus_family!=14u &&
+            settings_.focus_family!=15u && settings_.focus_family!=16u)
+            throw std::runtime_error("focused challenge family must be14,15,16 or0 for balanced");
         if (settings_.selection != SelectionMode::UniformBank &&
             settings_.selection != SelectionMode::FailureWeighted)
             throw std::runtime_error("unsupported challenge level selection mode");
@@ -91,7 +95,6 @@ public:
         episode_abs_gae_.assign(settings_.environment_count, 0.0);
         episode_gae_count_.assign(settings_.environment_count, 0);
         episode_level_id_.assign(settings_.environment_count, kInvalidLevel);
-        family_cursor_ = 0;
         rng_state_ = settings_.sampler_seed ? settings_.sampler_seed : 1;
     }
 
@@ -256,7 +259,6 @@ public:
         char extra;
         if (file.read(&extra, 1)) throw std::runtime_error("challenge sampler state has trailing bytes");
         rng_state_ = header.rng_state;
-        family_cursor_ = header.family_cursor;
         last_rollout_ = header.last_rollout;
         for (size_t i=0;i<scores_.size();++i) {
             if (!std::isfinite(scores_[i]) || scores_[i] < 0.0f ||
@@ -278,7 +280,7 @@ public:
 private:
     struct DiskHeader {
         char magic[8];
-        uint32_t version, selection, environment_count, horizon, level_count, rng_state, family_cursor, reserved;
+        uint32_t version, selection, environment_count, horizon, level_count, rng_state, focus_family, reserved;
         uint64_t last_rollout, completed_rollouts;
         float uniform_floor, score_staleness_mix;
         char bank_hash[64], world_hash[64], checkpoint_hash[64];
@@ -297,7 +299,7 @@ private:
     std::vector<uint32_t> episode_gae_count_, episode_level_id_;
     std::vector<uint32_t> active_ids_;
     std::string bank_hash_, world_hash_;
-    uint32_t rng_state_ = 1, family_cursor_ = 0;
+    uint32_t rng_state_ = 1;
     uint64_t last_rollout_ = 0;
 
     uint32_t random_u32() {
@@ -311,7 +313,10 @@ private:
         if (candidates.empty()) throw std::runtime_error("challenge family quota has no levels");
         return candidates[(uint64_t(random_u32()) * candidates.size()) >> 32];
     }
-    uint32_t family_for_env(uint32_t env) const { return families_[(env-settings_.rehearsal_environments) % families_.size()]; }
+    uint32_t family_for_env(uint32_t env) const {
+        if(settings_.focus_family!=0u)return settings_.focus_family;
+        return families_[(env-settings_.rehearsal_environments) % families_.size()];
+    }
     void validate_active_id(uint32_t env,uint32_t id) const {
         if(env < settings_.rehearsal_environments) {
             if(id!=kInvalidLevel)throw std::runtime_error("rehearsal environment contains a bank level");
@@ -375,7 +380,7 @@ private:
         header.level_count = uint32_t(levels_.size());
         header.reserved = settings_.rehearsal_environments;
         header.rng_state = rng_state_;
-        header.family_cursor = family_cursor_;
+        header.focus_family = settings_.focus_family;
         header.last_rollout = last_rollout_;
         header.completed_rollouts = completed_rollouts;
         header.uniform_floor = settings_.uniform_floor;
@@ -390,11 +395,15 @@ private:
         const bool rollout_pair_matches = completed_rollouts == 0
             ? header.last_rollout == 0
             : header.last_rollout + 1 == completed_rollouts;
-        if (std::memcmp(header.magic, "CHTRN1\0", 8) != 0 || (header.version != kStateVersion && header.version != 1) ||
+        const bool known_version=header.version==1u||header.version==2u||header.version==kStateVersion;
+        const bool focus_matches=header.version==kStateVersion
+            ? header.focus_family==settings_.focus_family
+            : header.focus_family==0u&&settings_.focus_family==0u;
+        if (std::memcmp(header.magic, "CHTRN1\0", 8) != 0 || !known_version || !focus_matches ||
             header.selection != uint32_t(settings_.selection) ||
             header.environment_count != settings_.environment_count || header.horizon != settings_.horizon ||
             header.level_count != levels_.size() || header.completed_rollouts != completed_rollouts || !rollout_pair_matches ||
-            (header.version==1 && header.reserved!=0) || header.reserved != settings_.rehearsal_environments || header.rng_state == 0 || header.family_cursor != 0 ||
+            (header.version==1 && header.reserved!=0) || header.reserved != settings_.rehearsal_environments || header.rng_state == 0 ||
             std::fabs(header.uniform_floor-settings_.uniform_floor)>1e-7f ||
             std::fabs(header.score_staleness_mix-settings_.score_staleness_mix)>1e-7f ||
             std::memcmp(header.bank_hash,bank_hash_.data(),64)!=0 ||

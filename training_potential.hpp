@@ -26,6 +26,10 @@ using TPIndex = uint32_t;
 
 // Shared CPU/MSL buffer ABI. Values use [level][z][y][x], with x contiguous.
 // Each cell stores bounded Phi=-min(static geodesic distance, cap)/cap.
+// Exactly -1 means unreachable. Reachable cells at the cap use the next float
+// above -1 so lookup can distinguish them from the no-path sentinel.
+#ifndef TRAINING_POTENTIAL_SHARED_TYPES
+#define TRAINING_POTENTIAL_SHARED_TYPES
 struct TrainingPotentialGridSpec {
     TPIndex nx, ny, nz, level_count, level_stride, version;
     float origin[3];
@@ -33,8 +37,19 @@ struct TrainingPotentialGridSpec {
     float distance_cap_m;
 };
 
+// Training-only shaping settings. `version` must match the potential grid.
+struct TrainingPotentialControl {
+    TPIndex enabled;
+    float scale;
+    float gamma;
+    TPIndex version;
+};
+
+#endif
+
 #ifndef __METAL_VERSION__
 static_assert(sizeof(TrainingPotentialGridSpec) == 44, "training-potential Metal ABI changed");
+static_assert(sizeof(TrainingPotentialControl) == 16, "training-potential control ABI changed");
 #endif
 
 #ifdef __METAL_VERSION__
@@ -63,21 +78,28 @@ inline float training_potential_lookup(device const float* bank,
     const uint x1=min(x0+1,spec.nx-1),y1=min(y0+1,spec.ny-1),z1=min(z0+1,spec.nz-1);
     const float tx=gx-float(x0),ty=gy-float(y0),tz=gz-float(z0);
     const uint base=level*spec.level_stride;
-    const float c00=mix(bank[base+training_potential_index(spec,x0,y0,z0)],bank[base+training_potential_index(spec,x1,y0,z0)],tx);
-    const float c10=mix(bank[base+training_potential_index(spec,x0,y1,z0)],bank[base+training_potential_index(spec,x1,y1,z0)],tx);
-    const float c01=mix(bank[base+training_potential_index(spec,x0,y0,z1)],bank[base+training_potential_index(spec,x1,y0,z1)],tx);
-    const float c11=mix(bank[base+training_potential_index(spec,x0,y1,z1)],bank[base+training_potential_index(spec,x1,y1,z1)],tx);
-    return clamp(mix(mix(c00,c10,ty),mix(c01,c11,ty),tz),-1.0f,0.0f);
+    const float values[8]={bank[base+training_potential_index(spec,x0,y0,z0)],bank[base+training_potential_index(spec,x1,y0,z0)],
+        bank[base+training_potential_index(spec,x0,y1,z0)],bank[base+training_potential_index(spec,x1,y1,z0)],
+        bank[base+training_potential_index(spec,x0,y0,z1)],bank[base+training_potential_index(spec,x1,y0,z1)],
+        bank[base+training_potential_index(spec,x0,y1,z1)],bank[base+training_potential_index(spec,x1,y1,z1)]};
+    const float weights[8]={(1-tx)*(1-ty)*(1-tz),tx*(1-ty)*(1-tz),
+        (1-tx)*ty*(1-tz),tx*ty*(1-tz),(1-tx)*(1-ty)*tz,tx*(1-ty)*tz,
+        (1-tx)*ty*tz,tx*ty*tz};
+    float weighted_phi=0.0f,total_weight=0.0f;
+    for(uint i=0;i<8;i++)if(values[i]>-1.0f){weighted_phi+=values[i]*weights[i];total_weight+=weights[i];}
+    if(!(total_weight>0.0f))return -1.0f;
+    return clamp(weighted_phi/total_weight,-1.0f,0.0f);
 }
 
 #else
 
 namespace training_potential {
 
-constexpr uint32_t kVersion = 1;
+constexpr uint32_t kVersion = 2;
 constexpr uint32_t kNx = 81, kNy = 51, kNz = 26;
 constexpr float kSpacingM = 0.20f;
 constexpr float kDistanceCapM = 30.0f;
+constexpr float kReachableSaturatedPhi = -0.99999994f;
 constexpr float kGoalRadiusM = 0.35f;
 constexpr float kBodyRadiusM = 0.18f;
 constexpr float kCellClearanceM = 0.02f;
@@ -121,19 +143,6 @@ inline uint32_t nearest_cell(const std::array<float,3>& point) {
 inline float point_clearance(const WWorld& world,const std::array<float,3>& p) {
     return wclearance(world,wv(p[0],p[1],p[2]),0.0f);
 }
-inline std::string sha256_bytes(const void* data,size_t size) {
-    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
-    CC_SHA256(static_cast<const unsigned char*>(data),CC_LONG(size),digest);
-    static const char digits[]="0123456789abcdef";
-    std::string out(64,'0');
-    for(size_t i=0;i<sizeof(digest);i++){out[2*i]=digits[digest[i]>>4];out[2*i+1]=digits[digest[i]&15];}
-    return out;
-}
-inline std::string make_cache_key(const std::string& bank_hash,const std::string& world_hash) {
-    const std::string material="train-potential-v1|"+bank_hash+"|"+world_hash+
-        "|grid=81,51,26|origin=-2,-5,0|spacing=0.2|body=0.18|cell_margin=0.02|goal=0.35|cap=30|neighbors=6";
-    return sha256_bytes(material.data(),material.size());
-}
 inline bool static_world(const WWorld& world) {
     for(uint32_t obstacle=0;obstacle<world.count;obstacle++)
         for(float velocity:world.obstacles[obstacle].velocity)
@@ -153,12 +162,15 @@ inline float trilinear(const float* bank,const TrainingPotentialGridSpec& spec,
     const float tx=gx-float(x0),ty=gy-float(y0),tz=gz-float(z0);
     const size_t base=size_t(level)*spec.level_stride;
     const auto at=[&](uint32_t x,uint32_t y,uint32_t z){return bank[base+(z*spec.ny+y)*spec.nx+x];};
-    const float c00=at(x0,y0,z0)*(1-tx)+at(x1,y0,z0)*tx;
-    const float c10=at(x0,y1,z0)*(1-tx)+at(x1,y1,z0)*tx;
-    const float c01=at(x0,y0,z1)*(1-tx)+at(x1,y0,z1)*tx;
-    const float c11=at(x0,y1,z1)*(1-tx)+at(x1,y1,z1)*tx;
-    const float c0=c00*(1-ty)+c10*ty,c1=c01*(1-ty)+c11*ty;
-    return std::max(-1.0f,std::min(0.0f,c0*(1-tz)+c1*tz));
+    const float values[8]={at(x0,y0,z0),at(x1,y0,z0),at(x0,y1,z0),at(x1,y1,z0),
+        at(x0,y0,z1),at(x1,y0,z1),at(x0,y1,z1),at(x1,y1,z1)};
+    const float weights[8]={(1-tx)*(1-ty)*(1-tz),tx*(1-ty)*(1-tz),
+        (1-tx)*ty*(1-tz),tx*ty*(1-tz),(1-tx)*(1-ty)*tz,tx*(1-ty)*tz,
+        (1-tx)*ty*tz,tx*ty*tz};
+    float weighted_phi=0.0f,total_weight=0.0f;
+    for(uint32_t i=0;i<8;i++)if(values[i]>-1.0f){weighted_phi+=values[i]*weights[i];total_weight+=weights[i];}
+    if(!(total_weight>0.0f))return -1.0f;
+    return std::max(-1.0f,std::min(0.0f,weighted_phi/total_weight));
 }
 
 inline float TrainingPotentialFields::lookup(uint32_t level,const std::array<float,3>& position) const {
@@ -166,7 +178,7 @@ inline float TrainingPotentialFields::lookup(uint32_t level,const std::array<flo
 }
 
 // Host twin of the MSL lookup above; both use the same cell layout, bounds,
-// trilinear interpolation and finite fallback.
+// valid-corner interpolation and finite fallback.
 inline float training_potential_lookup(const float* bank,const TrainingPotentialGridSpec& spec,
                                        uint32_t level,const float position[3]) {
     return trilinear(bank,spec,level,{position[0],position[1],position[2]});
@@ -185,7 +197,7 @@ inline bool nearest_reachable_cell(const std::vector<uint8_t>& free_cells,
         const int x=int(c[0])+dx,y=int(c[1])+dy,z=int(c[2])+dz;
         if(x<0||x>=int(kNx)||y<0||y>=int(kNy)||z<0||z>=int(kNz))continue;
         const uint32_t index=cell_index(uint32_t(x),uint32_t(y),uint32_t(z));
-        if(!free_cells[index]||distance[index]>=kDistanceCapM)continue;
+        if(!free_cells[index]||distance[index]>=float(kInfinity))continue;
         const auto p=cell_position(uint32_t(x),uint32_t(y),uint32_t(z));
         const float d2=(p[0]-point[0])*(p[0]-point[0])+(p[1]-point[1])*(p[1]-point[1])+(p[2]-point[2])*(p[2]-point[2]);
         if(d2<=nearest_squared){nearest_squared=d2;found=true;}
@@ -222,7 +234,7 @@ inline std::vector<float> build_one_field(const challenge_evaluation::Level& lev
         }
     }
 
-    std::vector<float> distance(cells,kDistanceCapM);
+    std::vector<float> distance(cells,float(kInfinity));
     using QueueNode=std::pair<float,uint32_t>;
     std::priority_queue<QueueNode,std::vector<QueueNode>,std::greater<QueueNode>> open;
     const auto goal=std::array<float,3>{{level.world.goal[0],level.world.goal[1],level.world.goal[2]}};
@@ -249,7 +261,7 @@ inline std::vector<float> build_one_field(const challenge_evaluation::Level& lev
             const uint32_t edge_index=(direction[0]+direction[1]+direction[2]>0)?node.second:neighbor;
             if((edge_masks[edge_index]&(1u<<axis))==0)continue;
             const float candidate=node.first+kSpacingM;
-            if(candidate<distance[neighbor]&&candidate<kDistanceCapM){distance[neighbor]=candidate;open.push({candidate,neighbor});}
+            if(candidate<distance[neighbor]){distance[neighbor]=candidate;open.push({candidate,neighbor});}
         }
     }
 
@@ -273,8 +285,28 @@ inline std::vector<float> build_one_field(const challenge_evaluation::Level& lev
     }
 
     std::vector<float> phi(cells,-1.0f);
-    for(uint32_t index=0;index<cells;index++)if(free_cells[index]&&distance[index]<kDistanceCapM)
-        phi[index]=-std::min(distance[index],kDistanceCapM)/kDistanceCapM;
+    for(uint32_t index=0;index<cells;index++)if(free_cells[index]&&distance[index]<float(kInfinity))
+        phi[index]=distance[index]>=kDistanceCapM?kReachableSaturatedPhi:-distance[index]/kDistanceCapM;
+    TrainingPotentialGridSpec single_level_spec{};
+    single_level_spec.nx=kNx;single_level_spec.ny=kNy;single_level_spec.nz=kNz;
+    single_level_spec.level_count=1;single_level_spec.level_stride=cells;single_level_spec.version=kVersion;
+    single_level_spec.origin[0]=-2.0f;single_level_spec.origin[1]=-5.0f;single_level_spec.origin[2]=0.0f;
+    single_level_spec.spacing_m=kSpacingM;single_level_spec.distance_cap_m=kDistanceCapM;
+    if(trilinear(phi.data(),single_level_spec,0,start)<=-1.0f||
+       trilinear(phi.data(),single_level_spec,0,goal)<=-1.0f)
+        throw std::runtime_error("interpolated grid lookup misses start or goal: "+level.failure_id);
+    for(size_t segment=0;segment+1<level.witness_route.size();segment++){
+        const auto& a=level.witness_route[segment];const auto& b=level.witness_route[segment+1];
+        const float dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
+        const float length=std::sqrt(dx*dx+dy*dy+dz*dz);
+        const uint32_t samples=std::max(1u,uint32_t(std::ceil(length/0.10f)));
+        for(uint32_t sample=0;sample<=samples;sample++){
+            const float t=float(sample)/samples;
+            const std::array<float,3> point{{a[0]+dx*t,a[1]+dy*t,a[2]+dz*t}};
+            if(trilinear(phi.data(),single_level_spec,0,point)<=-1.0f)
+                throw std::runtime_error("interpolated grid lookup misses witness route: "+level.failure_id);
+        }
+    }
     return phi;
 }
 
@@ -295,7 +327,7 @@ inline std::string sha256_hex(const void* data,size_t size) {
     return key;
 }
 inline std::string cache_key(const std::string& bank_hash,const std::string& world_hash) {
-    const std::string params="training-potential-v1|grid=81x51x26|origin=-2,-5,0|spacing=0.2|body=0.18|cell_margin=0.02|goal_radius=0.35|cap=30|connectivity=6";
+    const std::string params="training-potential-v2|grid=81x51x26|origin=-2,-5,0|spacing=0.2|body=0.18|cell_margin=0.02|goal_radius=0.35|cap=30|connectivity=6|reachable_cap=-0.99999994";
     const std::string material=bank_hash+"|"+world_hash+"|"+params;
     return sha256_hex(material.data(),material.size());
 }
@@ -305,7 +337,7 @@ inline void write_cache(const TrainingPotentialFields& fields,const std::string&
     if(std::filesystem::path(path).has_parent_path())std::filesystem::create_directories(std::filesystem::path(path).parent_path());
     std::ofstream out(temporary,std::ios::binary|std::ios::trunc);
     if(!out)throw std::runtime_error("cannot write potential cache: "+temporary);
-    const char magic[8]={'T','P','H','I','1','\0','\0','\0'};
+    const char magic[8]={'T','P','H','I','2','\0','\0','\0'};
     const uint64_t count=fields.phi.size();
     if(fields.phi.size()>UINT32_MAX/sizeof(float))throw std::runtime_error("potential cache exceeds single-hash size limit");
     const std::string payload_hash=sha256_hex(fields.phi.data(),fields.phi.size()*sizeof(float));
@@ -321,7 +353,7 @@ inline bool try_load_cache(TrainingPotentialFields& fields,const std::string& pa
     std::ifstream in(path,std::ios::binary);if(!in)throw std::runtime_error("cannot open potential cache: "+path);
     char magic[8];TrainingPotentialGridSpec spec{};char key[64],payload_hash[64];uint64_t count=0;
     in.read(magic,sizeof(magic));in.read(reinterpret_cast<char*>(&spec),sizeof(spec));in.read(key,sizeof(key));in.read(reinterpret_cast<char*>(&count),sizeof(count));in.read(payload_hash,sizeof(payload_hash));
-    const char expected_magic[8]={'T','P','H','I','1','\0','\0','\0'};
+    const char expected_magic[8]={'T','P','H','I','2','\0','\0','\0'};
     if(!in||std::memcmp(magic,expected_magic,sizeof(magic))!=0||
        std::memcmp(&spec,&fields.spec,sizeof(spec))!=0||std::memcmp(key,fields.cache_key.data(),64)!=0||
        count!=uint64_t(fields.spec.level_count)*fields.spec.level_stride)return false;

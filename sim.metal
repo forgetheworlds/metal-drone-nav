@@ -228,8 +228,21 @@ kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* r
     if(cfg.mode==19){float magnitude=length(float3(v[0],v[1],v[2]));if(magnitude>1e-8f){float scale=cfg.speed/magnitude;for(uint j=0;j<3;j++)v[j]*=scale;}}
     for(uint j=0;j<3;j++)runs[n].desired_velocity[j]=r[j*3]*v[0]+r[j*3+1]*v[1]+r[j*3+2]*v[2];runs[n].yaw+=runs[n].previous_nav[3]*p.dt*cfg.substeps*0.5f;
 }
-kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],device const float* critic [[buffer(6)]],device float* rewards [[buffer(7)]],device float* next_values [[buffer(8)]],device uchar* terminated [[buffer(9)]],device uchar* truncated [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],device const WWorld* bank_worlds [[buffer(13)]],device const uint* bank_schedule [[buffer(14)]],constant ChallengeBankControl& bank_control [[buffer(15)]],device uint* bank_active_ids [[buffer(16)]],device uint* bank_transition_ids [[buffer(17)]],device RLPhysicsParams* environment_physics [[buffer(18)]],constant NavigationRuntimeConfig& runtime [[buffer(19)]],device NavigationTaskState* task_states [[buffer(20)]],constant NavigationTaskControl& task_control [[buffer(21)]],uint n [[thread_position_in_grid]]) {
+kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device WWorld* worlds [[buffer(2)]],device float* sensors [[buffer(3)]],device float* commands [[buffer(4)]],device const float* weights [[buffer(5)]],device const float* critic [[buffer(6)]],device float* rewards [[buffer(7)]],device float* next_values [[buffer(8)]],device uchar* terminated [[buffer(9)]],device uchar* truncated [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],device const WWorld* bank_worlds [[buffer(13)]],device const uint* bank_schedule [[buffer(14)]],constant ChallengeBankControl& bank_control [[buffer(15)]],device uint* bank_active_ids [[buffer(16)]],device uint* bank_transition_ids [[buffer(17)]],device RLPhysicsParams* environment_physics [[buffer(18)]],constant NavigationRuntimeConfig& runtime [[buffer(19)]],device NavigationTaskState* task_states [[buffer(20)]],constant NavigationTaskControl& task_control [[buffer(21)]],device const float* potential_fields [[buffer(22)]],constant TrainingPotentialGridSpec& potential_spec [[buffer(23)]],constant TrainingPotentialControl& potential_control [[buffer(24)]],uint n [[thread_position_in_grid]]) {
     if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;RLPhysicsState s=states[n];float h[16],motors[4];for(uint j=0;j<16;j++)h[j]=runs[n].hidden[j];for(uint j=0;j<4;j++)motors[j]=runs[n].motors[j];
+    const uint potential_level=bank_active_ids[n];
+    const bool potential_config_valid=potential_control.enabled==0u ||
+        (potential_control.enabled==1u&&isfinite(potential_control.scale)&&potential_control.scale>=0.0f&&potential_control.scale<=16.0f&&
+         potential_control.gamma==0.99f&&
+         potential_control.version==2u&&potential_spec.version==2u&&potential_spec.level_count>0u&&
+         (bank_control.enabled==0u||potential_spec.level_count==bank_control.bank_count)&&
+         potential_spec.nx==81u&&potential_spec.ny==51u&&potential_spec.nz==26u&&
+         potential_spec.level_stride==potential_spec.nx*potential_spec.ny*potential_spec.nz&&
+         potential_spec.origin[0]==-2.0f&&potential_spec.origin[1]==-5.0f&&potential_spec.origin[2]==0.0f&&
+         potential_spec.spacing_m==0.20f&&potential_spec.distance_cap_m==30.0f);
+    const bool potential_level_active=potential_config_valid&&potential_control.enabled==1u&&
+        cfg.eval==0u&&bank_control.enabled!=0u&&potential_level<potential_spec.level_count;
+    const float phi_before=potential_level_active?training_potential_lookup(potential_fields,potential_spec,potential_level,s.position):0.0f;
     RLPhysicsParams step_params=p;if(runtime.enabled!=0)step_params=environment_physics[n];
     float3 goal=float3(worlds[n].goal[0],worlds[n].goal[1],worlds[n].goal[2]);float before=length(goal-float3(s.position[0],s.position[1],s.position[2]));float yaw=runs[n].yaw,c=cos(yaw),si=sin(yaw);bool collision=false;float step_clearance=12;
     float wind[3]={worlds[n].wind[0]*step_params.mass,worlds[n].wind[1]*step_params.mass,worlds[n].wind[2]*step_params.mass};
@@ -260,6 +273,14 @@ kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRu
         success=outcome.stable_success!=0&&!collision;timeout=outcome.timeout!=0;
         rewards[row]=outcome.reward;terminated[row]=collision||success;
         truncated[row]=timeout&&!terminated[row];
+    }
+    if(potential_control.enabled!=0u) {
+        if(!potential_config_valid || (bank_control.enabled!=0u && potential_level!=0xffffffffu && potential_level>=potential_spec.level_count))rewards[row]=as_type<float>(0x7fc00000u);
+        else if(potential_level_active) {
+            const float phi_after=terminated[row]!=0u?TRAINING_POTENTIAL_TERMINAL:
+                training_potential_lookup(potential_fields,potential_spec,potential_level,s.position);
+            rewards[row]+=potential_control.scale*(potential_control.gamma*phi_after-phi_before);
+        }
     }
     bank_transition_ids[row]=bank_control.enabled!=0?bank_active_ids[n]:0xffffffffu;
     float co[32],hidden[64];sim_critic_obs(s,worlds[n],runs[n],co);next_values[row]=ppo_critic_value(critic,co,hidden);

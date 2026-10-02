@@ -13,7 +13,7 @@
     std::ifstream checkpoint(checkpoint_path,std::ios::binary);
     require(bool(checkpoint),"cannot open contact-audit checkpoint: "+checkpoint_path);
     const PpoCheckpointHeader header=read_checkpoint_header(checkpoint);
-    require(header.version>=3&&header.version<=8,"contact audit supports PPO checkpoint versions 3..8");
+    require(header.version>=3&&header.version<=9,"contact audit supports PPO checkpoint versions 3..9");
     require(header.actor_count==fixed_ppo::actor_param_count&&
             header.critic_count==fixed_ppo::critic_param_count,
             "contact-audit checkpoint parameter dimensions do not match this build");

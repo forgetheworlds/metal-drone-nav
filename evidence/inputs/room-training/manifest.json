@@ -1,0 +1,30 @@
+{
+  "schema": "focused-connected-room-ppo-v1",
+  "selected_rollout": 300,
+  "transitions_at_selection": 1228800,
+  "train_seed": 52,
+  "focus_family": 15,
+  "rehearsal_environments": 0,
+  "potential_scale": 16,
+  "risk_coef": 0,
+  "policy_inputs": "globalgoal,depth,egostate;nooraclewaypoints",
+  "dev_rooms_success": 25,
+  "dev_rooms_count": 30,
+  "ordinary_goal_radius_m": 0.35,
+  "budget_s": 20,
+  "training_command": "./build/metal_nav_guided train-bank 4000 results/challenge-bank-mirrored-v1.jsonl results/rooms-focused.bin results/reward-control-shaped.bin.best uniform --seed 52 --rehearsal 0 --potential-scale 16 --risk 0 --focus-family 15",
+  "limitations": [
+    "Best selectedon30devrooms;finalbanknotused.",
+    "Latertrainingcollapsed;preservebestcheckpoint.",
+    "Specificroompolicyexperiment,notbroadrobustnavigationproof.",
+    "Webotstransferandnativevideosinprogress."
+  ],
+  "policy_hash": "234c776de8dec15e9fb01bd2d718581356e67426c30c721472f048a1ed7a9282",
+  "checkpoint_hash": "7b14b5de557fa1538f48373a6022d74ae70270467b65f1028c28fe0df0510b73",
+  "input_hashes": {
+    "refinement-history.csv": "0064036dfdd218c49a2bbe958cf6c9ba716891d0828d4188fff1ea5db4f7b59c",
+    "focused-final-dev.csv": "d0864d5302f311436d87305dc9f8055875d7291f36cae35367f92c4b0183ffeb",
+    "focused-selected-dev.csv": "6a4f72d292bca9a75ad3c5893f7cbf5510a18fdef3f96d6d5a78b255611c2574",
+    "focused-history.csv": "cd0e98bad93c7951d146146976d6d12aeb61cba65375c27c1f616f3905b050f2"
+  }
+}
