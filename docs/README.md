@@ -9,6 +9,7 @@ lives here.
 | [NEXT_PHASE.md](NEXT_PHASE.md) | The current phase brief: general local navigation, training-distribution research, Webots validation, and what "evidence matters" means for this repo |
 | [RESEARCH_NEXT_PHASE.md](RESEARCH_NEXT_PHASE.md) | The next experiment decision — PLR-style seeded task replay as the PPO baseline test, with the GR2PO and external-benchmark assessments |
 | [RESEARCH_LOG.md](RESEARCH_LOG.md) | Hypothesis → experiment → result → conclusion, including rejected and failed hypotheses |
+| [RESULTS_GALLERY.md](RESULTS_GALLERY.md) | All published graphs, training records and native videos, with source data and limitations |
 | [BENCHMARKS.md](BENCHMARKS.md) | Every measured number: machine, commit, exact command, configuration, result, and which earlier measurements were discarded as invalid |
 | [CODE_DIRECTION.md](CODE_DIRECTION.md) | The coding standard this project is written to, kept verbatim |
 | [M3_RESEARCH.md](M3_RESEARCH.md) | Apple M3 / Apple GPU family 9 feature research with cited Apple sources and a ranked experiment list |
