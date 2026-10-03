@@ -1,5 +1,10 @@
 # Next Phase: General Local Drone Navigation
 
+## Current acceptance priorities — 2026-10-03
+
+The operator prioritizes two outcomes: fast, reliable navigation through complicated tight spaces; and transfer with frozen weights and navigation logic into unseen simulators and environments without additional target-side training. All source training and robustness adaptation precede the evaluation freeze. Development feedback is separate from blind final evaluation. Any secondary target-simulator training is exploratory and cannot satisfy the zero-shot acceptance requirement. Report success, contact, actual speed, clearance and travel efficiency together.
+
+
 ## Why this phase exists
 
 The current project has already answered several important questions.

@@ -2,6 +2,13 @@
 
 Build on the numerically checked Metal-native drone navigation engine in /Users/muadhsambul/RL, following GOAL.md, docs/NEXT_PHASE.md and docs/CODE_DIRECTION.md. Establish and improve a fast, robust local depth-navigation policy that maps goal/waypoint, perception and ego state to [vx, vy, vz, yaw_rate], then uses the actual RAPTOR controller to drive motors. Identify generalization limits through richer seeded 3D tasks, failure analysis and challenge-focused PPO training; test alternative methods such as GR2PO only through justified controlled comparisons. Validate the full stack in independent Webots physics, sensors, actuators and collisions, preserve genuinely held-out task splits, and measure speed, reliability, dynamics and sensing robustness. Preserve strong baselines and produce reproducible benchmarks, plots, rendered worlds and recorded videos that show both improvements and failures. Keep the specialized Metal hot path and numerical RAPTOR/L2F/PPO checks; establish physics, sensing and task fidelity through independent evidence; follow the coding direction, use only Luna subagents and no skills.
 
+### Current acceptance priorities — clarified 2026-10-03
+
+1. Navigate complicated environments quickly and reliably, including tight passages, long routes and moving obstacles. Measure actual speed, completion, collision, clearance and efficiency together.
+2. Generalize with frozen learned weights and navigation logic to unseen environments and independent simulators without additional target-side training. Source training, including robustness training, must finish before the evaluation freeze. Use separate development and blind final suites; target evaluation must not become hidden tuning or target fine-tuning.
+
+The full-stack contract remains depth/ego/goal → velocity and yaw-rate → RAPTOR → motors. Numerical parity, selected successful videos and development scores are milestones; they do not establish these two outcomes. Current Webots development failures may guide source training, but final transfer evidence must use genuinely unseen target worlds. Exploratory target-simulator training, if ever done, is a separate result and cannot count as zero-shot proof.
+
 The original specification below remains the technical baseline. The next-phase brief and coding direction extend it; this update does not claim completion.
 
 ---

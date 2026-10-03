@@ -7,6 +7,8 @@ lives here.
 | Document | What it is |
 |---|---|
 | [NEXT_PHASE.md](NEXT_PHASE.md) | The current phase brief: general local navigation, training-distribution research, Webots validation, and what "evidence matters" means for this repo |
+| [RESEARCH_NAVIGATION_PAPERS.md](RESEARCH_NAVIGATION_PAPERS.md) | Google AI Mode leads checked against navigation papers; source-only supervision, curriculum and robustness hypotheses |
+| [RESEARCH_TRAINING.md](RESEARCH_TRAINING.md) | PPO collapse evidence, corrected source research and controlled next experiments |
 | [RESEARCH_NEXT_PHASE.md](RESEARCH_NEXT_PHASE.md) | The next experiment decision — PLR-style seeded task replay as the PPO baseline test, with the GR2PO and external-benchmark assessments |
 | [RESEARCH_LOG.md](RESEARCH_LOG.md) | Hypothesis → experiment → result → conclusion, including rejected and failed hypotheses |
 | [RESULTS_GALLERY.md](RESULTS_GALLERY.md) | All published graphs, training records and native videos, with source data and limitations |
