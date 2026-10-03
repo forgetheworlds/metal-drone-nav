@@ -91,6 +91,35 @@ inline float training_potential_lookup(device const float* bank,
     return clamp(weighted_phi/total_weight,-1.0f,0.0f);
 }
 
+// Direction of increasing Phi (toward the goal because Phi=-distance/cap).
+// Refuse sentinel, flat, and non-finite neighborhoods instead of inventing a
+// direction where the grid has no local route information.
+inline bool training_potential_direction(device const float* bank,
+                                         constant TrainingPotentialGridSpec& spec,
+                                         uint level, thread const float* position,
+                                         thread float* direction) {
+    const float center=training_potential_lookup(bank,spec,level,position);
+    if(!(center>-1.0f) || !isfinite(center))return false;
+    float gradient[3];
+    for(uint axis=0;axis<3;axis++) {
+        float plus[3]={position[0],position[1],position[2]};
+        float minus[3]={position[0],position[1],position[2]};
+        plus[axis]+=spec.spacing_m;minus[axis]-=spec.spacing_m;
+        const float p=training_potential_lookup(bank,spec,level,plus);
+        const float m=training_potential_lookup(bank,spec,level,minus);
+        if(!(p>-1.0f) || !(m>-1.0f) || !isfinite(p) || !isfinite(m))return false;
+        gradient[axis]=(p-m)/(2.0f*spec.spacing_m);
+    }
+    const float magnitude=sqrt(gradient[0]*gradient[0]+gradient[1]*gradient[1]+gradient[2]*gradient[2]);
+    if(!(magnitude>1.0e-5f) || !isfinite(magnitude))return false;
+    for(uint axis=0;axis<3;axis++)direction[axis]=gradient[axis]/magnitude;
+    float ahead[3]={position[0]+direction[0]*spec.spacing_m,
+                    position[1]+direction[1]*spec.spacing_m,
+                    position[2]+direction[2]*spec.spacing_m};
+    const float uphill=training_potential_lookup(bank,spec,level,ahead);
+    return uphill>center+1.0e-6f && isfinite(uphill);
+}
+
 #else
 
 namespace training_potential {
@@ -182,6 +211,30 @@ inline float TrainingPotentialFields::lookup(uint32_t level,const std::array<flo
 inline float training_potential_lookup(const float* bank,const TrainingPotentialGridSpec& spec,
                                        uint32_t level,const float position[3]) {
     return trilinear(bank,spec,level,{position[0],position[1],position[2]});
+}
+
+inline bool training_potential_direction(const float* bank,const TrainingPotentialGridSpec& spec,
+                                         uint32_t level,const float position[3],float direction[3]) {
+    const float center=training_potential_lookup(bank,spec,level,position);
+    if(!(center>-1.0f) || !std::isfinite(center))return false;
+    float gradient[3];
+    for(uint32_t axis=0;axis<3;axis++) {
+        float plus[3]={position[0],position[1],position[2]};
+        float minus[3]={position[0],position[1],position[2]};
+        plus[axis]+=spec.spacing_m;minus[axis]-=spec.spacing_m;
+        const float p=training_potential_lookup(bank,spec,level,plus);
+        const float m=training_potential_lookup(bank,spec,level,minus);
+        if(!(p>-1.0f) || !(m>-1.0f) || !std::isfinite(p) || !std::isfinite(m))return false;
+        gradient[axis]=(p-m)/(2.0f*spec.spacing_m);
+    }
+    const float magnitude=std::sqrt(gradient[0]*gradient[0]+gradient[1]*gradient[1]+gradient[2]*gradient[2]);
+    if(!(magnitude>1.0e-5f) || !std::isfinite(magnitude))return false;
+    for(uint32_t axis=0;axis<3;axis++)direction[axis]=gradient[axis]/magnitude;
+    const float ahead[3]={position[0]+direction[0]*spec.spacing_m,
+                          position[1]+direction[1]*spec.spacing_m,
+                          position[2]+direction[2]*spec.spacing_m};
+    const float uphill=training_potential_lookup(bank,spec,level,ahead);
+    return uphill>center+1.0e-6f && std::isfinite(uphill);
 }
 
 inline bool nearest_reachable_cell(const std::vector<uint8_t>& free_cells,

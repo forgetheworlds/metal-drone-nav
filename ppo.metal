@@ -60,6 +60,86 @@ inline void ppo_actor_mean(device const float* params, thread const float* obs,
     }
 }
 
+// Build a privileged, training-only label from the static geodesic field.
+// Per row: body direction XYZ, valid flag, world position XYZ, body-to-world R.
+// Pose fields support a small host/GPU parity check and never reach the actor.
+kernel void ppo_geodesic_direction_target(device const RLPhysicsState* states [[buffer(0)]],
+                                          device const WWorld* worlds [[buffer(1)]],
+                                          device const uint* level_ids [[buffer(2)]],
+                                          device const float* fields [[buffer(3)]],
+                                          constant TrainingPotentialGridSpec& spec [[buffer(4)]],
+                                          device float* targets [[buffer(5)]],
+                                          device uint* target_level_ids [[buffer(6)]],
+                                          constant uint& count [[buffer(7)]],
+                                          uint n [[thread_position_in_grid]]) {
+    if(n>=count)return;
+    device float* output=targets+n*16;
+    for(uint i=0;i<16;i++)output[i]=0.0f;
+    const uint level=level_ids[n];
+    target_level_ids[n]=level;
+    if(level==0xffffffffu || level>=spec.level_count)return;
+    float position[3]={states[n].position[0],states[n].position[1],states[n].position[2]};
+    float world_direction[3];
+    if(!training_potential_direction(fields,spec,level,position,world_direction))return;
+    // Match the potential builder's 2cm clearance margin for the local step.
+    for(uint step=1;step<=6;step++) {
+        const float distance=0.05f*float(step);
+        const WVec point=wv(position[0]+world_direction[0]*distance,
+                            position[1]+world_direction[1]*distance,
+                            position[2]+world_direction[2]*distance);
+        if(wclearance(worlds[n],point,0.0f)<0.02f)return;
+    }
+    const float qw=states[n].orientation_wxyz[0],qx=states[n].orientation_wxyz[1];
+    const float qy=states[n].orientation_wxyz[2],qz=states[n].orientation_wxyz[3];
+    float r[9];
+    r[0]=1-2*(qy*qy+qz*qz);r[1]=2*(qx*qy-qw*qz);r[2]=2*(qx*qz+qw*qy);
+    r[3]=2*(qx*qy+qw*qz);r[4]=1-2*(qx*qx+qz*qz);r[5]=2*(qy*qz-qw*qx);
+    r[6]=2*(qx*qz-qw*qy);r[7]=2*(qy*qz+qw*qx);r[8]=1-2*(qx*qx+qy*qy);
+    float body[3]={r[0]*world_direction[0]+r[3]*world_direction[1]+r[6]*world_direction[2],
+                   r[1]*world_direction[0]+r[4]*world_direction[1]+r[7]*world_direction[2],
+                   r[2]*world_direction[0]+r[5]*world_direction[1]+r[8]*world_direction[2]};
+    const float body_length=sqrt(body[0]*body[0]+body[1]*body[1]+body[2]*body[2]);
+    if(!(body_length>1.0e-5f) || !isfinite(body_length))return;
+    for(uint i=0;i<3;i++)output[i]=body[i]/body_length;
+    output[3]=1.0f;
+    for(uint i=0;i<3;i++)output[4+i]=position[i];
+    for(uint i=0;i<9;i++)output[7+i]=r[i];
+}
+
+// Add a minibatch-mean cosine-direction loss gradient to PPO's d(mean).
+// Differentiate the deployed mode-17 gate and tanh map. Spherical speed
+// projection preserves direction, and the raw-sample PPO log probability is
+// unchanged.
+kernel void ppo_actor_geodesic_direction_grad(device const float* observations [[buffer(0)]],
+                                              device const float* means [[buffer(1)]],
+                                              device const float* targets [[buffer(2)]],
+                                              device float* d_means [[buffer(3)]],
+                                              constant uint& batch_size [[buffer(4)]],
+                                              constant float& coefficient [[buffer(5)]],
+                                              uint n [[thread_position_in_grid]]) {
+    if(n>=batch_size || !(targets[n*16+3]>0.5f))return;
+    const uint obs_base=n*PPO_ACTOR_OBS;
+    float overhead=0.0f;
+    for(uint k=0;k<20;k++)overhead+=observations[obs_base+k]*12.0f>2.5f;
+    const float gate=0.25f+0.75f*(overhead/20.0f);
+    float q[3],target[3],q2=0.0f,target_dot=0.0f;
+    for(uint axis=0;axis<3;axis++) {
+        const float prior=observations[obs_base+PPO_ACTOR_OBS-3+axis];
+        const float z=prior+gate*(means[n*PPO_ACTIONS+axis]-prior);
+        q[axis]=tanh(z);target[axis]=targets[n*16+axis];
+        q2+=q[axis]*q[axis];target_dot+=q[axis]*target[axis];
+    }
+    const float q_length=sqrt(q2);
+    if(!(q_length>1.0e-5f) || !isfinite(q_length))return;
+    const float scale=coefficient/float(max(batch_size,1u));
+    for(uint axis=0;axis<3;axis++) {
+        const float unit_component=q[axis]/q_length;
+        const float tangent=target[axis]-unit_component*(target_dot/q_length);
+        const float d_loss_d_q=-scale*tangent/q_length;
+        d_means[n*PPO_ACTIONS+axis]+=d_loss_d_q*(1.0f-q[axis]*q[axis])*gate;
+    }
+}
+
 // Scalar reference that reads observations directly from device storage. Use
 // this form in inference/rollout kernels so they do not reserve a 661-float
 // thread-local observation array merely to call the actor.

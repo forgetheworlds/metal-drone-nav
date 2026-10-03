@@ -395,6 +395,44 @@ static void ppo_tests(Metal& m) {
     std::cout<<"ppo PASS CPU/Metal forward, terminal+truncation GAE, default/clipped advantage normalization, anchor gradient, PPO gradients, reduction, Adam; toy target error "<<start_error<<" -> "<<final_error<<"\n";
 }
 
+static void geodesic_direction_gradient_test(Metal& metal) {
+    if(fixed_ppo::actor_obs_dim!=184)return;
+    std::array<float,184> obs{};
+    for(uint32_t ray=0;ray<20;ray++)obs[ray]=0.1f; // gate floor=.25
+    obs[181]=0.24f;obs[182]=-0.16f;obs[183]=0.08f;
+    std::array<float,4> means{{0.7f,-0.35f,0.2f,-0.1f}},gradient{};
+    std::array<float,16> target{};target[0]=-0.35f;target[1]=0.93f;target[2]=0.11f;
+    const float target_norm=std::sqrt(target[0]*target[0]+target[1]*target[1]+target[2]*target[2]);
+    for(uint32_t axis=0;axis<3;axis++)target[axis]/=target_norm;
+    target[3]=1.0f;
+    constexpr float coefficient=0.2f,epsilon=1.0e-3f;
+    auto ob=metal.buffer(sizeof(obs),obs.data()),mb=metal.buffer(sizeof(means),means.data());
+    auto tb=metal.buffer(sizeof(target),target.data()),gb=metal.buffer(sizeof(gradient),gradient.data());
+    const uint32_t batch=1;auto bb=metal.buffer(sizeof(batch),&batch);auto cbcoef=metal.buffer(sizeof(coefficient),&coefficient);
+    auto commands=[metal.queue commandBuffer];
+    metal.dispatch(commands,metal.pipeline("ppo_actor_geodesic_direction_grad"),1,
+                   {ob,mb,tb,gb,bb,cbcoef},1);metal.finish(commands);
+    std::memcpy(gradient.data(),gb.contents,sizeof(gradient));
+    const auto loss=[&](const std::array<float,4>& candidate){
+        constexpr float gate=.25f;
+        float q[3],norm2=0,dot=0;
+        for(uint32_t axis=0;axis<3;axis++){
+            const float z=obs[181+axis]+gate*(candidate[axis]-obs[181+axis]);
+            q[axis]=std::tanh(z);norm2+=q[axis]*q[axis];dot+=q[axis]*target[axis];
+        }
+        return coefficient*(1.0f-dot/std::sqrt(norm2));
+    };
+    float max_error=0.0f;
+    for(uint32_t axis=0;axis<3;axis++){
+        auto plus=means,minus=means;plus[axis]+=epsilon;minus[axis]-=epsilon;
+        const float finite_difference=(loss(plus)-loss(minus))/(2.0f*epsilon);
+        max_error=std::max(max_error,std::fabs(finite_difference-gradient[axis]));
+    }
+    require(std::fabs(gradient[3])<1.0e-8f && max_error<2.0e-5f,
+            "Metal geodesic direction gradient differs from finite differences");
+    std::cout<<"geodesic direction gradient PASS finite_difference_max_error="<<max_error<<" yaw_gradient="<<gradient[3]<<"\n";
+}
+
 struct SimRun {
     float hidden[16],motors[4],previous_nav[4],desired_velocity[3],yaw;
     uint32_t rng,steps;
@@ -465,6 +503,9 @@ struct Sim {
     id<MTLBuffer> bank_worlds,bank_schedule,bank_control,bank_active_ids,bank_transition_ids;
     id<MTLBuffer> environment_physics,runtime_control,task_states,task_control;
     id<MTLBuffer> potential_fields,potential_spec,potential_control,potential_hash;
+    id<MTLBuffer> direction_aux_targets=nil,direction_aux_level_ids=nil;
+    id<MTLComputePipelineState> direction_aux_target_p=nil;
+    bool direction_aux_enabled=false;
     id<MTLComputePipelineState> memory_points_p,memory_candidates_p;
     bool simd_actor=true;
     Sim(Metal& metal,SimConfig config,uint32_t steps):m(metal),cfg(config),horizon(steps) {
@@ -503,7 +544,39 @@ struct Sim {
     }
     void set_config(SimConfig config){require(config.n==cfg.n,"cannot resize simulator");cfg=config;for(uint t=0;t<horizon;t++){cfg.tick=t;std::memcpy(configs[t].contents,&cfg,sizeof(cfg));}cfg.tick=0;}
     void reset(){auto cb=[m.queue commandBuffer];m.dispatch(cb,reset_p,cfg.n,{states,runs,worlds,sensors,commands,raptor,physics,configs[0],poses,bank_worlds,bank_schedule,bank_control,bank_active_ids,environment_physics,runtime_control,task_states,task_control},64);m.finish(cb);}
-    void collect(id<MTLCommandBuffer> cb,uint count=0){if(count==0)count=horizon;for(uint t=0;t<count;t++){auto c=configs[t%horizon];m.dispatch(cb,depth_p,cfg.n*320,{states,runs,worlds,sensors,physics,c,poses});if(cfg.geometry_memory){m.dispatch(cb,memory_points_p,cfg.n*640,{states,runs,sensors,poses,memory_points,physics,c});m.dispatch(cb,memory_candidates_p,cfg.n*85,{states,worlds,memory_points,memory_clearances,c});}m.dispatch(cb,observe_p,cfg.n,{states,runs,worlds,sensors,obs,co,physics,c,poses,memory_clearances},64);encode(m,cb,simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",simd_actor?((size_t(cfg.n)+7)/8)*256:cfg.n,{{obs,size_t(t%horizon)*cfg.n*fixed_ppo::actor_obs_dim*4},{actor,0},{actor_workspace,0},{actions,size_t(t%horizon)*cfg.n*4*4},{env_count,0}},simd_actor?256:64);m.dispatch(cb,act_p,cfg.n,{states,runs,worlds,obs,co,actor,critic,actions,logp,values,commands,physics,c},64);m.dispatch(cb,advance_p,cfg.n,{states,runs,worlds,sensors,commands,raptor,critic,rewards,next_values,terminated,truncated,physics,c,bank_worlds,bank_schedule,bank_control,bank_active_ids,bank_transition_ids,environment_physics,runtime_control,task_states,task_control,potential_fields,potential_spec,potential_control},64);}}
+    void enable_direction_auxiliary(){
+        require(fixed_ppo::actor_obs_dim==184,"geodesic direction auxiliary requires the 184D guided actor");
+        direction_aux_targets=m.buffer(size_t(cfg.n)*horizon*16*sizeof(float));
+        direction_aux_level_ids=m.buffer(size_t(cfg.n)*horizon*sizeof(uint32_t));
+        direction_aux_target_p=m.pipeline("ppo_geodesic_direction_target");
+        direction_aux_enabled=true;
+    }
+    void collect(id<MTLCommandBuffer> cb,uint count=0){
+        if(count==0)count=horizon;
+        for(uint t=0;t<count;t++){
+            auto c=configs[t%horizon];
+            m.dispatch(cb,depth_p,cfg.n*320,{states,runs,worlds,sensors,physics,c,poses});
+            if(cfg.geometry_memory){
+                m.dispatch(cb,memory_points_p,cfg.n*640,{states,runs,sensors,poses,memory_points,physics,c});
+                m.dispatch(cb,memory_candidates_p,cfg.n*85,{states,worlds,memory_points,memory_clearances,c});
+            }
+            m.dispatch(cb,observe_p,cfg.n,{states,runs,worlds,sensors,obs,co,physics,c,poses,memory_clearances},64);
+            const size_t row_offset=size_t(t%horizon)*cfg.n;
+            encode(m,cb,simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",
+                   simd_actor?((size_t(cfg.n)+7)/8)*256:cfg.n,
+                   {{obs,row_offset*fixed_ppo::actor_obs_dim*4},{actor,0},{actor_workspace,0},
+                    {actions,row_offset*fixed_ppo::action_dim*4},{env_count,0}},simd_actor?256:64);
+            m.dispatch(cb,act_p,cfg.n,{states,runs,worlds,obs,co,actor,critic,actions,logp,values,commands,physics,c},64);
+            if(direction_aux_enabled){
+                const size_t target_offset=row_offset*16*sizeof(float);
+                const size_t id_offset=row_offset*sizeof(uint32_t);
+                encode(m,cb,"ppo_geodesic_direction_target",cfg.n,
+                    {{states,0},{worlds,0},{bank_active_ids,0},{potential_fields,0},{potential_spec,0},
+                     {direction_aux_targets,target_offset},{direction_aux_level_ids,id_offset},{env_count,0}},64);
+            }
+            m.dispatch(cb,advance_p,cfg.n,{states,runs,worlds,sensors,commands,raptor,critic,rewards,next_values,terminated,truncated,physics,c,bank_worlds,bank_schedule,bank_control,bank_active_ids,bank_transition_ids,environment_physics,runtime_control,task_states,task_control,potential_fields,potential_spec,potential_control},64);
+        }
+    }
     void report(const std::string& label,double wall){const SimRun* r=(const SimRun*)runs.contents;uint64_t success=0,collision=0,timeout=0,ep=0;double time=0,path=0,total=0,progress=0;float clearance=12,peak=0;
         for(uint i=0;i<cfg.n;i++){success+=r[i].successes;collision+=r[i].collisions;timeout+=r[i].timeouts;ep+=r[i].episodes;time+=r[i].success_time;path+=r[i].total_path;total+=r[i].total_elapsed;progress+=r[i].final_progress;clearance=fmin(clearance,r[i].min_clearance);peak=fmax(peak,r[i].peak_speed);}
         std::cout<<label<<" episodes="<<ep<<" success="<<(ep?double(success)/ep:0)<<" collision="<<(ep?double(collision)/ep:0)<<" timeout="<<(ep?double(timeout)/ep:0)<<" progress="<<(ep?progress/ep:0)<<" mean_goal_time="<<(success?time/success:0)<<" mean_speed="<<(total?path/total:0)<<" peak_speed="<<peak<<" min_clearance="<<clearance<<" wall_s="<<wall<<"\n";
@@ -886,10 +959,13 @@ struct PPOTrainer {
     // Training-only actor anchor: frozen copy of the actor weights at capture
     // time plus the pull strength toward that reference. lambda 0 disables it.
     id<MTLBuffer> anchor_ref_b, anchor_lambda_b;
+    id<MTLBuffer> direction_aux_coefficient_b=nil;
     id<MTLComputePipelineState> anchor_p;
+    id<MTLComputePipelineState> direction_aux_grad_p=nil;
     float anchor_lambda = 0.0f;
     float anchor_radius = 0.0f;
     float anchor_pull = 0.0f;
+    float direction_aux_coefficient = 0.0f;
     id<MTLBuffer> rows_b, envs_b, horizon_b, gamma_b, lambda_b, gae_epsilon_b;
     id<MTLBuffer> clip_b, value_coef_b, entropy_coef_b, actor_count_b, critic_count_b;
     id<MTLBuffer> actor_max_norm_b, critic_max_norm_b, logstd_count_b, logstd_lo_b, logstd_hi_b;
@@ -1071,6 +1147,11 @@ struct PPOTrainer {
                 dispatch(cb,loss_grad_p,b,{{sim.actions,action_offset},{actor_means,0},{sim.actor,fixed_ppo::actor_log_std_offset*4},
                     {sim.logp,row_offset},{predicted_values,0},{sim.values,row_offset},{sim.advantages,row_offset},{sim.returns,row_offset},
                     {d_means,0},{d_log_stds,0},{d_values,0},{losses,0},{bb,0},{clip_b,0},{value_coef_b,0},{entropy_coef_b,0}},64);
+                if(direction_aux_coefficient>0.0f) {
+                    const size_t target_offset=size_t(begin)*16*sizeof(float);
+                    dispatch(cb,direction_aux_grad_p,b,{{sim.obs,obs_offset},{actor_means,0},
+                        {sim.direction_aux_targets,target_offset},{d_means,0},{bb,0},{direction_aux_coefficient_b,0}},64);
+                }
                 dispatch(cb,metric_batch_p,1,{{losses,0},{metric_rows,size_t(update)*4*4},{bb,0}},1);
                 dispatch(cb,actor_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.actor,0},{d_means,0},{actor_hidden,0},{actor_hidden_delta,0},{bb,0}},128);
                 dispatch(cb,actor_grad_direct_p,fixed_ppo::actor_param_count,{{sim.obs,obs_offset},{actor_hidden,0},{d_means,0},{d_log_stds,0},{actor_hidden_delta,0},{actor_grad,0},{bb,0}},128);
@@ -1099,6 +1180,16 @@ struct PPOTrainer {
     // points at the actual launch policy, not the fresh initialization.
     void recapture_anchor_reference() {
         std::memcpy(anchor_ref_b.contents,sim.actor.contents,sim.actor.length);
+    }
+    void set_direction_auxiliary(float coefficient) {
+        require(std::isfinite(coefficient)&&coefficient>=0.0f&&coefficient<=1.0f,
+                "geodesic direction auxiliary coefficient must be in0..1");
+        if(coefficient>0.0f) {
+            require(sim.direction_aux_enabled,"direction targets must be enabled before PPO updates");
+            direction_aux_coefficient_b=scalar(metal,coefficient);
+            direction_aux_grad_p=metal.pipeline("ppo_actor_geodesic_direction_grad");
+        }
+        direction_aux_coefficient=coefficient;
     }
     void set_anchor(float lambda,float radius=0.0f) {
         require(std::isfinite(lambda)&&lambda>=0.0f,"anchor lambda must be finite and non-negative");
@@ -1228,19 +1319,29 @@ struct PpoSafeguardConfig {
     float value_coefficient;
     float anchor_lambda;
     float anchor_radius;
+    float direction_aux_coefficient;
+    std::string direction_field_sha256;
 };
-struct PpoSafeguardHeader {
+struct PpoSafeguardHeaderV1 {
     char magic[8];
     uint32_t version, epochs, actor_count, anchor_reference_bytes, completed_rollouts;
     float advantage_clip_sd, value_coefficient, anchor_lambda, anchor_radius;
     char checkpoint_sha256[64], anchor_reference_sha256[64];
 };
-static_assert(sizeof(PpoSafeguardHeader)==172,"PPO safeguard sidecar header layout changed");
+struct PpoSafeguardHeader {
+    char magic[8];
+    uint32_t version, epochs, actor_count, anchor_reference_bytes, completed_rollouts;
+    float advantage_clip_sd, value_coefficient, anchor_lambda, anchor_radius, direction_aux_coefficient;
+    char checkpoint_sha256[64], anchor_reference_sha256[64];
+    char direction_field_sha256[64];
+};
+static_assert(sizeof(PpoSafeguardHeaderV1)==172,"PPO safeguard v1 sidecar layout changed");
+static_assert(sizeof(PpoSafeguardHeader)==240,"PPO safeguard v2 sidecar layout changed");
 
 static bool ppo_safeguard_is_default(const PpoSafeguardConfig& config) {
     return config.epochs==2 && config.advantage_clip_sd==0.0f &&
            config.value_coefficient==0.5f && config.anchor_lambda==0.0f &&
-           config.anchor_radius==0.0f;
+           config.anchor_radius==0.0f && config.direction_aux_coefficient==0.0f;
 }
 
 static std::string ppo_safeguard_sha256(const void* data,size_t size) {
@@ -1267,12 +1368,44 @@ static std::string load_ppo_safeguard_state(const std::string& checkpoint,
     std::ifstream state(state_path,std::ios::binary);
     require(bool(state),"cannot open PPO safeguard state: "+state_path);
     PpoSafeguardHeader header{};
-    state.read(reinterpret_cast<char*>(&header),sizeof(header));
-    require(bool(state) && std::memcmp(header.magic,"PPOSFG1\0",8)==0 && header.version==1,
+    struct Prefix { char magic[8]; uint32_t version; } prefix{};
+    state.read(reinterpret_cast<char*>(&prefix),sizeof(prefix));
+    require(bool(state) && std::memcmp(prefix.magic,"PPOSFG1\0",8)==0,
             "invalid PPO safeguard sidecar");
+    state.clear();state.seekg(0);
+    if(prefix.version==1) {
+        PpoSafeguardHeaderV1 legacy{};
+        state.read(reinterpret_cast<char*>(&legacy),sizeof(legacy));
+        require(bool(state) && expected.direction_aux_coefficient==0.0f,
+                "legacy PPO safeguard cannot resume a geodesic auxiliary run");
+        std::memcpy(header.magic,legacy.magic,8);header.version=legacy.version;
+        header.epochs=legacy.epochs;header.actor_count=legacy.actor_count;
+        header.anchor_reference_bytes=legacy.anchor_reference_bytes;
+        header.completed_rollouts=legacy.completed_rollouts;
+        header.advantage_clip_sd=legacy.advantage_clip_sd;
+        header.value_coefficient=legacy.value_coefficient;header.anchor_lambda=legacy.anchor_lambda;
+        header.anchor_radius=legacy.anchor_radius;header.direction_aux_coefficient=0.0f;
+        std::memcpy(header.checkpoint_sha256,legacy.checkpoint_sha256,64);
+        std::memcpy(header.anchor_reference_sha256,legacy.anchor_reference_sha256,64);
+        std::memset(header.direction_field_sha256,'0',64);
+    } else if(prefix.version==2) {
+        state.read(reinterpret_cast<char*>(&header),sizeof(header));
+        require(bool(state),"truncated PPO safeguard v2 sidecar");
+    } else {
+        require(false,"unsupported PPO safeguard sidecar version");
+    }
+    // Safeguard v1 predates the geodesic auxiliary and has no field hash.
+    // A v1 file may resume only with auxiliary coefficient zero; potential
+    // shaping, when enabled, is independently bound by PPO checkpoint v9.
+    const bool legacy_without_direction_hash=prefix.version==1u && expected.direction_aux_coefficient==0.0f;
+    const bool direction_hash_matches=legacy_without_direction_hash ||
+        (expected.direction_field_sha256.size()==64 &&
+         std::memcmp(header.direction_field_sha256,expected.direction_field_sha256.data(),64)==0);
     require(header.epochs==expected.epochs && header.advantage_clip_sd==expected.advantage_clip_sd &&
             header.value_coefficient==expected.value_coefficient && header.anchor_lambda==expected.anchor_lambda &&
-            header.anchor_radius==expected.anchor_radius,
+            header.anchor_radius==expected.anchor_radius &&
+            header.direction_aux_coefficient==expected.direction_aux_coefficient &&
+            direction_hash_matches,
             "PPO safeguard settings differ from the saved run; use an explicit warmstart");
     const std::string checkpoint_hash=challenge_evaluation::sha256_file(checkpoint);
     require(header.actor_count==fixed_ppo::actor_param_count &&
@@ -1297,7 +1430,9 @@ static std::string load_ppo_safeguard_state(const std::string& checkpoint,
         if(anchor_reference_destination)std::memcpy(anchor_reference_destination,bytes.data(),bytes.size());
     } else {
         const std::string zeros(64,'0');
-        require(std::memcmp(header.anchor_reference_sha256,zeros.data(),64)==0,
+        const std::array<char,64> empty_hash{};
+        require(std::memcmp(header.anchor_reference_sha256,zeros.data(),64)==0 ||
+                std::memcmp(header.anchor_reference_sha256,empty_hash.data(),64)==0,
                 "disabled PPO anchor has an unexpected reference hash");
     }
     char extra;
@@ -1313,11 +1448,15 @@ static void save_ppo_safeguard_state(const PPOTrainer& trainer,
     const bool persist=!ppo_safeguard_is_default(config)||std::filesystem::exists(state_path);
     if(!persist)return;
     PpoSafeguardHeader header{};
-    std::memcpy(header.magic,"PPOSFG1\0",8);header.version=1;
+    std::memcpy(header.magic,"PPOSFG1\0",8);header.version=2;
     header.epochs=config.epochs;header.actor_count=uint32_t(fixed_ppo::actor_param_count);
     header.completed_rollouts=completed_rollouts;
     header.advantage_clip_sd=config.advantage_clip_sd;header.value_coefficient=config.value_coefficient;
     header.anchor_lambda=config.anchor_lambda;header.anchor_radius=config.anchor_radius;
+    header.direction_aux_coefficient=config.direction_aux_coefficient;
+    require(config.direction_field_sha256.size()==64,"PPO direction field hash must be SHA-256 hex");
+    std::memcpy(header.direction_field_sha256,config.direction_field_sha256.data(),64);
+    std::memset(header.anchor_reference_sha256,'0',64);
     const std::string checkpoint_hash=challenge_evaluation::sha256_file(checkpoint);
     std::memcpy(header.checkpoint_sha256,checkpoint_hash.data(),64);
     if(config.anchor_lambda>0.0f) {
@@ -1394,6 +1533,205 @@ static void challenge_bank_cli(Metal& m,int argc,char** argv) {
     challenge_evaluation::run(m,argv[2],argv[3],argv[4],argv[5],mode,speed,max_steps);
 }
 
+struct GeodesicAuxTargetCheck { uint32_t valid=0;float max_body_error=0.0f; };
+static GeodesicAuxTargetCheck validate_geodesic_aux_targets(
+        const Sim& sim,const training_potential::TrainingPotentialFields& fields) {
+    require(sim.direction_aux_enabled,"geodesic target buffer is disabled");
+    const float* targets=static_cast<const float*>(sim.direction_aux_targets.contents);
+    const uint32_t* levels=static_cast<const uint32_t*>(sim.direction_aux_level_ids.contents);
+    const size_t rows=size_t(sim.cfg.n)*sim.horizon;
+    GeodesicAuxTargetCheck result;
+    uint32_t compared=0;
+    for(size_t row=0;row<rows;row++) {
+        const float* target=targets+row*16;
+        if(!(target[3]>0.5f))continue;
+        result.valid++;
+        require(levels[row]<fields.spec.level_count,"geodesic target level id is outside the train field table");
+        if(compared>=16)continue;
+        const float* position=target+4;
+        float world_direction[3];
+        require(training_potential::training_potential_direction(fields.phi.data(),fields.spec,
+                    levels[row],position,world_direction),"CPU geodesic direction rejected a valid GPU label");
+        const float* rotation=target+7;
+        float body[3]={rotation[0]*world_direction[0]+rotation[3]*world_direction[1]+rotation[6]*world_direction[2],
+                       rotation[1]*world_direction[0]+rotation[4]*world_direction[1]+rotation[7]*world_direction[2],
+                       rotation[2]*world_direction[0]+rotation[5]*world_direction[1]+rotation[8]*world_direction[2]};
+        const float length=std::sqrt(body[0]*body[0]+body[1]*body[1]+body[2]*body[2]);
+        require(length>1.0e-5f,"CPU body direction has zero length");
+        for(uint32_t axis=0;axis<3;axis++)
+            result.max_body_error=std::max(result.max_body_error,
+                std::fabs(body[axis]/length-target[axis]));
+        compared++;
+    }
+    require(compared>0,"no valid geodesic targets were available for CPU/GPU parity");
+    require(result.max_body_error<2.0e-5f,"CPU/GPU geodesic body-direction mismatch");
+    return result;
+}
+
+static void geodesic_direction_preflight(Metal& metal,const std::string& warmstart,
+                                         const std::string& bank_path,const std::string& output_path) {
+    require(fixed_ppo::actor_obs_dim==184,"geodesic direction preflight requires the184-input actor");
+    metal.compile(base_source()+PPO_TRAINER_MSL);
+    constexpr uint32_t envs=128,horizon=1;
+    challenge_training::Settings settings;settings.environment_count=envs;settings.horizon=horizon;
+    settings.sampler_seed=42;settings.selection=challenge_training::SelectionMode::UniformBank;
+    settings.focus_family=14;settings.rehearsal_environments=0;
+    challenge_training::ChallengeTraining sampler(bank_path,
+        challenge_evaluation::sha256_file(std::string(SOURCE_DIR)+"/world.hpp"),settings);
+    const auto& levels=sampler.levels();const auto& worlds=sampler.worlds();
+    auto fields=training_potential::build_training_potential_fields(levels,
+        challenge_evaluation::sha256_file(bank_path),
+        challenge_evaluation::sha256_file(std::string(SOURCE_DIR)+"/world.hpp"),
+        bank_path+".potential-v2.cache");
+    const std::string field_hash=training_potential::sha256_hex(fields.phi.data(),fields.phi.size()*sizeof(float));
+
+    SimConfig config;config.n=envs;config.seed=42;config.family=14;config.mode=22;
+    config.speed=1.5f;config.distance=8.0f;config.max_steps=400;config.geometry_memory=1;
+    config.risk_coef=0.0f;config.entropy_coef=0.0f;config.learning_rate=3.0e-4f;
+    Sim sim(metal,config,horizon);
+    sim.bank_worlds=metal.buffer(worlds.size()*sizeof(WWorld),worlds.data());
+    const auto bank_control=sampler.control();std::memcpy(sim.bank_control.contents,&bank_control,sizeof(bank_control));
+    const auto schedule=sampler.initial_schedule();
+    std::memcpy(sim.bank_schedule.contents,schedule.data(),schedule.size()*sizeof(uint32_t));
+    sim.potential_fields=metal.buffer(fields.phi.size()*sizeof(float),fields.phi.data());
+    std::memcpy(sim.potential_spec.contents,&fields.spec,sizeof(fields.spec));
+    sim.enable_direction_auxiliary();sim.reset();
+    std::ifstream source(warmstart,std::ios::binary);
+    require(bool(source),"cannot open geodesic preflight warmstart");
+    const PpoCheckpointHeader header=read_checkpoint_header(source);
+    require(header.actor_count==fixed_ppo::actor_param_count&&header.critic_count==fixed_ppo::critic_param_count,
+            "geodesic preflight warmstart dimensions mismatch");
+    source.read(static_cast<char*>(sim.actor.contents),sim.actor.length);
+    source.read(static_cast<char*>(sim.critic.contents),sim.critic.length);
+    require(bool(source),"geodesic preflight warmstart is truncated");
+
+    auto commands=[metal.queue commandBuffer];sim.collect(commands,horizon);metal.finish(commands);
+    const auto target_check=validate_geodesic_aux_targets(sim,fields);
+    const float* target=static_cast<const float*>(sim.direction_aux_targets.contents);
+    const uint32_t* target_levels=static_cast<const uint32_t*>(sim.direction_aux_level_ids.contents);
+    const float* obs=static_cast<const float*>(sim.obs.contents);
+    std::vector<uint8_t> seen(levels.size(),0);
+    struct LevelMeasure { size_t id;bool target_valid;float cosine,min_clearance;std::array<float,3> witness,field; };
+    std::vector<LevelMeasure> measurements;
+    double inverse_error=0.0;uint32_t inverse_count=0;
+    std::vector<double> actor_losses_before;
+    for(uint32_t env=0;env<envs;env++) {
+        const uint32_t level=target_levels[env];
+        if(level>=levels.size() || seen[level])continue;
+        seen[level]=1;
+        const float* label=target+size_t(env)*16;
+        const challenge_evaluation::Level& entry=levels[level];
+        require(entry.split=="train"&&entry.family==14,
+                "geodesic preflight schedule must contain family14 TRAIN worlds only");
+        require(entry.witness_route.size()>=2,"family14 training level has no witness segment");
+        const auto& a=entry.witness_route[0];const auto& b=entry.witness_route[1];
+        std::array<float,3> witness{{b[0]-a[0],b[1]-a[1],b[2]-a[2]}};
+        const float witness_norm=std::sqrt(witness[0]*witness[0]+witness[1]*witness[1]+witness[2]*witness[2]);
+        require(witness_norm>1.0e-5f,"witness first segment is empty");
+        for(float& component:witness)component/=witness_norm;
+        std::array<float,3> field_world{};float min_clearance=12.0f;
+        if(label[3]>0.5f) {
+            const float* r=label+7;
+            for(uint32_t axis=0;axis<3;axis++)
+                field_world[axis]=r[axis*3]*label[0]+r[axis*3+1]*label[1]+r[axis*3+2]*label[2];
+            for(uint32_t sample=1;sample<=12;sample++) {
+                const float d=.05f*float(sample);
+                min_clearance=std::min(min_clearance,wclearance(entry.world,
+                    wv(label[4]+field_world[0]*d,label[5]+field_world[1]*d,label[6]+field_world[2]*d),0.0f));
+            }
+        }
+        const float cosine=label[3]>0.5f
+            ? witness[0]*field_world[0]+witness[1]*field_world[1]+witness[2]*field_world[2] : -1.0f;
+        measurements.push_back({level,label[3]>0.5f,cosine,min_clearance,witness,field_world});
+
+        if(label[3]>0.5f) {
+            const float* row_obs=obs+size_t(env)*fixed_ppo::actor_obs_dim;
+            float gate_clear=0;for(uint32_t ray=0;ray<20;ray++)gate_clear+=row_obs[ray]*12.0f>2.5f;
+            const float gate=.25f+.75f*gate_clear/20.0f;
+            float max_error=0;
+            for(uint32_t axis=0;axis<3;axis++) {
+                const float prior=row_obs[181+axis];
+                const float desired=(1.2f/1.5f)*label[axis];
+                const float raw=prior+(std::atanh(desired)-prior)/gate;
+                const float reconstructed=std::tanh(prior+gate*(raw-prior));
+                max_error=std::max(max_error,std::fabs(reconstructed-desired)*1.5f);
+            }
+            inverse_error+=max_error;inverse_count++;
+        }
+    }
+    require(!measurements.empty(),"geodesic preflight found no family14 train levels in initial schedule");
+
+    const auto mean_direction_loss=[&](){
+        fixed_ppo::ActorParams parameters;
+        std::memcpy(parameters.values.data(),sim.actor.contents,sim.actor.length);
+        double loss=0;uint32_t count=0;
+        for(uint32_t env=0;env<envs;env++) {
+            const float* label=target+size_t(env)*16;if(!(label[3]>0.5f))continue;
+            const float* row_obs=obs+size_t(env)*fixed_ppo::actor_obs_dim;
+            thread_local float hidden[fixed_ppo::hidden_dim],mean[fixed_ppo::action_dim];
+            fixed_ppo::actor_forward(row_obs,parameters,hidden,mean);
+            float overhead=0;for(uint32_t ray=0;ray<20;ray++)overhead+=row_obs[ray]*12.0f>2.5f;
+            const float gate=.25f+.75f*overhead/20.0f;
+            float q[3],norm2=0,dot=0;
+            for(uint32_t axis=0;axis<3;axis++){
+                const float prior=row_obs[181+axis];q[axis]=std::tanh(prior+gate*(mean[axis]-prior));
+                norm2+=q[axis]*q[axis];dot+=q[axis]*label[axis];
+            }
+            if(norm2>1.0e-10f){loss+=1.0-double(dot/std::sqrt(norm2));count++;}
+        }
+        require(count>0,"geodesic preflight has no valid actor-loss rows");
+        return loss/double(count);
+    };
+    const double loss_before=mean_direction_loss();
+    std::memset(sim.rewards.contents,0,sim.rewards.length);
+    std::memset(sim.values.contents,0,sim.values.length);
+    std::memset(sim.next_values.contents,0,sim.next_values.length);
+    PPOTrainer trainer(sim,1);trainer.set_direction_auxiliary(.1f);
+    auto update=[metal.queue commandBuffer];trainer.rollout_update(update,0);metal.finish(update);
+    const double loss_after=mean_direction_loss();
+    float cosine_sum=0.0f;uint32_t cosine_count=0;float positive_y=0.0f;
+    std::vector<float> cosines;
+    for(const auto& row:measurements)if(row.target_valid){cosine_sum+=row.cosine;cosines.push_back(row.cosine);positive_y+=row.field[1]>0.0f;cosine_count++;}
+    require(cosine_count>0,"geodesic field produced no valid initial direction targets");
+    const float mean_cosine=cosine_sum/float(cosine_count);
+    std::sort(cosines.begin(),cosines.end());
+    const float median_cosine=cosines[cosines.size()/2];
+    const float positive_y_fraction=positive_y/float(cosine_count);
+
+    const std::filesystem::path output(output_path);
+    if(output.has_parent_path())std::filesystem::create_directories(output.parent_path());
+    std::ofstream report(output_path);require(bool(report),"cannot write geodesic direction preflight report");
+    report<<std::setprecision(9)<<"{\n\"status\":\"preflight_complete\",\n\"bank_sha256\":\""
+          <<challenge_evaluation::sha256_file(bank_path)<<"\",\n\"world_sha256\":\""
+          <<sampler.world_hash()<<"\",\n\"field_sha256\":\""<<field_hash
+          <<"\",\n\"warmstart_sha256\":\""<<challenge_evaluation::sha256_file(warmstart)
+          <<"\",\n\"scope\":\"family14 mirrored TRAIN states only; no dev/final fields or labels\",\n"
+          <<"\"valid_gpu_targets\":"<<target_check.valid<<",\n\"initial_levels_checked\":"<<measurements.size()
+          <<",\n\"cpu_gpu_body_direction_max_error\":"<<target_check.max_body_error
+          <<",\n\"target_alignment_to_first_witness_segment_mean_cosine\":"<<mean_cosine
+          <<",\n\"target_alignment_to_first_witness_segment_median_cosine\":"<<median_cosine
+          <<",\n\"valid_initial_targets\":"<<cosine_count
+          <<",\n\"target_positive_y_fraction\":"<<positive_y_fraction
+          <<",\n\"witness_inverse_reconstruction_max_mps\":"<<(inverse_count?inverse_error/inverse_count:0)
+          <<",\n\"actor_direction_loss_before_one_aux_only_update\":"<<loss_before
+          <<",\n\"actor_direction_loss_after_one_aux_only_update\":"<<loss_after
+          <<",\n\"aux_only_optimizer_updates\":1,\n\"auxiliary_coefficient\":0.1,\n"
+          <<"\"reconstruction_speed_mps\":1.2,\n\"levels\":[";
+    for(size_t index=0;index<measurements.size();index++) {
+        const auto& row=measurements[index];if(index)report<<',';
+        report<<"{\"failure_id\":\""<<levels[row.id].failure_id<<"\",\"target_valid\":"
+              <<(row.target_valid?"true":"false")<<",\"witness_clearance_m\":"<<levels[row.id].witness_clearance
+              <<",\"first_segment_cosine\":"<<row.cosine<<",\"target_segment_clearance_m\":"<<row.min_clearance
+              <<",\"witness_unit_world\":["<<row.witness[0]<<','<<row.witness[1]<<','<<row.witness[2]
+              <<"],\"field_unit_world\":["<<row.field[0]<<','<<row.field[1]<<','<<row.field[2]<<"]}";
+    }
+    report<<"]\n}\n";report.flush();require(bool(report),"geodesic direction preflight report write failed");
+    std::cout<<"geodesic_preflight bank="<<bank_path<<" train_levels="<<measurements.size()
+             <<" valid_targets="<<target_check.valid<<" witness_cos_mean="<<mean_cosine
+             <<" witness_cos_median="<<median_cosine<<" inverse_error_mps="<<(inverse_count?inverse_error/inverse_count:0)
+             <<" actor_direction_loss="<<loss_before<<"->"<<loss_after<<" report="<<output_path<<"\n";
+}
+
 // Controlled bank training uses the same PPO implementation and rollout size.
 // Only level selection changes between uniform and priority arms. The final
 // split is never loaded by the sampler or checkpoint selection.
@@ -1401,7 +1739,7 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
                                  const std::string& bank_path,
                                  const std::string& checkpoint,
                                  const std::string& warmstart,
-                                 bool prioritized,uint32_t sampler_seed=42,uint32_t rehearsal_environments=0,float potential_scale=0,float risk_coef=.1f,uint32_t focus_family=0,float learning_rate=.0001f,float entropy=.0005f,float warm_logstd=-1,uint32_t epochs=2,float adv_clip=0,float value_coef=.5f,float anchor=0,float anchor_radius=0) {
+                                 bool prioritized,uint32_t sampler_seed=42,uint32_t rehearsal_environments=0,float potential_scale=0,float risk_coef=.1f,uint32_t focus_family=0,float learning_rate=.0001f,float entropy=.0005f,float warm_logstd=-1,uint32_t epochs=2,float adv_clip=0,float value_coef=.5f,float anchor=0,float anchor_radius=0,float direction_aux_coefficient=0.0f) {
     require(iterations>0 && fixed_ppo::actor_obs_dim==184,"bank training needs guided build and positive rollouts");
     require(epochs>=1 && epochs<=4,"bank epochs must be1..4");
     require(std::isfinite(adv_clip) && (adv_clip==0.0f || (adv_clip>=0.5f && adv_clip<=100.0f)),
@@ -1431,33 +1769,48 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
     const auto control=sampler.control();
     std::memcpy(simulator.bank_control.contents,&control,sizeof(control));
     require(std::isfinite(potential_scale)&&potential_scale>=0&&potential_scale<=16,"potential scale must be0..16");
-    if(potential_scale>0) {
+    require(std::isfinite(direction_aux_coefficient)&&direction_aux_coefficient>=0.0f&&direction_aux_coefficient<=1.0f,
+            "geodesic direction auxiliary coefficient must be in0..1");
+    training_potential::TrainingPotentialFields direction_fields;
+    std::string direction_field_hash(64,'0');
+    if(potential_scale>0 || direction_aux_coefficient>0.0f) {
         const auto& levels=sampler.levels();
         require(levels.size()==worlds.size(),"potential fields must match the train sampler");
         for(size_t index=0;index<levels.size();index++)
             require(std::memcmp(&levels[index].world,&worlds[index],sizeof(WWorld))==0,"potential level order differs from sampler");
-        const auto fields=training_potential::build_training_potential_fields(levels,
+        direction_fields=training_potential::build_training_potential_fields(levels,
             challenge_evaluation::sha256_file(bank_path),challenge_evaluation::sha256_file(std::string(SOURCE_DIR)+"/world.hpp"),
             bank_path+".potential-v2.cache");
-        simulator.potential_fields=metal.buffer(fields.phi.size()*sizeof(float),fields.phi.data());
-        std::memcpy(simulator.potential_spec.contents,&fields.spec,sizeof(fields.spec));
-        const TrainingPotentialControl shaping{1,potential_scale,.99f,training_potential::kVersion};
-        std::memcpy(simulator.potential_control.contents,&shaping,sizeof(shaping));
-        const auto hash=training_potential::sha256_hex(fields.phi.data(),fields.phi.size()*sizeof(float));
-        std::memcpy(simulator.potential_hash.contents,hash.data(),64);
-        std::cout<<"training_only_potential scale="<<potential_scale<<" gamma=.99 field_sha256="<<hash<<" bytes="<<simulator.potential_fields.length<<"\n";
+        simulator.potential_fields=metal.buffer(direction_fields.phi.size()*sizeof(float),direction_fields.phi.data());
+        std::memcpy(simulator.potential_spec.contents,&direction_fields.spec,sizeof(direction_fields.spec));
+        direction_field_hash=training_potential::sha256_hex(direction_fields.phi.data(),direction_fields.phi.size()*sizeof(float));
+        std::memcpy(simulator.potential_hash.contents,direction_field_hash.data(),64);
+        if(potential_scale>0.0f) {
+            const TrainingPotentialControl shaping{1,potential_scale,.99f,training_potential::kVersion};
+            std::memcpy(simulator.potential_control.contents,&shaping,sizeof(shaping));
+            std::cout<<"training_only_potential scale="<<potential_scale<<" gamma=.99 field_sha256="
+                     <<direction_field_hash<<" bytes="<<simulator.potential_fields.length<<"\n";
+        }
+        if(direction_aux_coefficient>0.0f) {
+            simulator.enable_direction_auxiliary();
+            std::cout<<"training_only_geodesic_direction coefficient="<<direction_aux_coefficient
+                     <<" field_sha256="<<direction_field_hash<<" source=TRAIN_bank_phi=-distance/cap\n";
+        }
     }
     PPOTrainer trainer(simulator,epochs);
-    const PpoSafeguardConfig safeguard_config{epochs,adv_clip,value_coef,anchor,anchor_radius};
+    trainer.set_direction_auxiliary(direction_aux_coefficient);
+    const PpoSafeguardConfig safeguard_config{epochs,adv_clip,value_coef,anchor,anchor_radius,
+        direction_aux_coefficient,direction_field_hash};
     std::string anchor_reference_hash(64,'0');
     trainer.raw_advantages=metal.buffer(simulator.advantages.length);
     if(adv_clip>0)std::memcpy(trainer.adv_clip_b.contents,&adv_clip,sizeof(float));
     if(value_coef!=.5f)std::memcpy(trainer.value_coef_b.contents,&value_coef,sizeof(float));
     trainer.set_anchor(anchor,anchor_radius);
-    if(adv_clip>0 || epochs!=2 || value_coef!=.5f || anchor>0)
+    if(adv_clip>0 || epochs!=2 || value_coef!=.5f || anchor>0 || direction_aux_coefficient>0.0f)
         std::cout<<"bank_update_guard advantage_clip_sd="<<(adv_clip>0?std::to_string(adv_clip):"off")
                  <<" epochs="<<epochs<<" value_coef="<<value_coef
-                 <<" anchor_lambda="<<anchor<<" anchor_radius="<<anchor_radius<<"\n";
+                 <<" anchor_lambda="<<anchor<<" anchor_radius="<<anchor_radius
+                 <<" geodesic_direction_aux="<<direction_aux_coefficient<<"\n";
     const std::string replay_path=checkpoint+".replay.state";
     const bool resume=std::filesystem::exists(checkpoint);
     require(resume==std::filesystem::exists(replay_path),"bank checkpoint and replay state must both exist or both be absent");
@@ -1466,6 +1819,7 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
         trainer.load_checkpoint(checkpoint,config.family,horizon,environments,config.seed);
         anchor_reference_hash=load_ppo_safeguard_state(checkpoint,safeguard_config,
             trainer.completed_rollouts,trainer.anchor_ref_b.contents);
+        if(anchor==0.0f)trainer.recapture_anchor_reference();
         sampler.load_state(replay_path,challenge_evaluation::sha256_file(checkpoint),trainer.completed_rollouts);
         const auto& active=sampler.active_ids();
         std::memcpy(simulator.bank_active_ids.contents,active.data(),active.size()*sizeof(uint32_t));
@@ -1478,8 +1832,11 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
         require(bool(source),"bank warmstart read failed");
         for(uint32_t axis=0;axis<4;axis++)
             static_cast<float*>(simulator.actor.contents)[fixed_ppo::actor_log_std_offset+axis]=warm_logstd;
+        // This buffer is also the diagnostic drift reference when anchoring is
+        // disabled. Capture the actual warmstart, not the fresh random actor
+        // copied when PPOTrainer was constructed.
+        trainer.recapture_anchor_reference();
         if(anchor>0.0f) {
-            trainer.recapture_anchor_reference();
             anchor_reference_hash=ppo_safeguard_sha256(trainer.anchor_ref_b.contents,trainer.anchor_ref_b.length);
         }
         schedule=sampler.initial_schedule();
@@ -1526,6 +1883,7 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
     if(!resume)diag<<"rollout,transitions,gpu_s,rew_mean,rew_std,rew_min,rew_max,term_n,term_mean,term_min,term_max,term_pos_n,adv_mean,adv_std,adv_min,adv_max,adv_gt3_frac,ret_mean,ret_std,ret_max,val_mean,val_std,pol_loss,val_loss,ent_term,ratio,actor_scale,critic_scale,logstd0,logstd1,logstd2,logstd3,ep_success,ep_collision,ep_timeout,ep_path_m,ep_time_s,train_speed_mps,inflight_clear_min,actor_drift_l2\n";
     diag<<std::setprecision(9);
     const double started=seconds();
+    const uint32_t start_rollout=trainer.completed_rollouts;
     const uint32_t finish=trainer.completed_rollouts+iterations;
     std::cout<<"bank_train selection="<<(prioritized?"priority":"uniform")
              <<" train_levels="<<worlds.size()<<" seed="<<sampler_seed<<" rehearsal_envs="<<rehearsal_environments<<" envs=128 horizon=32 start="<<trainer.completed_rollouts<<"\n";
@@ -1550,6 +1908,13 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
             static_cast<const uint8_t*>(simulator.terminated.contents),
             static_cast<const uint8_t*>(simulator.truncated.contents),
             static_cast<const uint32_t*>(simulator.bank_transition_ids.contents),rollout);
+        if(direction_aux_coefficient>0.0f && rollout==start_rollout) {
+            const auto check=validate_geodesic_aux_targets(simulator,direction_fields);
+            require(check.valid>0,"geodesic field produced no usable directions in the first rollout");
+            const size_t target_rows=size_t(environments)*horizon;
+            std::cout<<"geodesic_targets cpu_gpu_parity=PASS valid="<<check.valid<<"/"<<target_rows
+                     <<" fraction="<<double(check.valid)/target_rows<<" max_body_error="<<check.max_body_error<<"\n";
+        }
         trainer.completed_rollouts=rollout+1;
         {
             constexpr size_t rows=size_t(environments)*horizon;
@@ -1635,6 +2000,12 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
             }
             std::cout<<"bank_train rollout="<<rollout+1<<" wall_s="<<seconds()-started
                      <<" success="<<score.success_rate()<<" worst_family="<<score.worst_family_success()<<" focus_success="<<selection_score(score)<<"\n";
+            if(direction_aux_coefficient>0.0f) {
+                const float* targets=static_cast<const float*>(simulator.direction_aux_targets.contents);
+                uint32_t valid=0;for(size_t row=0;row<size_t(environments)*horizon;row++)valid+=targets[row*16+3]>0.5f;
+                std::cout<<"geodesic_aux coefficient="<<direction_aux_coefficient
+                         <<" current_rollout_targets="<<valid<<"/"<<size_t(environments)*horizon<<"\n";
+            }
         }
     }}
 }
@@ -1796,7 +2167,7 @@ static void measure_reaction_latency(Metal& m,const std::string& checkpoint,uint
 
 int main(int argc,char** argv){@autoreleasepool{try{
     std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="compare-webots") {
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);geodesic_direction_gradient_test(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="geodesic-preflight"){require(argc>=5,"geodesic-preflight WARMSTART BANK_JSONL OUTPUT_JSON");geodesic_direction_preflight(m,argv[2],argv[3],argv[4]);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="compare-webots") {
         require(argc>=5,"compare-webots NAV_ACTOR BOUNDED_METADATA_DIR OUTPUT_CSV");
         compare_webots_scenes(m,argv[2],argv[3],argv[4]);
     }else if(command=="reward-audit") {
@@ -1818,16 +2189,17 @@ int main(int argc,char** argv){@autoreleasepool{try{
         require(argc>=5,"bank-witness BANK_JSONL train|dev OUTPUT_CSV [SPEED=1] [MAX_STEPS=1200] [LOCAL_POLICY_CHECKPOINT|goal-script]");
         challenge_evaluation::run_witness(m,argv[2],argv[3],argv[4],argc>5?std::stof(argv[5]):1.0f,argc>6?std::stoul(argv[6]):1200,argc>7?argv[7]:"");
     }else if(command=="train-bank") {
-        require(argc>=7,"train-bank ROLLOUTS BANK_JSONL CHECKPOINT WARMSTART uniform|priority [--seed N] [--rehearsal N] [--potential-scale LAMBDA] [--risk COEFFICIENT] [--focus-family 14|15|16] [--epochs 1..4] [--adv-clip SD] [--value-coef V] [--anchor LAMBDA] [--anchor-radius DISTANCE]");
+        require(argc>=7,"train-bank ROLLOUTS BANK_JSONL CHECKPOINT WARMSTART uniform|priority [--seed N] [--rehearsal N] [--potential-scale LAMBDA] [--direction-aux COEFFICIENT] [--risk COEFFICIENT] [--focus-family 14|15|16] [--epochs 1..4] [--adv-clip SD] [--value-coef V] [--anchor LAMBDA] [--anchor-radius DISTANCE]");
         const std::string selection=argv[6];
         require(selection=="uniform" || selection=="priority","bank selection must be uniform or priority");
-        uint32_t seed=42,rehearsal=0,focus_family=0,epochs=2;float potential_scale=0,risk_coef=.1f,learning_rate=.0001f,entropy=.0005f,warm_logstd=-1,adv_clip=0,value_coef=.5f,anchor=0,anchor_radius=0;
+        uint32_t seed=42,rehearsal=0,focus_family=0,epochs=2;float potential_scale=0,direction_aux=0,risk_coef=.1f,learning_rate=.0001f,entropy=.0005f,warm_logstd=-1,adv_clip=0,value_coef=.5f,anchor=0,anchor_radius=0;
         for(int argument=7;argument<argc;argument+=2) {
             require(argument+1<argc,"bank option requires a value");
             const std::string option=argv[argument];
             if(option=="--seed")seed=std::stoul(argv[argument+1]);
             else if(option=="--rehearsal")rehearsal=std::stoul(argv[argument+1]);
             else if(option=="--potential-scale")potential_scale=std::stof(argv[argument+1]);
+            else if(option=="--direction-aux")direction_aux=std::stof(argv[argument+1]);
             else if(option=="--risk")risk_coef=std::stof(argv[argument+1]);
             else if(option=="--focus-family")focus_family=std::stoul(argv[argument+1]);
             else if(option=="--learning-rate")learning_rate=std::stof(argv[argument+1]);
@@ -1840,7 +2212,7 @@ int main(int argc,char** argv){@autoreleasepool{try{
             else if(option=="--anchor-radius")anchor_radius=std::stof(argv[argument+1]);
             else throw std::runtime_error("unknown bank option "+option);
         }
-        train_challenge_bank(m,std::stoul(argv[2]),argv[3],argv[4],argv[5],selection=="priority",seed,rehearsal,potential_scale,risk_coef,focus_family,learning_rate,entropy,warm_logstd,epochs,adv_clip,value_coef,anchor,anchor_radius);
+        train_challenge_bank(m,std::stoul(argv[2]),argv[3],argv[4],argv[5],selection=="priority",seed,rehearsal,potential_scale,risk_coef,focus_family,learning_rate,entropy,warm_logstd,epochs,adv_clip,value_coef,anchor,anchor_radius,direction_aux);
     }else if(command=="bank-eval")challenge_bank_cli(m,argc,argv);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001,argc>6?argv[6]:"results/trace",argc>7?std::stoi(argv[7]):-1,argc>8?bool(std::stoi(argv[8])):false);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0,argc>14?std::stof(argv[14]):0,argc>15?std::stof(argv[15]):0,argc>16?std::stof(argv[16]):0,argc>17?std::stoul(argv[17]):0,argc>18?std::stoul(argv[18]):4,argc>19?std::stof(argv[19]):-1);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}
