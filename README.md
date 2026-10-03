@@ -38,7 +38,7 @@ trajectory adapter →  frozen RAPTOR motor controller → 4 motor commands
 
 It must vary its speed with environmental complexity, react to moving collision threats quickly enough to evade them, keep working under disturbance, and generalise to layouts it was not trained on. The contract behind every optimisation in this repository is *maximise validated policy-improvement iterations per unit wall time*.
 
-**The full goal is active and incomplete.** The current milestone — a policy that reaches 25/30 connected-room development levels and two watchable native Webots flights — is real but narrow. Read the limitations section before citing any number on this page.
+**The full goal is active and incomplete.** The current milestone — a policy that reaches 25/30 connected-room development levels and three watchable native Webots flights — is real but narrow. Read the limitations section before citing any number on this page.
 
 ---
 
@@ -99,6 +99,7 @@ The final challenge-bank split (90 levels) has **never been evaluated or used fo
 - **Knob search did not beat 25/30.** A delegated 1500-rollout search over risk, learning rate and potential scale never exceeded it (best alternatives 18/30 and 19/30), and an independent exact-recipe seed-54 replication peaked at **22/30**. Those arms are preserved as failed evidence, not as improvements. [training records and failed arms](docs/RESULTS_GALLERY.md#training-records)
 - **Route guidance helps the arrival baseline.** The arrival actor completes **30/30** connected-room routes when given privileged intermediate goals, but **0/30** with the final goal alone. This is an oracle diagnostic, not an autonomous score. [BENCHMARKS · Routing](docs/BENCHMARKS.md#routing-and-generator-diagnostics)
 - **The new candidate is not a replacement.** On the legacy first-entry protocol it regressed tabletop 124→101/128 and mixed 115→108/128. The original, static and moving-threat policies and their checkpoints stay preserved. [retention figure](docs/RESULTS_GALLERY.md#arrival-candidate-vs-preserved-baselines)
+- **Training loss hid a perception limit.** Corner imitation reduced loss but completed 0/30 DEV corners. A controlled mirrored-world probe found identical spawn inputs; later raw depth exposed gap information that min-pooling could erase. [Experiment and curves](docs/IMITATION_EXPERIMENT.md).
 - **Video evidence had to be rebuilt.** Early recordings were black or empty because of the observer-camera convention and hidden rendering. The current movies are unmodified Webots Supervisor output with an ffmpeg decoded-frame gate; one real rejected half-black capture is preserved as a failure. The earlier Blender cutaway reconstructions are **not** native footage and are not promoted. [recording protocol](webots/README.md#native-scene-recordings) · [rejected capture](docs/RESULTS_GALLERY.md#rejected-and-local-only-recordings)
 
 ---
@@ -120,7 +121,11 @@ Native Webots R2025a main-view movies from live simulation. The observer camera 
 
 *Two offset doors with a table · room policy · first entry at 5.23 s, no contact, final speed 1.56 m/s — [watch the connected-room flight](artifacts/videos/native-connected-rooms.mp4).*
 
-These are **two selected successful examples**, not a success rate. Exact worlds, receipts, 100 Hz traces and video hashes: [native-flight-videos manifest](evidence/inputs/native-flight-videos/manifest.json). Reproduction commands: [webots/README.md](webots/README.md#native-scene-recordings). The full video catalogue, including raw takes and rejected captures, is in [the gallery](docs/RESULTS_GALLERY.md#videos).
+![Native moving course](artifacts/videos/native-moving-course-preview.jpg)
+
+*Moving cylinder, barrier and overhang · frozen default policy · first entry at 17.09 s, no contact. Actual mean path speed 0.715 m/s, peak 1.93 m/s — [watch the native moving-course flight](artifacts/videos/native-moving-course.mp4). [Receipt and limits](docs/COURSE_BANK_REVIEW.md).*
+
+These are **three selected successful examples**, not a success rate. Exact worlds, receipts, 100 Hz traces and video hashes: [native-flight-videos manifest](evidence/inputs/native-flight-videos/manifest.json). Reproduction commands: [webots/README.md](webots/README.md#native-scene-recordings). The full video catalogue, including raw takes and rejected captures, is in [the gallery](docs/RESULTS_GALLERY.md#videos).
 
 ---
 
@@ -147,10 +152,10 @@ python3 evidence.py --out artifacts
 - **Desired speed is bounded; actual vehicle speed can overshoot it** (a requested 1.5 m/s cap has been measured at 7.34 m/s in one table case).
 - **Doorway performance is sensitive to command delay** (50 ms alone: 85.2% → 76.6% on held two-door).
 - **Wind is a force-equivalent simulator disturbance**, not a measured wind velocity. The dynamics ranges used for training are declared stress settings, not identified hardware uncertainty.
-- **Collision is a conservative 0.18 m sphere**, not a mechanical airframe model; a pose-aware contact model exists as an audit and does not change scoring. Depth is clean and ego sensors are ideal in all reported runs.
-- **Webots transfer evidence is limited to small static matrices.** A matched 30-room development matrix is in progress and has not been published yet. Sensor origin, sampling and motor startup still differ from Metal. None of this is broad generalization and none of it is hardware validation.
-- **Moving-threat evidence and long-route evidence are separate.** Threat results come from a matched 24-case moving-sphere matrix; long-route results come from the frozen challenge bank. Neither substitutes for the other.
-- **No GR2PO experiment has been run.** Every learning result here is PPO. PPO remains the verified control; alternatives require paired controlled evidence.
+- **Collision is a conservative 0.18 m sphere**, not a mechanical airframe model; a pose-aware contact model exists as an audit and does not change scoring. Webots transfer uses clean depth and ideal ego sensors; Metal stress sweeps separately apply declared corruption.
+- **Independent transfer is incomplete.** The published paired room matrix is 25/30 Metal versus 18/30 Webots, with all 12 native contacts in hard scenes. One longer moving-course DEV example also succeeds. Sensor origin, sampling and motor startup still differ. These results do not establish broad generalization or hardware validation.
+- **Long dynamic courses remain difficult.** The selected room policy scores 10/108 on the new course DEV bank. Its privileged witnesses use 60 s, versus a 20 s policy budget, so those witnesses do not prove matched-budget feasibility. The native movie proves one selected moving-course case.
+- **No GR2PO experiment has been run.** Selected policies use PPO. An exploratory imitation experiment failed held-out navigation and was rejected; software parity does not establish transfer capability.
 
 ---
 
