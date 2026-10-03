@@ -1507,11 +1507,57 @@ def room_transfer_figure(out: Path) -> list[str]:
     return save_figure(fig, out, "room-webots-transfer")
 
 
+def imitation_failure_figure(out: Path) -> list[str]:
+    rows = read_csv(INPUTS / "navigation-imitation/progression.csv")
+    proof = json.loads((INPUTS / "navigation-imitation/proof.json").read_text())
+    if any(int(row["episodes"]) != 90 for row in rows):
+        raise ValueError("imitation progression requires the complete 90-case DEV suite")
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.7))
+    for stage, label, color in (("root-run", "Expert flights", "#24658f"),
+                                ("aggregate-run", "Mixture-state labels", "#bc7040")):
+        selected = [row for row in rows if row["stage"] == stage and row["batch_half_squared_command_error"]]
+        axes[0].plot([int(row["total_actor_updates"]) for row in selected],
+                     [float(row["batch_half_squared_command_error"]) for row in selected],
+                     marker="o", markersize=3, label=label, color=color)
+    axes[0].set(title="Recorded minibatch loss", xlabel="Actor updates",
+                ylabel="Mean half-squared command error")
+    axes[0].legend(frameon=False, fontsize=8)
+    for key, label, color in (("corner_success", "Corners", "#af4044"),
+                              ("room_success", "Rooms", "#24658f"),
+                              ("vertical_success", "Vertical routes", "#498556")):
+        axes[1].plot([int(row["total_actor_updates"]) for row in rows],
+                     [int(row[key]) for row in rows], marker="o", markersize=3,
+                     label=label, color=color)
+    axes[1].set(title="Actual held-out DEV completion", xlabel="Actor updates",
+                ylabel="Successful cases per family (30)", ylim=(-1, 31))
+    axes[1].legend(frameon=False, fontsize=8)
+    initial = proof["fit_diagnostics"]["initial_rows"]
+    index = np.arange(len(initial))
+    axes[2].scatter(index, [row["target"][1] for row in initial],
+                    label="Privileged teacher", marker="x", color="#24658f")
+    axes[2].scatter(index, [row["predicted"][1] for row in initial],
+                    label="After 1,000 updates", s=16, color="#bc7040")
+    axes[2].set(title="Critical initial turn: 24 TRAIN flights", xlabel="Successful teacher case",
+                ylabel="Normalized body Y command", ylim=(-1.1, 1.1))
+    axes[2].legend(frameon=False, fontsize=8, loc="upper left", bbox_to_anchor=(0, .8))
+    for ax in axes:
+        ax.grid(alpha=.2)
+        ax.spines[["top", "right"]].set_visible(False)
+    fig.suptitle("Lower imitation loss did not produce corner navigation", fontsize=14, weight="bold")
+    fig.text(.02, .015, "One source-only seed. Data changes after update 1,000. All corner DEV scores remain 0/30. Failed candidates were not promoted.", fontsize=8)
+    fig.tight_layout(rect=(0, .055, 1, .92))
+    return save_figure(fig, out, "imitation-learning-failure")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="output directory (default: artifacts)")
+    parser.add_argument("--imitation-only", action="store_true", help="render the recorded imitation experiment without regenerating other figures")
     args = parser.parse_args()
     out = args.out if args.out.is_absolute() else ROOT / args.out
+    if args.imitation_only:
+        print("generated:", ", ".join(imitation_failure_figure(out)))
+        return 0
 
     training = read_training(TRAINING_TSV)
     static_eval = read_csv(STATIC_EVAL)

@@ -313,7 +313,7 @@ Earlier standalone evidence that the policy uses actual perception: box world **
 
 ## Next phase
 
-The user has accepted the obstacle-course milestone and asked for **longer varied courses, moving obstacles, narrow passages, some speed optimization, and a simpler evidence-rich README**. This page is that README's evidence side; the experiments themselves are separate missions and are **not** yet results.
+The user has accepted the obstacle-course milestone and asked for **longer varied courses, moving obstacles, narrow passages, some speed optimization, and a simpler evidence-rich README**. This page is that README's evidence side; their verified results and limits are recorded below as each mission completes.
 
 Intent, in outcome terms:
 
@@ -324,6 +324,14 @@ Intent, in outcome terms:
 5. **Transfer** — diagnose the eight Metal successes that contacted in the completed Webots matrix. Separate sensing/startup differences from inadequate navigation margins before choosing training changes.
 
 Nothing in this section is a result. When a mission finishes, its `report.md` and `handoff.json` land in its own `results/<mission>/` folder *(local)* and are published here only after verification.
+
+---
+
+## Corner training and observation audit
+
+The [source-only imitation experiment](IMITATION_EXPERIMENT.md) reduced command loss but left corner DEV completion at 0/30 and lost existing room and vertical skills. Its candidates were rejected. A controlled TRAIN mirror probe found identical actor inputs at spawn despite opposite privileged route choices; later sensing can distinguish the worlds. Raw receipts, code and progression are public.
+
+![Recorded imitation failure](../artifacts/imitation-learning-failure.png)
 
 ---
 

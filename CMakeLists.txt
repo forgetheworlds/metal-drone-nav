@@ -18,3 +18,11 @@ add_navigation_target(metal_nav_pooled 181)
 
 # Learned residual over a deployable depth/goal geometric prior.
 add_navigation_target(metal_nav_guided 184)
+
+# Cold experiment: source-only expert demonstrations and actor warmstarts.
+add_executable(metal_nav_imitation navigation_imitation.mm)
+target_compile_options(metal_nav_imitation PRIVATE -O3 -fobjc-arc -Wall -Wextra)
+target_compile_definitions(metal_nav_imitation PRIVATE
+    SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" FIXED_PPO_ACTOR_OBS_DIM=184)
+target_link_libraries(metal_nav_imitation PRIVATE
+    "-framework Foundation" "-framework Metal" "-framework Accelerate")
