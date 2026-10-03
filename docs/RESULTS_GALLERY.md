@@ -327,6 +327,18 @@ Nothing in this section is a result. When a mission finishes, its `report.md` an
 
 ---
 
+## Native moving-obstacle course
+
+The [reviewed Webots run](COURSE_BANK_REVIEW.md) uses the unchanged default policy and actual RAPTOR motors: 17.09 s to first goal entry, no contact, 12.22 m traveled, and altitude from 1.01 to 2.20 m. This is one selected DEV scene; it does not establish a reliability rate or stable arrival hold.
+
+[Watch the actual native recording](../artifacts/videos/native-moving-course.mp4)
+
+![Native scene frame](../artifacts/videos/native-moving-course-preview.jpg)
+
+The new 324-record course bank exposes further failures: the selected room policy completes 10/108 DEV cases. Its 108/108 privileged witnesses used 60 s, versus the policy's 20 s, so that witness result cannot establish matched-budget feasibility. The review records mover timing and clearance limits.
+
+---
+
 ## Corner training and observation audit
 
 The [source-only imitation experiment](IMITATION_EXPERIMENT.md) reduced command loss but left corner DEV completion at 0/30 and lost existing room and vertical skills. Its candidates were rejected. A controlled TRAIN mirror probe found identical actor inputs at spawn despite opposite privileged route choices; later sensing can distinguish the worlds. Raw receipts, code and progression are public.
