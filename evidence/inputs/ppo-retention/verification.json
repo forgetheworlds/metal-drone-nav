@@ -1,0 +1,92 @@
+{
+  "anchor-split-first.log": "device=Apple M3 FP32 safe/precise\nbank_update_guard advantage_clip_sd=off epochs=1 value_coef=0.5 anchor_lambda=0.1 anchor_radius=0\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.0666667 collision=0.933333 timeout=0 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/anchor-split.bin.best-dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=1cb2d2368c9100c20540a1b9e0afa72d61077209734ec876f3ed83aa493005b2\nbank_train selection=uniform train_levels=90 seed=77 rehearsal_envs=0 envs=128 horizon=32 start=0\nbank_diag rollout=1 rew=0.0421182 adv_std=2.82644 term_n=7 term_mean=-10.0389 ratio=1.00021 ent_term=-0.000837169 pol=-0.000141358 val=2.14762 ep_success=0 ep_collision=1 clear_min=0.000241041 drift_l2=0.0399791 anchor_pull=0.1\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.0666667 collision=0.933333 timeout=0 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/anchor-split.bin.dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=d64ac86e306225af0a292d870ba14fb47b7f5b60ab20e4cdd20e436b8105425c\nbank_train rollout=1 wall_s=0.24378 success=0.0666667 worst_family=0 focus_success=0\n",
+  "metal-guided-test.log": "device=Apple M3 FP32 safe/precise\nworld PASS analytic rays/collision/motion + 40960 CPU/Metal rays; max_depth_error=0 clearance_error=0\nRAPTOR debug CPU=5.96046e-07 GPU=5.96046e-07 h=1.19209e-07\nRAPTOR PASS official sequence CPU_error=5.96046e-07 Metal_error=5.96046e-07 recurrent_CPU_Metal_error=1.19209e-07 N=128 steps=16\nphysics PASS RAPTOR-pinned rl-tools official L2F fixtures cases=64 steps=8 samples=512 CPU_error=9.53674e-07 Metal_error=9.53674e-07\nRAPTOR adapter PASS PX4 target-frame transform (0.5 s preview fixture), max_error=5.96046e-08\nppo PASS CPU/Metal forward, terminal+truncation GAE, default/clipped advantage normalization, anchor gradient, PPO gradients, reduction, Adam; toy target error 0.587367 -> 0.0399787\nclosed loop PASS N=32 native_steps=160 state_error=7.40215e-06 hidden_error=3.03984e-06 GPU_s=0.012338\nmixed domains PASS clean/stress and flying reset CPU/GPU observation_error=1.19209e-07\ndeployed action map PASS mode22 versus17 command_error=7.45058e-09\n",
+  "probe-mismatch-controls.log": "device=Apple M3 FP32 safe/precise\nbank_update_guard advantage_clip_sd=off epochs=1 value_coef=0.5 anchor_lambda=0.2 anchor_radius=0\nPPO resume rollouts=2 optimizer_step=32\nERROR: PPO safeguard settings differ from the saved run; use an explicit warmstart\n",
+  "probe-missing-ref.log": "device=Apple M3 FP32 safe/precise\nbank_update_guard advantage_clip_sd=off epochs=1 value_coef=0.5 anchor_lambda=0.1 anchor_radius=0\nPPO resume rollouts=2 optimizer_step=32\nERROR: active PPO anchor is missing its saved .anchorref: /Users/muadhsambul/RL/results/ppo-safeguard-review/probe-missing-ref.bin.anchorref\n",
+  "anchor-cont.log": "device=Apple M3 FP32 safe/precise\nbank_update_guard advantage_clip_sd=off epochs=1 value_coef=0.5 anchor_lambda=0.1 anchor_radius=0\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.0666667 collision=0.933333 timeout=0 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/anchor-cont.bin.best-dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=1cb2d2368c9100c20540a1b9e0afa72d61077209734ec876f3ed83aa493005b2\nbank_train selection=uniform train_levels=90 seed=77 rehearsal_envs=0 envs=128 horizon=32 start=0\nbank_diag rollout=2 rew=-0.0068953 adv_std=3.88706 term_n=31 term_mean=-10.0497 ratio=0.999878 ent_term=-0.000836362 pol=-0.000365489 val=4.96747 ep_success=0 ep_collision=1 clear_min=0.000225782 drift_l2=0.051211 anchor_pull=0.1\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.0444444 collision=0.955556 timeout=0 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/anchor-cont.bin.dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=cfcb30c9f573aba45bd94600441e622a41e422588ec9d88bb6abf07f5e3a2992\nbank_train rollout=2 wall_s=0.286953 success=0.0444444 worst_family=0 focus_success=0\n",
+  "anchor-split-resume.log": "device=Apple M3 FP32 safe/precise\nbank_update_guard advantage_clip_sd=off epochs=1 value_coef=0.5 anchor_lambda=0.1 anchor_radius=0\nPPO resume rollouts=1 optimizer_step=16\nanchor_reference validated and loaded /Users/muadhsambul/RL/results/ppo-safeguard-review/anchor-split.bin.anchorref\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.0666667 collision=0.933333 timeout=0 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/anchor-split.bin.best-dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=1cb2d2368c9100c20540a1b9e0afa72d61077209734ec876f3ed83aa493005b2\nbank_train selection=uniform train_levels=90 seed=77 rehearsal_envs=0 envs=128 horizon=32 start=1\nbank_diag rollout=2 rew=-0.0068953 adv_std=3.88706 term_n=31 term_mean=-10.0497 ratio=0.999878 ent_term=-0.000836362 pol=-0.000365489 val=4.96747 ep_success=0 ep_collision=1 clear_min=0.000225782 drift_l2=0.051211 anchor_pull=0.1\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.0444444 collision=0.955556 timeout=0 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/anchor-split.bin.dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=cfcb30c9f573aba45bd94600441e622a41e422588ec9d88bb6abf07f5e3a2992\nbank_train rollout=2 wall_s=0.256872 success=0.0444444 worst_family=0 focus_success=0\n",
+  "legacy-default-resume.log": "device=Apple M3 FP32 safe/precise\ntraining_only_potential scale=16 gamma=.99 field_sha256=aefa94d680c8271f5460563a8a87ec016f77c11b387007601b27fc0aa8e97e73 bytes=38666160\nPPO resume rollouts=600 optimizer_step=19200\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.1 collision=0.844444 timeout=0.0555556 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/legacy-default.bin.best-dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=46f96973c53575948af8b52868881f4bb60c9dd3d1fac005394bfa78c968edce\nbank_train selection=uniform train_levels=90 seed=52 rehearsal_envs=0 envs=128 horizon=32 start=600\nbank_diag rollout=601 rew=0.128423 adv_std=1.92323 term_n=37 term_mean=-3.22918 ratio=1.00066 ent_term=-0.000502045 pol=-0.000506465 val=0.92189 ep_success=0.243243 ep_collision=0.756757 clear_min=0.000349537 drift_l2=6.66011 anchor_pull=0\nbank_eval split=dev levels=90 mode=17 speed=1.5 max_steps=400 budget_s=20 success=0.1 collision=0.855556 timeout=0.0444444 output=/Users/muadhsambul/RL/results/ppo-safeguard-review/legacy-default.bin.dev.csv bank_sha256=e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e checkpoint_sha256=2663e429d4117f63d84492348b6e9eb45884228b916a3775eca6eb5d0d34d486\nbank_train rollout=601 wall_s=0.312113 success=0.1 worst_family=0 focus_success=0.1\n",
+  "verification": {
+    "mission": "PPO safeguard compatibility review",
+    "status": "ready_for_parent_integration",
+    "date": "2026-10-02",
+    "owned_source_files": [
+      "main.mm",
+      "ppo.metal"
+    ],
+    "review_artifacts": [
+      "results/ppo-safeguard-review/report.md",
+      "results/ppo-safeguard-review/metal-guided-test.log",
+      "results/ppo-safeguard-review/anchor-cont.log",
+      "results/ppo-safeguard-review/anchor-split-first.log",
+      "results/ppo-safeguard-review/anchor-split-resume.log",
+      "results/ppo-safeguard-review/probe-missing-ref.log",
+      "results/ppo-safeguard-review/probe-mismatch-controls.log",
+      "results/ppo-safeguard-review/legacy-default-resume.log"
+    ],
+    "changes": {
+      "safeguard_sidecar": {
+        "path_suffix": ".safeguard",
+        "format_version": 1,
+        "fields": [
+          "epochs",
+          "advantage_clip_sd",
+          "value_coefficient",
+          "anchor_lambda",
+          "anchor_radius",
+          "completed_rollouts",
+          "checkpoint_sha256",
+          "anchor_reference_sha256"
+        ],
+        "anchor_reference_path_suffix": ".anchorref",
+        "resume_policy": "Require a matching sidecar for non-default safeguards; validate checkpoint and reference hashes; never recapture a missing active anchor during resume.",
+        "default_policy": "The historical defaults need no sidecar, so legacy default checkpoints remain readable."
+      },
+      "advantage_normalization": {
+        "new_buffer_index": 3,
+        "default_clip_radius": "FLT_MAX",
+        "default_effect": "No-op for finite standardized advantages",
+        "dispatches_audited": 2
+      },
+      "anchor_kernel": "Parameter-space restoring gradient; PPOTrainer skips dispatch when lambda is zero. This is not a KL trust-region guarantee."
+    },
+    "verification": {
+      "private_build": "cmake -S . -B build/ppo-safeguard-review && cmake --build build/ppo-safeguard-review --target metal_nav_guided -j2",
+      "private_build_passed": true,
+      "guided_test_command": "build/ppo-safeguard-review/metal_nav_guided test",
+      "guided_test_passed": true,
+      "active_anchor_resume_probe": {
+        "settings": {
+          "focus_family": 15,
+          "seed": 77,
+          "epochs": 1,
+          "anchor_lambda": 0.1,
+          "rollouts": 2
+        },
+        "comparison": "2 continuous rollouts vs 1 rollout plus resume",
+        "checkpoint_sha256_continuous": "cfcb30c9f573aba45bd94600441e622a41e422588ec9d88bb6abf07f5e3a2992",
+        "checkpoint_sha256_resumed": "cfcb30c9f573aba45bd94600441e622a41e422588ec9d88bb6abf07f5e3a2992",
+        "safeguard_sha256": "8706378fa90838f77e3799b4c1aa2b8bb72d97c44d3c861cc54912293294b565",
+        "anchor_reference_sha256": "8f094707ec5dc11d10608be881279513b725e7f8596d6a8ffec53d035be84a28",
+        "bitwise_equal": true
+      },
+      "fail_closed_probes": {
+        "active_anchor_missing_reference_rejected": true,
+        "mismatched_anchor_settings_rejected": true
+      },
+      "legacy_default_probe": {
+        "checkpoint_resumed_without_safeguard_sidecar": true,
+        "advanced_rollout": "600 to 601",
+        "default_sidecar_created": false
+      },
+      "metal_training_lock": "results/metal-training.lock held during build, test, and training/resume probes"
+    },
+    "compatibility_limits": [
+      "Existing default checkpoints remain resumable without a safeguard sidecar.",
+      "Existing non-default checkpoints created before this sidecar cannot be resumed under non-default settings; use an explicit warmstart into a new run.",
+      "Changing any safeguarded update setting on resume is rejected."
+    ],
+    "training_claim": "No new long training was run. Prior MiMo evidence did not beat the existing 25/30 connected-rooms dev result. The anchor is supported as a retention mechanism from a strong checkpoint, not as a better peak or from-scratch generalization improvement.",
+    "git": "No staging, commit, or push."
+  }
+}

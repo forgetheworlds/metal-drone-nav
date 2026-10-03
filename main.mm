@@ -278,6 +278,32 @@ static void ppo_tests(Metal& m) {
     check((float*)ab.contents,adv.data(),adv.size(),2e-5f,"GAE terminal/truncation");
     check((float*)retb.contents,ret.data(),ret.size(),2e-5f,"GAE returns");
 
+    // The no-op radius must preserve the historical standardized advantages;
+    // a finite radius clips only after normalization.
+    const std::vector<float> norm_input{-40.0f,-2.0f,-1.0f,0.0f,1.0f,2.0f,10.0f,40.0f};
+    auto check_normalization=[&](float radius,const char* label){
+        std::vector<float> expected_norm=norm_input;float mean=0.0f;
+        for(float value:norm_input)mean+=value;mean/=float(norm_input.size());
+        float variance=0.0f;for(float value:norm_input){const float d=value-mean;variance+=d*d;}
+        variance/=float(norm_input.size());const float inv=1.0f/std::sqrt(variance+1.0e-8f);
+        for(float& value:expected_norm){const float normalized=(value-mean)*inv;value=std::max(-radius,std::min(radius,normalized));}
+        auto values=m.buffer(norm_input.size()*sizeof(float),norm_input.data());auto count=u32(uint32_t(norm_input.size()));
+        auto epsilon=f32(1.0e-8f),clip_radius=f32(radius);auto command=[m.queue commandBuffer];
+        m.dispatch(command,m.pipeline("ppo_normalize_advantages"),1,{values,count,epsilon,clip_radius},1);m.finish(command);
+        check((float*)values.contents,expected_norm.data(),expected_norm.size(),2.0e-6f,label);
+    };
+    check_normalization(std::numeric_limits<float>::max(),"default advantage-normalization compatibility");
+    check_normalization(2.0f,"bounded standardized-advantage clip");
+
+    // Verify the training-only anchor kernel applies a restoring gradient to
+    // the frozen launch parameters. Zero lambda remains skipped by PPOTrainer.
+    std::vector<float> anchor_grad{.1f,-.2f,.3f,-.4f},anchor_params{.6f,.4f,-.1f,.2f},anchor_ref{.2f,.1f,.1f,-.1f};
+    std::vector<float> anchor_expected(anchor_grad.size());for(size_t i=0;i<anchor_grad.size();i++)anchor_expected[i]=anchor_grad[i]+.25f*(anchor_params[i]-anchor_ref[i]);
+    auto anchor_grad_b=m.buffer(anchor_grad.size()*4,anchor_grad.data()),anchor_params_b=m.buffer(anchor_params.size()*4,anchor_params.data()),anchor_ref_b=m.buffer(anchor_ref.size()*4,anchor_ref.data());
+    auto anchor_lambda_b=f32(.25f),anchor_count_b=u32(uint32_t(anchor_grad.size()));
+    cb=[m.queue commandBuffer];m.dispatch(cb,m.pipeline("ppo_anchor_grad"),anchor_grad.size(),{anchor_grad_b,anchor_params_b,anchor_ref_b,anchor_lambda_b,anchor_count_b},4);m.finish(cb);
+    check((float*)anchor_grad_b.contents,anchor_expected.data(),anchor_expected.size(),1.0e-7f,"actor-anchor gradient");
+
     std::vector<float> actions(B*action_dim), oldlp(B), oldv(B), advantages{.5f,-.6f,1.0f}, targets{.3f,-.2f,.7f};
     for (size_t i=0;i<actions.size();++i) actions[i]=.15f*std::cos(float(i)*.37f);
     for (uint32_t n=0;n<B;++n) { oldlp[n]=gaussian_log_prob(actions.data()+n*action_dim,cpu_means.data()+n*action_dim,ap.values.data()+actor_log_std_offset)-.04f*(float(n)-1); oldv[n]=cpu_values[n]-.1f; }
@@ -366,7 +392,7 @@ static void ppo_tests(Metal& m) {
     }
     const float final_error=toy_error();
     require(final_error < start_error * .45f,"Metal PPO toy task did not learn target action: start="+std::to_string(start_error)+" final="+std::to_string(final_error));
-    std::cout<<"ppo PASS CPU/Metal forward, terminal+truncation GAE, PPO gradients, reduction, Adam; toy target error "<<start_error<<" -> "<<final_error<<"\n";
+    std::cout<<"ppo PASS CPU/Metal forward, terminal+truncation GAE, default/clipped advantage normalization, anchor gradient, PPO gradients, reduction, Adam; toy target error "<<start_error<<" -> "<<final_error<<"\n";
 }
 
 struct SimRun {
@@ -840,6 +866,9 @@ struct PPOTrainer {
     Metal& metal;
     uint32_t minibatch = 256;
     uint32_t rows, minibatches, updates_per_rollout;
+    // PPO epochs per rollout. Preserved default keeps historical checkpoints
+    // bit-identical; only an explicit training flag may lower it.
+    uint32_t epochs = 2;
     uint64_t optimizer_step = 0;
     uint32_t completed_rollouts = 0;
     std::vector<uint32_t> starts;
@@ -851,6 +880,16 @@ struct PPOTrainer {
     // command buffer; inspect only after the rollout and update complete.
     id<MTLBuffer> raw_advantages=nil;
     id<MTLBuffer> actor_scale, critic_scale, metric_rows, metric_mean;
+    // Training-only standardized-advantage winsorization radius. FLT_MAX is
+    // the no-op default; only bank training may narrow it via a CLI flag.
+    id<MTLBuffer> adv_clip_b;
+    // Training-only actor anchor: frozen copy of the actor weights at capture
+    // time plus the pull strength toward that reference. lambda 0 disables it.
+    id<MTLBuffer> anchor_ref_b, anchor_lambda_b;
+    id<MTLComputePipelineState> anchor_p;
+    float anchor_lambda = 0.0f;
+    float anchor_radius = 0.0f;
+    float anchor_pull = 0.0f;
     id<MTLBuffer> rows_b, envs_b, horizon_b, gamma_b, lambda_b, gae_epsilon_b;
     id<MTLBuffer> clip_b, value_coef_b, entropy_coef_b, actor_count_b, critic_count_b;
     id<MTLBuffer> actor_max_norm_b, critic_max_norm_b, logstd_count_b, logstd_lo_b, logstd_hi_b;
@@ -871,11 +910,13 @@ struct PPOTrainer {
         threadsPerThreadgroup:MTLSizeMake(std::min(group,size_t(p.maxTotalThreadsPerThreadgroup)),1,1)];
         [e endEncoding];
     }
-    PPOTrainer(Sim& s):sim(s),metal(s.m) {
+    PPOTrainer(Sim& s,uint32_t update_epochs=2):sim(s),metal(s.m) {
+        require(update_epochs>=1 && update_epochs<=4,"PPO epochs must be1..4");
+        epochs=update_epochs;
         rows=sim.cfg.n*sim.horizon;
         require(rows>0,"PPO requires at least one rollout row");
         minibatches=(rows+minibatch-1)/minibatch;
-        updates_per_rollout=2*minibatches;
+        updates_per_rollout=epochs*minibatches;
         starts.reserve(minibatches);for(uint32_t s0=0;s0<rows;s0+=minibatch)starts.push_back(s0);
         actor_hidden=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
         actor_means=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
@@ -893,6 +934,11 @@ struct PPOTrainer {
         critic_m=metal.buffer(fixed_ppo::critic_param_count*4); critic_v=metal.buffer(fixed_ppo::critic_param_count*4);
         actor_scale=metal.buffer(4); critic_scale=metal.buffer(4);
         metric_rows=metal.buffer(size_t(updates_per_rollout)*4*4); metric_mean=metal.buffer(4*4);
+        adv_clip_b=scalar(metal,std::numeric_limits<float>::max());
+        anchor_lambda_b=scalar(metal,0.0f);
+        anchor_ref_b=metal.buffer(sim.actor.length);
+        std::memcpy(anchor_ref_b.contents,sim.actor.contents,sim.actor.length);
+        anchor_p=metal.pipeline("ppo_anchor_grad");
         rows_b=scalar(metal,rows); envs_b=scalar(metal,sim.cfg.n); horizon_b=scalar(metal,sim.horizon);
         gamma_b=scalar(metal,.99f); lambda_b=scalar(metal,.95f); gae_epsilon_b=scalar(metal,1.0e-8f);
         clip_b=scalar(metal,.2f); value_coef_b=scalar(metal,.5f); entropy_coef_b=scalar(metal,sim.cfg.entropy_coef);
@@ -999,6 +1045,7 @@ struct PPOTrainer {
         require(std::rename(temp.c_str(),path.c_str())==0,"cannot replace PPO checkpoint: "+path);
     }
     void rollout_update(id<MTLCommandBuffer> cb,uint32_t rollout_index) {
+        if(anchor_lambda>0)refresh_anchor_pull();
         dispatch(cb,gae_p,sim.cfg.n,{{sim.rewards,0},{sim.values,0},{sim.next_values,0},{sim.terminated,0},{sim.truncated,0},
                  {sim.advantages,0},{sim.returns,0},{horizon_b,0},{envs_b,0},{gamma_b,0},{lambda_b,0}},64);
         if(raw_advantages) {
@@ -1006,13 +1053,13 @@ struct PPOTrainer {
             [copy copyFromBuffer:sim.advantages sourceOffset:0 toBuffer:raw_advantages destinationOffset:0 size:sim.advantages.length];
             [copy endEncoding];
         }
-        dispatch(cb,normalize_p,1,{{sim.advantages,0},{rows_b,0},{gae_epsilon_b,0}},1);
+        dispatch(cb,normalize_p,1,{{sim.advantages,0},{rows_b,0},{gae_epsilon_b,0},{adv_clip_b,0}},1);
         // Resume reconstructs this vector. Restore its canonical order before
         // shuffling so the rollout seed fully determines minibatch order.
         for(uint32_t batch=0;batch<starts.size();batch++)starts[batch]=batch*minibatch;
         std::mt19937 rng(0x9e3779b9u+rollout_index*0x85ebca6bu);std::shuffle(starts.begin(),starts.end(),rng);
         uint32_t update=0;
-        for(uint32_t epoch=0;epoch<2;epoch++) {
+        for(uint32_t epoch=0;epoch<epochs;epoch++) {
             if(epoch==1)std::shuffle(starts.begin(),starts.end(),rng);
             for(uint32_t begin:starts) {
                 const uint32_t b=std::min(minibatch,rows-begin);const size_t obs_offset=size_t(begin)*fixed_ppo::actor_obs_dim*4;
@@ -1027,6 +1074,8 @@ struct PPOTrainer {
                 dispatch(cb,metric_batch_p,1,{{losses,0},{metric_rows,size_t(update)*4*4},{bb,0}},1);
                 dispatch(cb,actor_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.actor,0},{d_means,0},{actor_hidden,0},{actor_hidden_delta,0},{bb,0}},128);
                 dispatch(cb,actor_grad_direct_p,fixed_ppo::actor_param_count,{{sim.obs,obs_offset},{actor_hidden,0},{d_means,0},{d_log_stds,0},{actor_hidden_delta,0},{actor_grad,0},{bb,0}},128);
+                if(anchor_lambda>0)
+                    dispatch(cb,anchor_p,fixed_ppo::actor_param_count,{{actor_grad,0},{sim.actor,0},{anchor_ref_b,0},{anchor_lambda_b,0},{actor_count_b,0}},128);
                 dispatch(cb,critic_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.critic,0},{d_values,0},{critic_hidden,0},{critic_hidden_delta,0},{bb,0}},128);
                 dispatch(cb,critic_grad_direct_p,fixed_ppo::critic_param_count,{{sim.co,co_offset},{critic_hidden,0},{d_values,0},{critic_hidden_delta,0},{critic_grad,0},{bb,0}},128);
                 require(optimizer_step<uint64_t(std::numeric_limits<uint32_t>::max()),"PPO Adam step overflow");
@@ -1045,6 +1094,41 @@ struct PPOTrainer {
         }
         require(update==updates_per_rollout,"PPO update count mismatch");
         dispatch(cb,metric_mean_p,1,{{metric_rows,0},{metric_mean,0},{metric_count_b,0}},1);
+    }
+    // Anchor reference must be captured after any warmstart/resume load so it
+    // points at the actual launch policy, not the fresh initialization.
+    void recapture_anchor_reference() {
+        std::memcpy(anchor_ref_b.contents,sim.actor.contents,sim.actor.length);
+    }
+    void set_anchor(float lambda,float radius=0.0f) {
+        require(std::isfinite(lambda)&&lambda>=0.0f,"anchor lambda must be finite and non-negative");
+        require(std::isfinite(radius)&&radius>=0.0f,"anchor radius must be finite and non-negative");
+        anchor_lambda=lambda;anchor_radius=radius;
+        refresh_anchor_pull();
+    }
+    // Parameter-space hinge penalty: within anchor_radius of the reference the
+    // actor has no anchor force; beyond it, the gradient of
+    // lambda/2*(distance-radius)^2 restores the actor toward the reference.
+    // Refresh once per rollout from shared host memory.
+    void refresh_anchor_pull() {
+        float effective=0.0f;
+        if(anchor_lambda>0) {
+            const double distance=actor_drift_l2();
+            double scale=1.0;
+            if(anchor_radius>0)scale=distance>1e-12?std::max(0.0,1.0-double(anchor_radius)/distance):0.0;
+            effective=anchor_lambda*float(scale);
+            anchor_pull=effective;
+        }
+        std::memcpy(anchor_lambda_b.contents,&effective,sizeof(float));
+    }
+    float current_anchor_pull()const{return anchor_pull;}
+    double actor_drift_l2()const {
+        const float* actor=static_cast<const float*>(sim.actor.contents);
+        const float* reference=static_cast<const float*>(anchor_ref_b.contents);
+        const size_t count=fixed_ppo::actor_param_count;
+        double acc=0;
+        for(size_t i=0;i<count;i++){const double d=double(actor[i])-double(reference[i]);acc+=d*d;}
+        return std::sqrt(acc);
     }
 };
 
@@ -1136,6 +1220,134 @@ static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode
 #include "webots/simulator_comparison.hpp"
 #endif
 
+// Non-default PPO update guards live beside each checkpoint. Legacy checkpoints
+// need no sidecar when the update settings are the historical defaults.
+struct PpoSafeguardConfig {
+    uint32_t epochs;
+    float advantage_clip_sd;
+    float value_coefficient;
+    float anchor_lambda;
+    float anchor_radius;
+};
+struct PpoSafeguardHeader {
+    char magic[8];
+    uint32_t version, epochs, actor_count, anchor_reference_bytes, completed_rollouts;
+    float advantage_clip_sd, value_coefficient, anchor_lambda, anchor_radius;
+    char checkpoint_sha256[64], anchor_reference_sha256[64];
+};
+static_assert(sizeof(PpoSafeguardHeader)==172,"PPO safeguard sidecar header layout changed");
+
+static bool ppo_safeguard_is_default(const PpoSafeguardConfig& config) {
+    return config.epochs==2 && config.advantage_clip_sd==0.0f &&
+           config.value_coefficient==0.5f && config.anchor_lambda==0.0f &&
+           config.anchor_radius==0.0f;
+}
+
+static std::string ppo_safeguard_sha256(const void* data,size_t size) {
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(static_cast<const unsigned char*>(data),CC_LONG(size),digest);
+    static const char hex[]="0123456789abcdef";
+    std::string output(64,'0');
+    for(size_t i=0;i<sizeof(digest);i++){
+        output[2*i]=hex[digest[i]>>4];output[2*i+1]=hex[digest[i]&15];
+    }
+    return output;
+}
+
+static std::string load_ppo_safeguard_state(const std::string& checkpoint,
+                                            const PpoSafeguardConfig& expected,
+                                            uint32_t completed_rollouts,
+                                            void* anchor_reference_destination=nullptr) {
+    const std::string state_path=checkpoint+".safeguard";
+    if(!std::filesystem::exists(state_path)) {
+        require(ppo_safeguard_is_default(expected),
+                "non-default PPO safeguards require a matching .safeguard sidecar; use an explicit warmstart");
+        return std::string(64,'0');
+    }
+    std::ifstream state(state_path,std::ios::binary);
+    require(bool(state),"cannot open PPO safeguard state: "+state_path);
+    PpoSafeguardHeader header{};
+    state.read(reinterpret_cast<char*>(&header),sizeof(header));
+    require(bool(state) && std::memcmp(header.magic,"PPOSFG1\0",8)==0 && header.version==1,
+            "invalid PPO safeguard sidecar");
+    require(header.epochs==expected.epochs && header.advantage_clip_sd==expected.advantage_clip_sd &&
+            header.value_coefficient==expected.value_coefficient && header.anchor_lambda==expected.anchor_lambda &&
+            header.anchor_radius==expected.anchor_radius,
+            "PPO safeguard settings differ from the saved run; use an explicit warmstart");
+    const std::string checkpoint_hash=challenge_evaluation::sha256_file(checkpoint);
+    require(header.actor_count==fixed_ppo::actor_param_count &&
+            header.completed_rollouts==completed_rollouts &&
+            checkpoint_hash.size()==64 && std::memcmp(header.checkpoint_sha256,checkpoint_hash.data(),64)==0,
+            "PPO safeguard sidecar does not match checkpoint or rollout");
+    const uint32_t expected_reference_bytes=expected.anchor_lambda>0.0f
+        ? uint32_t(fixed_ppo::actor_param_count*sizeof(float)):0u;
+    require(header.anchor_reference_bytes==expected_reference_bytes,
+            "PPO safeguard sidecar anchor-reference layout mismatch");
+    std::string reference_hash(64,'0');
+    if(expected_reference_bytes>0) {
+        const std::string reference_path=checkpoint+".anchorref";
+        std::ifstream reference(reference_path,std::ios::binary);
+        require(bool(reference),"active PPO anchor is missing its saved .anchorref: "+reference_path);
+        std::vector<char> bytes(expected_reference_bytes);
+        reference.read(bytes.data(),bytes.size());
+        require(bool(reference) && reference.peek()==EOF,"active PPO anchor reference is truncated or has trailing bytes");
+        reference_hash=ppo_safeguard_sha256(bytes.data(),bytes.size());
+        require(std::memcmp(header.anchor_reference_sha256,reference_hash.data(),64)==0,
+                "PPO anchor reference hash differs from safeguard sidecar");
+        if(anchor_reference_destination)std::memcpy(anchor_reference_destination,bytes.data(),bytes.size());
+    } else {
+        const std::string zeros(64,'0');
+        require(std::memcmp(header.anchor_reference_sha256,zeros.data(),64)==0,
+                "disabled PPO anchor has an unexpected reference hash");
+    }
+    char extra;
+    require(!state.read(&extra,1),"PPO safeguard sidecar has trailing bytes");
+    return reference_hash;
+}
+
+static void save_ppo_safeguard_state(const PPOTrainer& trainer,
+                                     const std::string& checkpoint,
+                                     const PpoSafeguardConfig& config,
+                                     uint32_t completed_rollouts) {
+    const std::string state_path=checkpoint+".safeguard";
+    const bool persist=!ppo_safeguard_is_default(config)||std::filesystem::exists(state_path);
+    if(!persist)return;
+    PpoSafeguardHeader header{};
+    std::memcpy(header.magic,"PPOSFG1\0",8);header.version=1;
+    header.epochs=config.epochs;header.actor_count=uint32_t(fixed_ppo::actor_param_count);
+    header.completed_rollouts=completed_rollouts;
+    header.advantage_clip_sd=config.advantage_clip_sd;header.value_coefficient=config.value_coefficient;
+    header.anchor_lambda=config.anchor_lambda;header.anchor_radius=config.anchor_radius;
+    const std::string checkpoint_hash=challenge_evaluation::sha256_file(checkpoint);
+    std::memcpy(header.checkpoint_sha256,checkpoint_hash.data(),64);
+    if(config.anchor_lambda>0.0f) {
+        const size_t bytes=fixed_ppo::actor_param_count*sizeof(float);
+        require(bytes<=UINT32_MAX,"PPO anchor reference is too large for safeguard sidecar");
+        header.anchor_reference_bytes=uint32_t(bytes);
+        const void* reference=trainer.anchor_ref_b.contents;
+        const std::string reference_hash=ppo_safeguard_sha256(reference,bytes);
+        std::memcpy(header.anchor_reference_sha256,reference_hash.data(),64);
+        const std::string reference_path=checkpoint+".anchorref";
+        const std::string reference_temporary=reference_path+".tmp";
+        std::ofstream reference_file(reference_temporary,std::ios::binary|std::ios::trunc);
+        require(bool(reference_file),"cannot write PPO anchor reference: "+reference_temporary);
+        reference_file.write(static_cast<const char*>(reference),std::streamsize(bytes));
+        reference_file.flush();require(bool(reference_file),"PPO anchor reference write failed");
+        reference_file.close();
+        require(std::rename(reference_temporary.c_str(),reference_path.c_str())==0,
+                "cannot replace PPO anchor reference: "+reference_path);
+    }
+    const std::string temporary=state_path+".tmp";
+    if(std::filesystem::path(state_path).has_parent_path())
+        std::filesystem::create_directories(std::filesystem::path(state_path).parent_path());
+    std::ofstream state(temporary,std::ios::binary|std::ios::trunc);
+    require(bool(state),"cannot write PPO safeguard sidecar: "+temporary);
+    state.write(reinterpret_cast<const char*>(&header),sizeof(header));
+    state.flush();require(bool(state),"PPO safeguard sidecar write failed");state.close();
+    require(std::rename(temporary.c_str(),state_path.c_str())==0,
+            "cannot replace PPO safeguard sidecar: "+state_path);
+}
+
 static void compare_webots_scenes(Metal& metal,const std::string& actor_path,
                                  const std::string& metadata_directory,
                                  const std::string& output_path) {
@@ -1189,8 +1401,14 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
                                  const std::string& bank_path,
                                  const std::string& checkpoint,
                                  const std::string& warmstart,
-                                 bool prioritized,uint32_t sampler_seed=42,uint32_t rehearsal_environments=0,float potential_scale=0,float risk_coef=.1f,uint32_t focus_family=0,float learning_rate=.0001f,float entropy=.0005f,float warm_logstd=-1) {
+                                 bool prioritized,uint32_t sampler_seed=42,uint32_t rehearsal_environments=0,float potential_scale=0,float risk_coef=.1f,uint32_t focus_family=0,float learning_rate=.0001f,float entropy=.0005f,float warm_logstd=-1,uint32_t epochs=2,float adv_clip=0,float value_coef=.5f,float anchor=0,float anchor_radius=0) {
     require(iterations>0 && fixed_ppo::actor_obs_dim==184,"bank training needs guided build and positive rollouts");
+    require(epochs>=1 && epochs<=4,"bank epochs must be1..4");
+    require(std::isfinite(adv_clip) && (adv_clip==0.0f || (adv_clip>=0.5f && adv_clip<=100.0f)),
+            "bank advantage clip must be0 (off) or0.5..100 standard deviations");
+    require(std::isfinite(value_coef) && value_coef>0 && value_coef<=4,"bank value coefficient must be in0..4");
+    require(std::isfinite(anchor) && anchor>=0 && anchor<=1000,"bank anchor lambda must be in0..1000");
+    require(std::isfinite(anchor_radius) && anchor_radius>=0 && anchor_radius<=100,"bank anchor radius must be in0..100");
     constexpr uint32_t environments=128,horizon=32;
     metal.compile(base_source()+PPO_TRAINER_MSL);
     const auto selection=prioritized?challenge_training::SelectionMode::FailureWeighted:
@@ -1229,14 +1447,25 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
         std::memcpy(simulator.potential_hash.contents,hash.data(),64);
         std::cout<<"training_only_potential scale="<<potential_scale<<" gamma=.99 field_sha256="<<hash<<" bytes="<<simulator.potential_fields.length<<"\n";
     }
-    PPOTrainer trainer(simulator);
+    PPOTrainer trainer(simulator,epochs);
+    const PpoSafeguardConfig safeguard_config{epochs,adv_clip,value_coef,anchor,anchor_radius};
+    std::string anchor_reference_hash(64,'0');
     trainer.raw_advantages=metal.buffer(simulator.advantages.length);
+    if(adv_clip>0)std::memcpy(trainer.adv_clip_b.contents,&adv_clip,sizeof(float));
+    if(value_coef!=.5f)std::memcpy(trainer.value_coef_b.contents,&value_coef,sizeof(float));
+    trainer.set_anchor(anchor,anchor_radius);
+    if(adv_clip>0 || epochs!=2 || value_coef!=.5f || anchor>0)
+        std::cout<<"bank_update_guard advantage_clip_sd="<<(adv_clip>0?std::to_string(adv_clip):"off")
+                 <<" epochs="<<epochs<<" value_coef="<<value_coef
+                 <<" anchor_lambda="<<anchor<<" anchor_radius="<<anchor_radius<<"\n";
     const std::string replay_path=checkpoint+".replay.state";
     const bool resume=std::filesystem::exists(checkpoint);
     require(resume==std::filesystem::exists(replay_path),"bank checkpoint and replay state must both exist or both be absent");
     std::vector<uint32_t> schedule;
     if(resume) {
         trainer.load_checkpoint(checkpoint,config.family,horizon,environments,config.seed);
+        anchor_reference_hash=load_ppo_safeguard_state(checkpoint,safeguard_config,
+            trainer.completed_rollouts,trainer.anchor_ref_b.contents);
         sampler.load_state(replay_path,challenge_evaluation::sha256_file(checkpoint),trainer.completed_rollouts);
         const auto& active=sampler.active_ids();
         std::memcpy(simulator.bank_active_ids.contents,active.data(),active.size()*sizeof(uint32_t));
@@ -1249,12 +1478,22 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
         require(bool(source),"bank warmstart read failed");
         for(uint32_t axis=0;axis<4;axis++)
             static_cast<float*>(simulator.actor.contents)[fixed_ppo::actor_log_std_offset+axis]=warm_logstd;
+        if(anchor>0.0f) {
+            trainer.recapture_anchor_reference();
+            anchor_reference_hash=ppo_safeguard_sha256(trainer.anchor_ref_b.contents,trainer.anchor_ref_b.length);
+        }
         schedule=sampler.initial_schedule();
         std::memcpy(simulator.bank_schedule.contents,schedule.data(),schedule.size()*sizeof(uint32_t));
         simulator.reset();
     }
+    if(resume&&anchor>0.0f)std::cout<<"anchor_reference validated and loaded "<<checkpoint<<".anchorref\n";
+    // Episode counters accumulate for the whole process, so diagnostics take a
+    // per-rollout delta. Read-only: no checkpoint, sampler, or optimizer state.
+    std::vector<SimRun> previous_runs(environments);
+    std::memcpy(previous_runs.data(),simulator.runs.contents,environments*sizeof(SimRun));
     const auto save=[&](const std::string& path,uint32_t rollout) {
         trainer.save_checkpoint(path,config.family,config.seed,rollout);
+        save_ppo_safeguard_state(trainer,path,safeguard_config,rollout);
         const uint32_t* active=static_cast<const uint32_t*>(simulator.bank_active_ids.contents);
         sampler.save_state(path+".replay.state",challenge_evaluation::sha256_file(path),rollout,
                            std::vector<uint32_t>(active,active+environments));
@@ -1267,15 +1506,25 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
         return score.worst_family_success();
     };
     auto best=challenge_evaluation::BankScore{};
-    if(std::filesystem::exists(checkpoint+".best"))
+    if(std::filesystem::exists(checkpoint+".best")) {
+        std::ifstream best_checkpoint(checkpoint+".best",std::ios::binary);
+        const auto best_header=read_checkpoint_header(best_checkpoint);
+        const std::string best_reference_hash=load_ppo_safeguard_state(checkpoint+".best",safeguard_config,
+            best_header.completed_rollouts,nullptr);
+        require(best_reference_hash==anchor_reference_hash,
+                "best checkpoint PPO anchor reference differs from resumed run");
         best=challenge_evaluation::run(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
-    else {
+    } else {
         save(checkpoint+".best",trainer.completed_rollouts);
         best=challenge_evaluation::run(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
     }
     std::ofstream history(checkpoint+".history.csv",std::ios::app);
     require(bool(history),"cannot write bank history");
     if(!resume)history<<"rollout,transitions,wall_s,gpu_s,success,worst_family_success,collision,timeout\n";
+    std::ofstream diag(checkpoint+".diag.csv",std::ios::app);
+    require(bool(diag),"cannot write bank diagnostics");
+    if(!resume)diag<<"rollout,transitions,gpu_s,rew_mean,rew_std,rew_min,rew_max,term_n,term_mean,term_min,term_max,term_pos_n,adv_mean,adv_std,adv_min,adv_max,adv_gt3_frac,ret_mean,ret_std,ret_max,val_mean,val_std,pol_loss,val_loss,ent_term,ratio,actor_scale,critic_scale,logstd0,logstd1,logstd2,logstd3,ep_success,ep_collision,ep_timeout,ep_path_m,ep_time_s,train_speed_mps,inflight_clear_min,actor_drift_l2\n";
+    diag<<std::setprecision(9);
     const double started=seconds();
     const uint32_t finish=trainer.completed_rollouts+iterations;
     std::cout<<"bank_train selection="<<(prioritized?"priority":"uniform")
@@ -1302,6 +1551,75 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
             static_cast<const uint8_t*>(simulator.truncated.contents),
             static_cast<const uint32_t*>(simulator.bank_transition_ids.contents),rollout);
         trainer.completed_rollouts=rollout+1;
+        {
+            constexpr size_t rows=size_t(environments)*horizon;
+            const float* rew=static_cast<const float*>(simulator.rewards.contents);
+            const float* adv=static_cast<const float*>(trainer.raw_advantages.contents);
+            const float* ret=static_cast<const float*>(simulator.returns.contents);
+            const float* val=static_cast<const float*>(simulator.values.contents);
+            const auto* term=static_cast<const uint8_t*>(simulator.terminated.contents);
+            const auto moment=[&](const float* values,size_t count){
+                double mean=0;float lo=std::numeric_limits<float>::max(),hi=-lo;
+                for(size_t i=0;i<count;i++){const float v=values[i];require(std::isfinite(v),"diagnostic buffer is non-finite");mean+=v;lo=std::min(lo,v);hi=std::max(hi,v);}
+                if(count==0){lo=0;hi=0;}
+                mean/=double(count?count:1);
+                double var=0;for(size_t i=0;i<count;i++){const double d=double(values[i])-mean;var+=d*d;}
+                return std::array<double,4>{mean,count?std::sqrt(var/double(count)):0.0,lo,hi};
+            };
+            const auto rw=moment(rew,rows),av=moment(adv,rows),rt=moment(ret,rows),vl=moment(val,rows);
+            size_t term_n=0,term_pos=0,adv_gt3=0;
+            double term_sum=0,term_lo=std::numeric_limits<double>::max(),term_hi=-term_lo;
+            for(size_t i=0;i<rows;i++) {
+                if(term[i]) {
+                    const double v=rew[i];term_n++;term_sum+=v;term_lo=std::min(term_lo,v);term_hi=std::max(term_hi,v);
+                    if(v>0)term_pos++;
+                }
+                if(std::fabs(adv[i])>3.0f)adv_gt3++;
+            }
+            if(term_n==0){term_lo=0;term_hi=0;}
+            const auto* runs_now=static_cast<const SimRun*>(simulator.runs.contents);
+            uint64_t d_success=0,d_collision=0,d_timeout=0,d_episodes=0;
+            double d_path=0,d_elapsed=0;
+            float clear_min=12.0f;
+            for(uint32_t env=0;env<environments;env++) {
+                const SimRun& now=runs_now[env];const SimRun& before=previous_runs[env];
+                require(now.successes>=before.successes && now.collisions>=before.collisions &&
+                        now.timeouts>=before.timeouts && now.episodes>=before.episodes,"diagnostic episode counters went backwards");
+                d_success+=now.successes-before.successes;d_collision+=now.collisions-before.collisions;
+                d_timeout+=now.timeouts-before.timeouts;d_episodes+=now.episodes-before.episodes;
+                d_path+=double(now.total_path)-before.total_path;d_elapsed+=double(now.total_elapsed)-before.total_elapsed;
+                clear_min=std::min(clear_min,now.min_clearance);
+            }
+            std::memcpy(previous_runs.data(),simulator.runs.contents,environments*sizeof(SimRun));
+            const float* met=static_cast<const float*>(trainer.metric_mean.contents);
+            const float* actor_params=static_cast<const float*>(simulator.actor.contents);
+            const double drift_l2=trainer.actor_drift_l2();
+            diag<<(rollout+1)<<','<<uint64_t(rollout+1)*environments*horizon<<','<<gpu
+                <<','<<rw[0]<<','<<rw[1]<<','<<rw[2]<<','<<rw[3]
+                <<','<<term_n<<','<<(term_n?term_sum/double(term_n):0.0)<<','<<term_lo<<','<<term_hi<<','<<term_pos
+                <<','<<av[0]<<','<<av[1]<<','<<av[2]<<','<<av[3]<<','<<double(adv_gt3)/rows
+                <<','<<rt[0]<<','<<rt[1]<<','<<rt[3]
+                <<','<<vl[0]<<','<<vl[1]
+                <<','<<met[0]<<','<<met[1]<<','<<met[2]<<','<<met[3]
+                <<','<<*static_cast<const float*>(trainer.actor_scale.contents)<<','<<*static_cast<const float*>(trainer.critic_scale.contents);
+            for(uint32_t axis=0;axis<fixed_ppo::action_dim;axis++)diag<<','<<actor_params[fixed_ppo::actor_log_std_offset+axis];
+            diag<<','<<double(d_success)/double(d_episodes?d_episodes:1)
+                <<','<<double(d_collision)/double(d_episodes?d_episodes:1)
+                <<','<<double(d_timeout)/double(d_episodes?d_episodes:1)
+                <<','<<(d_episodes?d_path/double(d_episodes):0.0)
+                <<','<<(d_episodes?d_elapsed/double(d_episodes):0.0)
+                <<','<<(d_elapsed?d_path/d_elapsed:0.0)
+                <<','<<clear_min<<','<<drift_l2<<'\n';
+            diag.flush();require(bool(diag),"bank diagnostics write failed");
+            if((rollout+1)%50==0 || rollout+1==finish)
+                std::cout<<"bank_diag rollout="<<rollout+1<<" rew="<<rw[0]<<" adv_std="<<av[1]
+                         <<" term_n="<<term_n<<" term_mean="<<(term_n?term_sum/double(term_n):0.0)
+                         <<" ratio="<<met[3]<<" ent_term="<<met[2]<<" pol="<<met[0]<<" val="<<met[1]
+                         <<" ep_success="<<(d_episodes?double(d_success)/double(d_episodes):0.0)
+                         <<" ep_collision="<<(d_episodes?double(d_collision)/double(d_episodes):0.0)
+                         <<" clear_min="<<clear_min<<" drift_l2="<<drift_l2
+                         <<" anchor_pull="<<trainer.current_anchor_pull()<<"\n";
+        }
         if((rollout+1)%50==0 || rollout+1==finish) {
             save(checkpoint,rollout+1);
             const auto score=challenge_evaluation::run(metal,checkpoint,bank_path,"dev",checkpoint+".dev.csv");
@@ -1500,10 +1818,10 @@ int main(int argc,char** argv){@autoreleasepool{try{
         require(argc>=5,"bank-witness BANK_JSONL train|dev OUTPUT_CSV [SPEED=1] [MAX_STEPS=1200] [LOCAL_POLICY_CHECKPOINT|goal-script]");
         challenge_evaluation::run_witness(m,argv[2],argv[3],argv[4],argc>5?std::stof(argv[5]):1.0f,argc>6?std::stoul(argv[6]):1200,argc>7?argv[7]:"");
     }else if(command=="train-bank") {
-        require(argc>=7,"train-bank ROLLOUTS BANK_JSONL CHECKPOINT WARMSTART uniform|priority [--seed N] [--rehearsal N] [--potential-scale LAMBDA] [--risk COEFFICIENT] [--focus-family 14|15|16]");
+        require(argc>=7,"train-bank ROLLOUTS BANK_JSONL CHECKPOINT WARMSTART uniform|priority [--seed N] [--rehearsal N] [--potential-scale LAMBDA] [--risk COEFFICIENT] [--focus-family 14|15|16] [--epochs 1..4] [--adv-clip SD] [--value-coef V] [--anchor LAMBDA] [--anchor-radius DISTANCE]");
         const std::string selection=argv[6];
         require(selection=="uniform" || selection=="priority","bank selection must be uniform or priority");
-        uint32_t seed=42,rehearsal=0,focus_family=0;float potential_scale=0,risk_coef=.1f,learning_rate=.0001f,entropy=.0005f,warm_logstd=-1;
+        uint32_t seed=42,rehearsal=0,focus_family=0,epochs=2;float potential_scale=0,risk_coef=.1f,learning_rate=.0001f,entropy=.0005f,warm_logstd=-1,adv_clip=0,value_coef=.5f,anchor=0,anchor_radius=0;
         for(int argument=7;argument<argc;argument+=2) {
             require(argument+1<argc,"bank option requires a value");
             const std::string option=argv[argument];
@@ -1515,9 +1833,14 @@ int main(int argc,char** argv){@autoreleasepool{try{
             else if(option=="--learning-rate")learning_rate=std::stof(argv[argument+1]);
             else if(option=="--entropy")entropy=std::stof(argv[argument+1]);
             else if(option=="--warm-logstd")warm_logstd=std::stof(argv[argument+1]);
+            else if(option=="--epochs")epochs=std::stoul(argv[argument+1]);
+            else if(option=="--adv-clip")adv_clip=std::stof(argv[argument+1]);
+            else if(option=="--value-coef")value_coef=std::stof(argv[argument+1]);
+            else if(option=="--anchor")anchor=std::stof(argv[argument+1]);
+            else if(option=="--anchor-radius")anchor_radius=std::stof(argv[argument+1]);
             else throw std::runtime_error("unknown bank option "+option);
         }
-        train_challenge_bank(m,std::stoul(argv[2]),argv[3],argv[4],argv[5],selection=="priority",seed,rehearsal,potential_scale,risk_coef,focus_family,learning_rate,entropy,warm_logstd);
+        train_challenge_bank(m,std::stoul(argv[2]),argv[3],argv[4],argv[5],selection=="priority",seed,rehearsal,potential_scale,risk_coef,focus_family,learning_rate,entropy,warm_logstd,epochs,adv_clip,value_coef,anchor,anchor_radius);
     }else if(command=="bank-eval")challenge_bank_cli(m,argc,argv);else if(command=="eval")evaluate_checkpoint(m,argc>2?argv[2]:"results/open.bin",argc>3?std::stoul(argv[3]):4,argc>4?std::stoul(argv[4]):0,argc>5?std::stoul(argv[5]):800001,argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stoul(argv[8]):0,argc>9?std::stof(argv[9]):0,argc>10?std::stof(argv[10]):0,argc>11?std::stof(argv[11]):0,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0);else if(command=="trace")trace_checkpoint(m,argv[2],argc>3?std::stoul(argv[3]):5,argc>4?std::stoul(argv[4]):10,argc>5?std::stoul(argv[5]):800001,argc>6?argv[6]:"results/trace",argc>7?std::stoi(argv[7]):-1,argc>8?bool(std::stoi(argv[8])):false);else if(command=="gpu-bench")gpu_training_benchmark(m,argc>2?std::stoul(argv[2]):128,argc>3?std::stoul(argv[3]):3,argc>4?std::stoul(argv[4]):1);else if(command=="profile")train_navigation(m,1,0,"results/profile.bin");else if(command=="train")train_navigation(m,argc>2?std::stoul(argv[2]):100,argc>3?std::stoul(argv[3]):0,argc>4?argv[4]:"results/checkpoint.bin",argc>5?argv[5]:"",argc>6?std::stof(argv[6]):1,argc>7?std::stof(argv[7]):3,argc>8?std::stof(argv[8]):0,argc>9?std::stof(argv[9]):-1,argc>10?std::stof(argv[10]):.0003f,argc>11?std::stoul(argv[11]):1,argc>12?std::stoul(argv[12]):0,argc>13?std::stoul(argv[13]):0,argc>14?std::stof(argv[14]):0,argc>15?std::stof(argv[15]):0,argc>16?std::stof(argv[16]):0,argc>17?std::stoul(argv[17]):0,argc>18?std::stoul(argv[18]):4,argc>19?std::stof(argv[19]):-1);else if(command=="bench-loop")loop_benchmark(m);else if(command=="bench-raptor")raptor_benchmark(m);else if(command=="sim"){for(uint f=0;f<4;f++)sim_evaluate(m,f,2);}else throw std::runtime_error("Unknown command "+command);
     return 0;
 }catch(const std::exception& e){std::cerr<<"ERROR: "<<e.what()<<"\n";return 1;}}}

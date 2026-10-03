@@ -1,0 +1,40 @@
+{
+  "schema": "experimental-ppo-retention-v1",
+  "comparison": "484 continuedrollouts from the existing dev-selectedpeak checkpoint; samelevel IDs,2trainingseeds; actorparameteranchor lambda3 versus defaultPPO",
+  "results": [
+    {
+      "seed": "seed52",
+      "control_success": 37,
+      "anchor_success": 48,
+      "levels": 90,
+      "wins": 11,
+      "losses": 0
+    },
+    {
+      "seed": "seed54",
+      "control_success": 31,
+      "anchor_success": 51,
+      "levels": 90,
+      "wins": 20,
+      "losses": 0
+    }
+  ],
+  "limits": [
+    "Retention experiment, not a higherbest or newnavigationcapability.",
+    "Anchorfromweakinitialpolicy hadmixed end-to-endresults; noadoptionasdefault.",
+    "Existingselectedroompolicy25/30 remains unchanged; allcornerresults0/30.",
+    "These aredevelopmentcases andwarmstartwasdev-selected; notfinalgeneralization."
+  ],
+  "update_settings": "Optionalguard flags defaultoff; .safeguard binds nondefaultsettings/checkpoint/reference toresume.",
+  "source_sha256": {
+    "main.mm": "72fd5d9950f35d6b9695452cce9dfcbe6ac3bca40b62ddff5fb36d2a3d84d4b1",
+    "ppo.metal": "22b5e41c7648fbf544b2a4bef5a0b801e50d9378dea0d91768c106c868581b58"
+  },
+  "verification_report": "verification.json",
+  "input_sha256": {
+    "seed52-anchor.csv": "23e21acb3f51915668635fb8f6a0ea44f6cefc1ce47fd310297440eb7b16c2b7",
+    "seed52-control.csv": "fd368aca53873c6ff6db5e8437d734c7069cf81f287a0681bcc2b0d4866d6d04",
+    "seed54-anchor.csv": "8a958a1153ff47499cf5d7e3c0700777535c2aac5956ce05d0ba5b16c937c613",
+    "seed54-control.csv": "66d1507db86e3d8beb59f0ea45165f0f764110d639f99dfae9a3fbccb283036e"
+  }
+}

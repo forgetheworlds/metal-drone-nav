@@ -223,9 +223,14 @@ kernel void ppo_gae(device const float* rewards [[buffer(0)]],
 
 // A single-thread reduction keeps normalization deterministic and avoids
 // requiring floating-point atomics. Rollout batches are small enough for this.
+// clip_radius is a training-only safeguard: a value of FLT_MAX leaves the
+// normalized advantages untouched (identical to the original behavior), while
+// a finite radius winsorizes the standardized tail so terminal-spike rows
+// cannot dominate the minibatch gradients.
 kernel void ppo_normalize_advantages(device float* advantages [[buffer(0)]],
                                      constant uint& count [[buffer(1)]],
                                      constant float& epsilon [[buffer(2)]],
+                                     constant float& clip_radius [[buffer(3)]],
                                      uint tid [[thread_position_in_grid]]) {
     if (tid != 0 || count == 0) return;
     float mean = 0.0f;
@@ -238,7 +243,10 @@ kernel void ppo_normalize_advantages(device float* advantages [[buffer(0)]],
     }
     variance /= float(count);
     const float inv_std = rsqrt(variance + epsilon);
-    for (uint i = 0; i < count; ++i) advantages[i] = (advantages[i] - mean) * inv_std;
+    for (uint i = 0; i < count; ++i) {
+        const float normalized = (advantages[i] - mean) * inv_std;
+        advantages[i] = ppo_clamp(normalized, -clip_radius, clip_radius);
+    }
 }
 
 // Emits gradients of the minibatch-mean loss. Binding order:
@@ -564,6 +572,20 @@ kernel void ppo_critic_grad_direct(device const float* observations [[buffer(0)]
         for (uint n = 0; n < batch_size; ++n) sum += d_values[n];
     }
     grad[p] = sum;
+}
+
+// Training-only parameter anchor (L2-SP style): adds lambda*(param-reference)
+// to the policy gradient so noisy, near-flat surrogate updates cannot drift
+// the actor arbitrarily far from the launch-time policy. The host skips this
+// dispatch entirely when lambda is zero, so default runs are unchanged.
+kernel void ppo_anchor_grad(device float* grad [[buffer(0)]],
+                            device const float* params [[buffer(1)]],
+                            device const float* reference [[buffer(2)]],
+                            constant float& lambda [[buffer(3)]],
+                            constant uint& parameter_count [[buffer(4)]],
+                            uint p [[thread_position_in_grid]]) {
+    if (p >= parameter_count || lambda == 0.0f) return;
+    grad[p] += lambda * (params[p] - reference[p]);
 }
 
 kernel void ppo_adam_update(device float* params [[buffer(0)]],
