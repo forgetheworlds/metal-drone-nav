@@ -5,6 +5,7 @@
 #include <webots/inertial_unit.h>
 #include <webots/gyro.h>
 #include <webots/supervisor.h>
+#include <webots/contact_point.h>
 
 #include "deployment.hpp"
 #include "guidance.hpp"
@@ -40,6 +41,8 @@ struct Config {
     std::string goal_objective="entry";
     std::string movie_file;
     std::string view_snapshot_file;
+    std::string diagnostic_prefix;
+    float diagnostic_nav_scale=1.0f;
     std::string policy="../assets/navigation.bin";
     uint32_t seed=1;
     uint32_t max_steps=800;
@@ -73,6 +76,8 @@ Config parse_config(const char* custom) {
             else if(key=="goal_objective")c.goal_objective=value;
             else if(key=="movie_file")c.movie_file=value;
             else if(key=="view_snapshot_file")c.view_snapshot_file=value;
+            else if(key=="diagnostic_prefix")c.diagnostic_prefix=value;
+            else if(key=="diagnostic_nav_scale")parse_float(value,c.diagnostic_nav_scale);
             else if(key=="policy")c.policy=value;
             else if(key=="seed")c.seed=uint32_t(std::strtoul(value.c_str(),nullptr,10));
             else if(key=="max_steps")c.max_steps=uint32_t(std::strtoul(value.c_str(),nullptr,10));
@@ -194,6 +199,9 @@ int main(int argc,char** argv) {
     if(config.goal_objective!="entry"&&config.goal_objective!="hold") {
         std::fprintf(stderr,"goal_objective must be entry or hold\n");wb_robot_cleanup();return 2;
     }
+    if(config.diagnostic_nav_scale<=0.0f||config.diagnostic_nav_scale>1.0f) {
+        std::fprintf(stderr,"diagnostic_nav_scale must be in (0,1]\n");wb_robot_cleanup();return 2;
+    }
     if(!config.movie_file.empty()&&std::filesystem::path(config.movie_file).extension()!=".mp4") {
         std::fprintf(stderr,"movie_file must use the .mp4 extension\n");wb_robot_cleanup();return 2;
     }
@@ -223,6 +231,16 @@ int main(int argc,char** argv) {
     trace<<"step,time_s,x,y,z,vx,vy,vz,target_vx,target_vy,target_vz,goal_error";
     if(config.capture_trajectory)trace<<",q_w,q_x,q_y,q_z,goal_dwell_s,actual_world_speed_mps";
     trace<<'\n';
+    const bool diagnostics=!config.diagnostic_prefix.empty();
+    std::ofstream dense_diagnostic,nav_diagnostic,contact_diagnostic;
+    if(diagnostics) {
+        dense_diagnostic.open(result_dir/(config.diagnostic_prefix+"-dense.csv"),std::ios::trunc);
+        nav_diagnostic.open(result_dir/(config.diagnostic_prefix+"-nav.csv"),std::ios::trunc);
+        contact_diagnostic.open(result_dir/(config.diagnostic_prefix+"-contacts.csv"),std::ios::trunc);
+        dense_diagnostic<<"step,time_s,x,y,z,vx,vy,vz,q_w,q_x,q_y,q_z,body_rate_x,body_rate_y,body_rate_z,target_x,target_y,target_z,target_vx,target_vy,target_vz,motor_u0,motor_u1,motor_u2,motor_u3,motor_state0,motor_state1,motor_state2,motor_state3,goal_error,contact_count\n";
+        nav_diagnostic<<"step,time_s,goal_x,goal_y,goal_z,goal_distance,body_vx,body_vy,body_vz,prior_x,prior_y,prior_z,prev_intent_x,prev_intent_y,prev_intent_z,prev_intent_yaw,action_x,action_y,action_z,action_yaw,target_body_vx,target_body_vy,target_body_vz,current_ranges,previous_ranges\n";
+        contact_diagnostic<<"step,time_s,point_x,point_y,point_z,node_id,node_def\n";
+    }
     if(config.phase=="geometry-calibrate"){
         std::ofstream geometry(result_dir/"geometry-axis-calibration.json",std::ios::trunc);
         geometry<<"{\"obstacles\":[";
@@ -423,6 +441,7 @@ int main(int argc,char** argv) {
             const float distance=vector_norm3(delta_world),inv_distance=distance>1e-6f?1.0f/distance:0.0f;for(int j=0;j<3;j++)goal_body[j]*=inv_distance;
             float pose[12];for(int i=0;i<3;i++)pose[i]=position[i];for(int i=0;i<9;i++)pose[3+i]=rotation[i];
             float prior[3]={0,0,0};nav_guidance_memory(pooled,previous_pooled,goal_body,distance,body_velocity,kSensorDt,range_ring,pose_ring,pose,latest_frame,valid_frames,prior);
+            float nav_previous_intent[4];for(int j=0;j<4;j++)nav_previous_intent[j]=previous_nav_intent[j];
             float observation[nav_deployment::actor_observation_count]{};
             for(int i=0;i<80;i++){observation[i]=pooled[i]/12.0f;observation[80+i]=previous_pooled[i]/12.0f;}
             observation[160]=goal_body[0];observation[161]=goal_body[1];observation[162]=goal_body[2];observation[163]=std::fmin(distance/10.0f,1.5f);
@@ -435,9 +454,23 @@ int main(int argc,char** argv) {
             for(int j=0;j<3;j++)observation[181+j]=prior[j];
             nav_deployment::NavigationAction action;
             if(navigation.infer(observation,action)){
-                for(int j=0;j<3;j++)target_velocity_body[j]=action.body_velocity_mps[j];
-                target_yaw_rate=action.yaw_rate_rps;
+                const float nav_scale=diagnostics?config.diagnostic_nav_scale:1.0f;
+                for(int j=0;j<3;j++)target_velocity_body[j]=nav_scale*action.body_velocity_mps[j];
+                target_yaw_rate=nav_scale*action.yaw_rate_rps;
                 for(int j=0;j<4;j++)previous_nav_intent[j]=action.normalized_intent[j];
+            }
+            if(diagnostics) {
+                nav_diagnostic<<steps<<','<<current_time<<','<<goal_body[0]<<','<<goal_body[1]<<','<<goal_body[2]<<','<<distance
+                              <<','<<body_velocity[0]<<','<<body_velocity[1]<<','<<body_velocity[2]
+                              <<','<<prior[0]<<','<<prior[1]<<','<<prior[2]
+                              <<','<<nav_previous_intent[0]<<','<<nav_previous_intent[1]<<','<<nav_previous_intent[2]<<','<<nav_previous_intent[3]
+                              <<','<<action.normalized_intent[0]<<','<<action.normalized_intent[1]<<','<<action.normalized_intent[2]<<','<<action.normalized_intent[3]
+                              <<','<<target_velocity_body[0]<<','<<target_velocity_body[1]<<','<<target_velocity_body[2]<<',';
+                for(int i=0;i<80;i++){if(i)nav_diagnostic<<'|';nav_diagnostic<<pooled[i];}
+                nav_diagnostic<<',';
+                for(int i=0;i<80;i++){if(i)nav_diagnostic<<'|';nav_diagnostic<<previous_pooled[i];}
+                nav_diagnostic<<'\n';
+                nav_diagnostic.flush();
             }
         }
         if(steps==0||new_depth){
@@ -491,8 +524,17 @@ int main(int argc,char** argv) {
         if(steps==0){std::printf("WEBOTS_SET motors=%g,%g,%g,%g throttle=%g\n",wb_motor_get_velocity(motors[0]),wb_motor_get_velocity(motors[1]),wb_motor_get_velocity(motors[2]),wb_motor_get_velocity(motors[3]),motor_state[0]);std::fflush(stdout);}
         // Contact tracking is re-enabled after the controller loop is stable.
         int contact_count=0;
-        wb_supervisor_node_get_contact_points(self,true,&contact_count);
+        WbContactPoint* contact_points=wb_supervisor_node_get_contact_points(self,true,&contact_count);
         if(steps==0){std::printf("WEBOTS_CONTACT count=%d\n",contact_count);std::fflush(stdout);}
+        if(diagnostics&&contact_count>0&&contact_points) {
+            for(int i=0;i<contact_count;i++) {
+                const WbNodeRef contact_node=wb_supervisor_node_get_from_id(contact_points[i].node_id);
+                const char* contact_def=contact_node?wb_supervisor_node_get_def(contact_node):nullptr;
+                contact_diagnostic<<steps<<','<<current_time<<','<<contact_points[i].point[0]<<','<<contact_points[i].point[1]<<','<<contact_points[i].point[2]
+                                 <<','<<contact_points[i].node_id<<','<<(contact_def?contact_def:"")<<'\n';
+            }
+            contact_diagnostic.flush();
+        }
         if(contact_count>0)collision=true;
         const float goal_error=std::sqrt(std::pow(goal[0]-position[0],2)+std::pow(goal[1]-position[1],2)+std::pow(goal[2]-position[2],2));
         const bool inside_goal=goal_error<=0.35f;
@@ -514,6 +556,18 @@ int main(int argc,char** argv) {
             if(config.capture_trajectory)trace<<','<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]<<','<<goal_dwell_s<<','<<final_world_speed_mps;
             trace<<'\n';
             trace.flush();
+        }
+        if(diagnostics) {
+            dense_diagnostic<<steps<<','<<current_time<<','<<position[0]<<','<<position[1]<<','<<position[2]
+                            <<','<<world_velocity[0]<<','<<world_velocity[1]<<','<<world_velocity[2]
+                            <<','<<q[0]<<','<<q[1]<<','<<q[2]<<','<<q[3]
+                            <<','<<body_rates[0]<<','<<body_rates[1]<<','<<body_rates[2]
+                            <<','<<target_position[0]<<','<<target_position[1]<<','<<target_position[2]
+                            <<','<<target_velocity_world[0]<<','<<target_velocity_world[1]<<','<<target_velocity_world[2]
+                            <<','<<previous_action[0]<<','<<previous_action[1]<<','<<previous_action[2]<<','<<previous_action[3]
+                            <<','<<motor_state[0]<<','<<motor_state[1]<<','<<motor_state[2]<<','<<motor_state[3]
+                            <<','<<goal_error<<','<<contact_count<<'\n';
+            dense_diagnostic.flush();
         }
         if(config.goal_objective=="entry") {
             if(goal_error<0.35f&&!collision){success=true;completed=true;}
@@ -558,6 +612,7 @@ int main(int argc,char** argv) {
            <<",\"movie_file\":\""<<config.movie_file<<"\",\"view_snapshot_file\":\""<<config.view_snapshot_file
            <<"\",\"view_snapshot_written\":"<<(view_snapshot_written?"true":"false")<<"}\n";
     metrics.flush();metrics.close();trace.flush();trace.close();
+    if(diagnostics) {dense_diagnostic.flush();nav_diagnostic.flush();contact_diagnostic.flush();}
     std::ofstream marker(result_dir/"last-run-exit.marker",std::ios::trunc);
     marker<<"loop_exit steps="<<steps<<" completed="<<(completed?1:0)<<"\n";
     marker.flush();marker.close();
