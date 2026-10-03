@@ -19,6 +19,10 @@ add_navigation_target(metal_nav_pooled 181)
 # Learned residual over a deployable depth/goal geometric prior.
 add_navigation_target(metal_nav_guided 184)
 
+# Preserve the guided 184-feature prefix and append both full-resolution
+# 16x20 depth frames before the same final three geometry hints.
+add_navigation_target(metal_nav_raw_guided 824)
+
 # Cold experiment: source-only expert demonstrations and actor warmstarts.
 add_executable(metal_nav_imitation navigation_imitation.mm)
 target_compile_options(metal_nav_imitation PRIVATE -O3 -fobjc-arc -Wall -Wextra)

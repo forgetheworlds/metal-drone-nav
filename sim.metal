@@ -29,7 +29,12 @@ inline float sim_depth_noise(constant SimConfig& cfg,uint n) {
 inline float sim_depth_dropout(constant SimConfig& cfg,uint n) {
     return sim_clean_training_env(cfg,n)?0.0f:cfg.dropout;
 }
-constant uint SIM_DEPTH_FEATURES = (PPO_ACTOR_OBS - (PPO_ACTOR_OBS==184?24:21)) / 2;
+constant uint SIM_DEPTH_FEATURES = PPO_ACTOR_OBS == 661 ? 320 : 80;
+constant uint SIM_CONTEXT_OFFSET = 2 * SIM_DEPTH_FEATURES;
+constant bool SIM_HAS_GEOMETRY_PRIOR = PPO_ACTOR_OBS == 184 || PPO_ACTOR_OBS == 824;
+constant bool SIM_HAS_RAW_DEPTH_EXTENSION = PPO_ACTOR_OBS == 824;
+constant uint SIM_RAW_CURRENT_OFFSET = 181;
+constant uint SIM_RAW_PREVIOUS_OFFSET = 501;
 inline void sim_rotation(thread const float* q, thread float* r) {
     float w=q[0],x=q[1],y=q[2],z=q[3];
     r[0]=1-2*(y*y+z*z);r[1]=2*(x*y-w*z);r[2]=2*(x*z+w*y);
@@ -171,10 +176,22 @@ kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device
         obs[row+k]=available>=sensor_delay?current/12.0f:1.0f;
         obs[row+SIM_DEPTH_FEATURES+k]=available>=sensor_delay?previous/12.0f:1.0f;
     }
+    if(SIM_HAS_RAW_DEPTH_EXTENSION) {
+        const uint current_base=(n*8+frame%8)*320;
+        const uint previous_base=(n*8+prev%8)*320;
+        for(uint ray=0;ray<320;ray++) {
+            obs[row+SIM_RAW_CURRENT_OFFSET+ray]=available>=sensor_delay?sensors[current_base+ray]/12.0f:1.0f;
+            obs[row+SIM_RAW_PREVIOUS_OFFSET+ray]=available>=sensor_delay?sensors[previous_base+ray]/12.0f:1.0f;
+        }
+    }
     // Evaluation ablation: remove the actor's previous-depth channel.
-    if(cfg.mode==18)for(uint k=0;k<SIM_DEPTH_FEATURES;k++)obs[row+SIM_DEPTH_FEATURES+k]=obs[row+k];
+    if(cfg.mode==18) {
+        for(uint k=0;k<SIM_DEPTH_FEATURES;k++)obs[row+SIM_DEPTH_FEATURES+k]=obs[row+k];
+        if(SIM_HAS_RAW_DEPTH_EXTENSION)for(uint ray=0;ray<320;ray++)
+            obs[row+SIM_RAW_PREVIOUS_OFFSET+ray]=obs[row+SIM_RAW_CURRENT_OFFSET+ray];
+    }
     float3 delta=float3(worlds[n].goal[0]-s.position[0],worlds[n].goal[1]-s.position[1],worlds[n].goal[2]-s.position[2]);float distance=max(length(delta),1e-6f);
-    const uint context=row+2*SIM_DEPTH_FEATURES;
+    const uint context=row+SIM_CONTEXT_OFFSET;
     for(uint j=0;j<3;j++) {
         obs[context+j]=(r[j]*delta.x+r[3+j]*delta.y+r[6+j]*delta.z)/distance;
         obs[context+4+j]=(r[j]*s.linear_velocity[0]+r[3+j]*s.linear_velocity[1]+r[6+j]*s.linear_velocity[2])/4;
@@ -182,16 +199,16 @@ kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device
     }
     obs[context+3]=min(distance/10,1.5f);for(uint j=0;j<4;j++)obs[context+13+j]=runs[n].previous_nav[j];
     obs[context+17]=float(runs[n].steps-frame*cfg.sensor_period)*p.dt*cfg.substeps;float ref[3]={runs[n].reference_position[0]-s.position[0],runs[n].reference_position[1]-s.position[1],runs[n].reference_position[2]-s.position[2]};for(uint j=0;j<3;j++)obs[context+18+j]=clamp((r[j]*ref[0]+r[3+j]*ref[1]+r[6+j]*ref[2])*2,-1.0f,1.0f);
-    if(PPO_ACTOR_OBS==184){float cur[80],prev[80],goal[3],vel[3],hint[3];for(uint j=0;j<80;j++){cur[j]=obs[row+j]*12;prev[j]=obs[row+80+j]*12;}for(uint j=0;j<3;j++){goal[j]=obs[context+j];vel[j]=obs[context+4+j]*4;}if(cfg.geometry_memory){float pose[12];for(uint j=0;j<3;j++)pose[j]=s.position[j];for(uint j=0;j<9;j++)pose[j+3]=r[j];uint valid=available>=sensor_delay?min(frame+1,8-sensor_delay):0;nav_guidance_memory(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,sensors+n*8*320,poses+n*8*12,pose,frame,valid,hint,memory_clearances+n*85);}else nav_guidance(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,hint);for(uint j=0;j<3;j++)obs[row+PPO_ACTOR_OBS-3+j]=hint[j];}
+    if(SIM_HAS_GEOMETRY_PRIOR){float cur[80],prev[80],goal[3],vel[3],hint[3];for(uint j=0;j<80;j++){cur[j]=obs[row+j]*12;prev[j]=obs[row+80+j]*12;}for(uint j=0;j<3;j++){goal[j]=obs[context+j];vel[j]=obs[context+4+j]*4;}if(cfg.geometry_memory){float pose[12];for(uint j=0;j<3;j++)pose[j]=s.position[j];for(uint j=0;j<9;j++)pose[j+3]=r[j];uint valid=available>=sensor_delay?min(frame+1,8-sensor_delay):0;nav_guidance_memory(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,sensors+n*8*320,poses+n*8*12,pose,frame,valid,hint,memory_clearances+n*85);}else nav_guidance(cur,prev,goal,distance,vel,float(cfg.sensor_period)*p.dt*cfg.substeps,hint);for(uint j=0;j<3;j++)obs[row+PPO_ACTOR_OBS-3+j]=hint[j];}
     float co[32];sim_critic_obs(s,worlds[n],runs[n],co);for(uint j=0;j<32;j++)critic_obs[crow+j]=co[j];
 }
 kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* observations [[buffer(3)]],device const float* critic_obs [[buffer(4)]],device const float* actor [[buffer(5)]],device const float* critic [[buffer(6)]],device float* actions [[buffer(7)]],device float* logp [[buffer(8)]],device float* values [[buffer(9)]],device float* commands [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {
     if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float co[32],hidden[64],mean[4],a[4];
     for(uint j=0;j<32;j++)co[j]=critic_obs[row*32+j];for(uint j=0;j<4;j++)mean[j]=actions[row*4+j];
     values[row]=ppo_critic_value(critic,co,hidden);
-    if(PPO_ACTOR_OBS==184 && cfg.mode>=9 && cfg.mode<=21){float scale=(cfg.mode==9||cfg.mode==13)?0.0f:((cfg.mode==10||cfg.mode==14||cfg.mode==16)?0.25f:(cfg.mode==15?1.0f:0.5f));if(cfg.mode>=17){float overhead=0;for(uint k=0;k<20;k++)overhead+=observations[row*PPO_ACTOR_OBS+k]*12>2.5f;scale=.25f+.75f*(overhead/20.0f);}if(cfg.mode==12){float near=12;for(uint k=0;k<80;k++)near=min(near,observations[row*PPO_ACTOR_OBS+k]*12);scale=clamp((near-.3f)/2,0.2f,1.0f);}for(uint j=0;j<3;j++){float prior=observations[row*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3+j];mean[j]=prior+scale*(mean[j]-prior);}mean[3]*=scale;if(cfg.mode==16){uint context=row*PPO_ACTOR_OBS+160;float yaw=atan2(observations[context+1],observations[context]);mean[3]+=nav_atanh(clamp(yaw*1.5f,-.85f,.85f));}}
+    if(SIM_HAS_GEOMETRY_PRIOR && cfg.mode>=9 && cfg.mode<=21){float scale=(cfg.mode==9||cfg.mode==13)?0.0f:((cfg.mode==10||cfg.mode==14||cfg.mode==16)?0.25f:(cfg.mode==15?1.0f:0.5f));if(cfg.mode>=17){float overhead=0;for(uint k=0;k<20;k++)overhead+=observations[row*PPO_ACTOR_OBS+k]*12>2.5f;scale=.25f+.75f*(overhead/20.0f);}if(cfg.mode==12){float near=12;for(uint k=0;k<80;k++)near=min(near,observations[row*PPO_ACTOR_OBS+k]*12);scale=clamp((near-.3f)/2,0.2f,1.0f);}for(uint j=0;j<3;j++){float prior=observations[row*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3+j];mean[j]=prior+scale*(mean[j]-prior);}mean[3]*=scale;if(cfg.mode==16){uint context=row*PPO_ACTOR_OBS+SIM_CONTEXT_OFFSET;float yaw=atan2(observations[context+1],observations[context]);mean[3]+=nav_atanh(clamp(yaw*1.5f,-.85f,.85f));}}
     float deployed_scale=1.0f;
-    if(cfg.mode==22 && PPO_ACTOR_OBS==184) {
+    if(cfg.mode==22 && SIM_HAS_GEOMETRY_PRIOR) {
         float overhead=0;
         for(uint k=0;k<20;k++)overhead+=observations[row*PPO_ACTOR_OBS+k]*12>2.5f;
         deployed_scale=.25f+.75f*(overhead/20.0f);
@@ -202,7 +219,7 @@ kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* r
         float diff=(a[j]-mean[j])*exp(-actor[PPO_ACTOR_LOG_STD+j]);lp+=-0.5f*(diff*diff+2*actor[PPO_ACTOR_LOG_STD+j]+PPO_LOG_TWO_PI);
         actions[row*4+j]=a[j];
         float executed_latent=a[j];
-        if(cfg.mode==22 && PPO_ACTOR_OBS==184) {
+        if(cfg.mode==22 && SIM_HAS_GEOMETRY_PRIOR) {
             // Train the deployed mode17 action map. PPO still scores the raw
             // Gaussian sample; this observation-dependent map has no weights.
             if(j<3) {

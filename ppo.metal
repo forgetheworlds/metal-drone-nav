@@ -19,6 +19,8 @@ constant uint PPO_ACTOR_OBS = FIXED_PPO_ACTOR_OBS_DIM;
 constant uint PPO_CRITIC_OBS = FIXED_PPO_CRITIC_OBS_DIM;
 constant uint PPO_HIDDEN = FIXED_PPO_HIDDEN_DIM;
 constant uint PPO_ACTIONS = FIXED_PPO_ACTION_DIM;
+constant bool PPO_HAS_GEOMETRY_PRIOR = PPO_ACTOR_OBS == 184 || PPO_ACTOR_OBS == 824;
+constant uint PPO_GEOMETRY_PRIOR_OFFSET = PPO_ACTOR_OBS - (PPO_HAS_GEOMETRY_PRIOR ? 3 : 0);
 constant uint PPO_ACTOR_B1 = PPO_HIDDEN * PPO_ACTOR_OBS;
 constant uint PPO_ACTOR_W2 = PPO_ACTOR_B1 + PPO_HIDDEN;
 constant uint PPO_ACTOR_B2 = PPO_ACTOR_W2 + PPO_ACTIONS * PPO_HIDDEN;
@@ -55,7 +57,7 @@ inline void ppo_actor_mean(device const float* params, thread const float* obs,
         float z = params[PPO_ACTOR_B2 + a];
         const uint row = PPO_ACTOR_W2 + a * PPO_HIDDEN;
         for (uint h = 0; h < PPO_HIDDEN; ++h) z += params[row + h] * hidden[h];
-        if(PPO_ACTOR_OBS==184 && a<3)z+=obs[PPO_ACTOR_OBS-3+a];
+        if(PPO_HAS_GEOMETRY_PRIOR && a<3)z+=obs[PPO_GEOMETRY_PRIOR_OFFSET+a];
         mean[a] = z;
     }
 }
@@ -252,7 +254,7 @@ kernel void ppo_actor_forward_simd_fused(device const float* observations [[buff
         const uint row = PPO_ACTOR_W2 + action * PPO_HIDDEN;
         for (uint h = 0; h < PPO_HIDDEN; ++h)
             mean += params[row + h] * tile_h[sample_local * PPO_HIDDEN + h];
-        if(PPO_ACTOR_OBS==184 && action<3 && sample<batch_size)mean+=observations[sample*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3+action];
+        if(PPO_HAS_GEOMETRY_PRIOR && action<3 && sample<batch_size)mean+=observations[sample*PPO_ACTOR_OBS+PPO_GEOMETRY_PRIOR_OFFSET+action];
         if (sample < batch_size) means[sample * PPO_ACTIONS + action] = mean;
     }
 }

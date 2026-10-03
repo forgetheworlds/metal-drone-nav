@@ -27,6 +27,11 @@ constexpr std::size_t actor_obs_dim = FIXED_PPO_ACTOR_OBS_DIM;
 constexpr std::size_t critic_obs_dim = FIXED_PPO_CRITIC_OBS_DIM;
 constexpr std::size_t hidden_dim = FIXED_PPO_HIDDEN_DIM;
 constexpr std::size_t action_dim = FIXED_PPO_ACTION_DIM;
+constexpr bool has_geometry_prior = actor_obs_dim == 184 || actor_obs_dim == 824;
+constexpr bool has_raw_depth_extension = actor_obs_dim == 824;
+constexpr std::size_t pooled_depth_dim = actor_obs_dim == 661 ? 320 : 80;
+constexpr std::size_t context_offset = 2 * pooled_depth_dim;
+constexpr std::size_t geometry_prior_offset = actor_obs_dim - (has_geometry_prior ? 3 : 0);
 constexpr std::size_t actor_w1_offset = 0;
 constexpr std::size_t actor_b1_offset = hidden_dim * actor_obs_dim;
 constexpr std::size_t actor_w2_offset = actor_b1_offset + hidden_dim;
@@ -69,7 +74,7 @@ inline void actor_forward(const float* obs, const ActorParams& p, float* hidden,
         float z = w[actor_b2_offset + a];
         const std::size_t row = actor_w2_offset + a * hidden_dim;
         for (std::size_t h = 0; h < hidden_dim; ++h) z += w[row + h] * hidden[h];
-        if constexpr(actor_obs_dim==184) { if(a<3)z+=obs[actor_obs_dim-3+a]; }
+        if constexpr(has_geometry_prior) { if(a<3)z+=obs[geometry_prior_offset+a]; }
         mean[a] = z;
     }
 }

@@ -28,7 +28,9 @@ namespace cpu_reference {
 constexpr uint32_t sensor_pixels = 320;
 constexpr uint32_t sensor_frames = 8;
 constexpr uint32_t actor_dim = uint32_t(fixed_ppo::actor_obs_dim);
-constexpr uint32_t depth_features = (actor_dim - (actor_dim==184?24:21)) / 2;
+constexpr uint32_t depth_features = actor_dim == 661 ? 320 : 80;
+constexpr uint32_t raw_current_offset = 181;
+constexpr uint32_t raw_previous_offset = 501;
 constexpr uint32_t critic_dim = 32;
 constexpr uint32_t hidden_dim = 64;
 constexpr uint32_t action_dim = 4;
@@ -43,7 +45,8 @@ constexpr float critic_learning_rate = 3.0e-4f;
 constexpr float adam_beta1 = 0.9f;
 constexpr float adam_beta2 = 0.999f;
 constexpr float adam_epsilon = 1.0e-8f;
-static_assert(actor_dim==181 || actor_dim==184 || actor_dim==661,"CPU actor supports only pooled-181 or raw-661 input");
+static_assert(actor_dim==181 || actor_dim==184 || actor_dim==661 || actor_dim==824,
+              "CPU actor supports pooled, raw, guided, or raw-guided input");
 
 struct Metrics {
     double wall_seconds = 0.0;
@@ -307,6 +310,19 @@ private:
             observations[row+k]=available>=sensor_delay?current/12.0f:1.0f;
             observations[row+depth_features+k]=available>=sensor_delay?previous/12.0f:1.0f;
         }
+        if constexpr(actor_dim==824) {
+            const size_t current_base=(size_t(n)*sensor_frames+frame%sensor_frames)*sensor_pixels;
+            const size_t previous_base=(size_t(n)*sensor_frames+prev%sensor_frames)*sensor_pixels;
+            for(uint32_t ray=0;ray<sensor_pixels;ray++) {
+                observations[row+raw_current_offset+ray]=available>=sensor_delay?sensors[current_base+ray]/12.0f:1.0f;
+                observations[row+raw_previous_offset+ray]=available>=sensor_delay?sensors[previous_base+ray]/12.0f:1.0f;
+            }
+        }
+        if constexpr(actor_dim==824) {
+            // Evaluation ablation removes both previous-resolution channels.
+            if(cfg.mode==18)for(uint32_t ray=0;ray<sensor_pixels;ray++)
+                observations[row+raw_previous_offset+ray]=observations[row+raw_current_offset+ray];
+        }
         float r[9];rotation(s.orientation_wxyz,r);
         const WVec delta=wv(world.goal[0]-s.position[0],world.goal[1]-s.position[1],world.goal[2]-s.position[2]);
         const float distance=std::max(wl(delta),1.0e-6f);
@@ -322,7 +338,7 @@ private:
         observations[context+17]=float(run.steps-frame*cfg.sensor_period)*physics.dt*cfg.substeps;
         const float ref[3]={run.reference_position[0]-s.position[0],run.reference_position[1]-s.position[1],run.reference_position[2]-s.position[2]};
         for(uint32_t j=0;j<3;j++)observations[context+18+j]=clampf((r[j]*ref[0]+r[3+j]*ref[1]+r[6+j]*ref[2])*2.0f,-1.0f,1.0f);
-        if constexpr(actor_dim==184) {
+        if constexpr(actor_dim==184 || actor_dim==824) {
             float cur[80],prev_range[80],goal[3],vel[3],hint[3],current_pose[12];
             for(uint32_t j=0;j<80;j++) {
                 cur[j]=observations[row+j]*12.0f;
@@ -415,7 +431,7 @@ private:
         cblas_sgemm(CblasRowMajor,CblasNoTrans,CblasTrans,int(batch),A,H,1.0f,
                     hidden,H,actor.values.data()+fixed_ppo::actor_w2_offset,H,0.0f,means,A);
         for(uint32_t n=0;n<batch;n++)for(uint32_t a=0;a<action_dim;a++)
-            {means[size_t(n)*action_dim+a]+=actor.values[fixed_ppo::actor_b2_offset+a];if constexpr(actor_dim==184){if(a<3)means[size_t(n)*action_dim+a]+=obs[size_t(n)*actor_dim+actor_dim-3+a];}}
+            {means[size_t(n)*action_dim+a]+=actor.values[fixed_ppo::actor_b2_offset+a];if constexpr(actor_dim==184||actor_dim==824){if(a<3)means[size_t(n)*action_dim+a]+=obs[size_t(n)*actor_dim+actor_dim-3+a];}}
     }
 
     void critic_forward_batch(const float* obs,uint32_t batch,float* hidden,float* values_out) {

@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -42,8 +43,11 @@ struct Config {
     std::string movie_file;
     std::string view_snapshot_file;
     std::string diagnostic_prefix;
+    std::string raw_depth_shadow_path;
     float diagnostic_nav_scale=1.0f;
     std::string policy="../assets/navigation.bin";
+    uint32_t policy_version=1;
+    bool raw_depth_shadow=false;
     uint32_t seed=1;
     uint32_t max_steps=800;
     float speed=1.5f;
@@ -77,8 +81,11 @@ Config parse_config(const char* custom) {
             else if(key=="movie_file")c.movie_file=value;
             else if(key=="view_snapshot_file")c.view_snapshot_file=value;
             else if(key=="diagnostic_prefix")c.diagnostic_prefix=value;
+            else if(key=="raw_depth_shadow_path")c.raw_depth_shadow_path=value;
             else if(key=="diagnostic_nav_scale")parse_float(value,c.diagnostic_nav_scale);
             else if(key=="policy")c.policy=value;
+            else if(key=="policy_version")c.policy_version=uint32_t(std::strtoul(value.c_str(),nullptr,10));
+            else if(key=="raw_depth_shadow")c.raw_depth_shadow=(value=="1"||value=="true");
             else if(key=="seed")c.seed=uint32_t(std::strtoul(value.c_str(),nullptr,10));
             else if(key=="max_steps")c.max_steps=uint32_t(std::strtoul(value.c_str(),nullptr,10));
             else if(key=="speed")parse_float(value,c.speed);
@@ -196,6 +203,9 @@ int main(int argc,char** argv) {
     }
     const int step_ms=10; // RAPTOR remains100Hz with finer ODE integration.
     const Config config=parse_config(wb_robot_get_custom_data());
+    if(config.policy_version!=1&&config.policy_version!=2) {
+        std::fprintf(stderr,"policy_version must be1 or2\n");wb_robot_cleanup();return 2;
+    }
     if(config.goal_objective!="entry"&&config.goal_objective!="hold") {
         std::fprintf(stderr,"goal_objective must be entry or hold\n");wb_robot_cleanup();return 2;
     }
@@ -227,12 +237,34 @@ int main(int argc,char** argv) {
     std::filesystem::path root=wb_robot_get_project_path()?wb_robot_get_project_path():".";
     const std::filesystem::path result_dir=root/"results";
     std::filesystem::create_directories(result_dir);
+    if(config.raw_depth_shadow) {
+        if(config.phase!="navigation"||config.policy_version!=1||config.raw_depth_shadow_path.empty()) {
+            std::fprintf(stderr,"raw_depth_shadow requires navigation phase, policy_version=1, and raw_depth_shadow_path\n");
+            wb_robot_cleanup();return 2;
+        }
+    }
     std::ofstream trace(result_dir/"last-run-trace.csv",std::ios::trunc);
     trace<<"step,time_s,x,y,z,vx,vy,vz,target_vx,target_vy,target_vz,goal_error";
     if(config.capture_trajectory)trace<<",q_w,q_x,q_y,q_z,goal_dwell_s,actual_world_speed_mps";
     trace<<'\n';
     const bool diagnostics=!config.diagnostic_prefix.empty();
     std::ofstream dense_diagnostic,nav_diagnostic,contact_diagnostic;
+    std::ofstream raw_depth_shadow;
+    uint32_t raw_depth_shadow_rows=0;
+    if(config.raw_depth_shadow) {
+        std::filesystem::path shadow_path=config.raw_depth_shadow_path;
+        if(shadow_path.is_relative())shadow_path=root/shadow_path;
+        if(shadow_path.has_parent_path())std::filesystem::create_directories(shadow_path.parent_path());
+        raw_depth_shadow.open(shadow_path,std::ios::trunc);
+        if(!raw_depth_shadow){std::fprintf(stderr,"cannot open raw depth shadow output: %s\n",shadow_path.string().c_str());wb_robot_cleanup();return 2;}
+        raw_depth_shadow<<"step,time_s,current_frame,previous_frame,current_capture_time_s,previous_capture_time_s,layout_max_abs_error";
+        for(int i=0;i<12;i++)raw_depth_shadow<<",current_camera_pose_"<<i;
+        for(int i=0;i<12;i++)raw_depth_shadow<<",previous_camera_pose_"<<i;
+        for(int i=0;i<320;i++)raw_depth_shadow<<",range_current_m_"<<i;
+        for(int i=0;i<320;i++)raw_depth_shadow<<",range_previous_m_"<<i;
+        for(int i=0;i<824;i++)raw_depth_shadow<<",observation_"<<i;
+        raw_depth_shadow<<'\n'<<std::setprecision(9);
+    }
     if(diagnostics) {
         dense_diagnostic.open(result_dir/(config.diagnostic_prefix+"-dense.csv"),std::ios::trunc);
         nav_diagnostic.open(result_dir/(config.diagnostic_prefix+"-nav.csv"),std::ios::trunc);
@@ -267,12 +299,16 @@ int main(int argc,char** argv) {
         return 0;
     }
     nav_deployment::NavigationPolicy navigation;
+    nav_deployment::RawDepthNavigationPolicy raw_depth_navigation;
     const bool policy_mode=config.phase=="navigation";
     if(policy_mode){
         std::filesystem::path policy_path=config.policy;
         if(policy_path.is_relative())policy_path=root/policy_path;
         std::string error;
-        if(!navigation.load(policy_path.string(),&error)){std::fprintf(stderr,"policy load failed: %s\n",error.c_str());wb_robot_cleanup();return 2;}
+        const bool loaded=config.policy_version==1
+            ?navigation.load(policy_path.string(),&error)
+            :raw_depth_navigation.load(policy_path.string(),&error);
+        if(!loaded){std::fprintf(stderr,"policy version%u load failed: %s\n",config.policy_version,error.c_str());wb_robot_cleanup();return 2;}
     }
     RaptorWeights raptor{};bool raptor_loaded=false;
     std::filesystem::path raptor_path=root/"../assets/raptor.bin";
@@ -295,6 +331,7 @@ int main(int argc,char** argv) {
     float target_position[3]={0,0,1.5f},target_velocity_body[3]={0,0,0},target_velocity_world[3]={0,0,0},target_yaw=0,target_yaw_rate=0;
     if(config.phase=="velocity"){for(int j=0;j<3;j++)target_velocity_body[j]=config.velocity[j];}
     float current_ranges[320],pooled[80],previous_pooled[80],range_ring[8*320],pose_ring[8*12];
+    double range_capture_times[8]{};
     std::fill(current_ranges,current_ranges+320,kRangeMax);std::fill(pooled,pooled+80,kRangeMax);std::fill(previous_pooled,previous_pooled+80,kRangeMax);
     std::fill(range_ring,range_ring+8*320,kRangeMax);std::fill(pose_ring,pose_ring+8*12,0.0f);
     uint32_t capture_count=0,latest_frame=0,valid_frames=0;
@@ -426,6 +463,7 @@ int main(int argc,char** argv) {
                 if(capture_count==0)std::copy(pooled,pooled+80,previous_pooled);
                 for(int i=0;i<80;i++)minimum_sensor_range=std::fmin(minimum_sensor_range,pooled[i]);
                 const uint slot=capture_count%8;std::copy(current_ranges,current_ranges+320,range_ring+slot*320);
+                range_capture_times[slot]=current_time;
                 float camera_offset_body[3]={0.08f,0,0},camera_offset_world[3];
                 rotate_body_to_world(rotation,camera_offset_body,camera_offset_world);
                 float* pose=pose_ring+slot*12;
@@ -442,18 +480,61 @@ int main(int argc,char** argv) {
             float pose[12];for(int i=0;i<3;i++)pose[i]=position[i];for(int i=0;i<9;i++)pose[3+i]=rotation[i];
             float prior[3]={0,0,0};nav_guidance_memory(pooled,previous_pooled,goal_body,distance,body_velocity,kSensorDt,range_ring,pose_ring,pose,latest_frame,valid_frames,prior);
             float nav_previous_intent[4];for(int j=0;j<4;j++)nav_previous_intent[j]=previous_nav_intent[j];
-            float observation[nav_deployment::actor_observation_count]{};
-            for(int i=0;i<80;i++){observation[i]=pooled[i]/12.0f;observation[80+i]=previous_pooled[i]/12.0f;}
-            observation[160]=goal_body[0];observation[161]=goal_body[1];observation[162]=goal_body[2];observation[163]=std::fmin(distance/10.0f,1.5f);
-            for(int j=0;j<3;j++){observation[164+j]=body_velocity[j]/4.0f;observation[167+j]=body_rates[j]/4.0f;}
-            observation[170]=rotation[6];observation[171]=rotation[7];observation[172]=rotation[8];
-            for(int j=0;j<4;j++)observation[173+j]=previous_nav_intent[j];
-            observation[177]=0;
+            float observation[nav_deployment::raw_depth_actor_observation_count]{};
+            float context[21]{};
+            context[0]=goal_body[0];context[1]=goal_body[1];context[2]=goal_body[2];context[3]=std::fmin(distance/10.0f,1.5f);
+            for(int j=0;j<3;j++){context[4+j]=body_velocity[j]/4.0f;context[7+j]=body_rates[j]/4.0f;}
+            context[10]=rotation[6];context[11]=rotation[7];context[12]=rotation[8];
+            for(int j=0;j<4;j++)context[13+j]=previous_nav_intent[j];
+            context[17]=0;
             float ref_delta[3]={target_position[0]-position[0],target_position[1]-position[1],target_position[2]-position[2]},ref_body[3];rotate_world_to_body(rotation,ref_delta,ref_body);
-            for(int j=0;j<3;j++)observation[178+j]=clampf(ref_body[j]*2.0f,-1.0f,1.0f);
-            for(int j=0;j<3;j++)observation[181+j]=prior[j];
+            for(int j=0;j<3;j++)context[18+j]=clampf(ref_body[j]*2.0f,-1.0f,1.0f);
+            if(config.policy_version==2) {
+                const uint32_t previous_frame=valid_frames>1?(latest_frame+7u)%8u:latest_frame;
+                const float* previous_raw=range_ring+previous_frame*320;
+                nav_deployment::pack_raw_depth_observation(pooled,previous_pooled,context,
+                    current_ranges,previous_raw,prior,observation);
+            } else {
+                for(int i=0;i<80;i++){observation[i]=pooled[i]/12.0f;observation[80+i]=previous_pooled[i]/12.0f;}
+                std::copy(context,context+21,observation+160);
+                for(int j=0;j<3;j++)observation[181+j]=prior[j];
+            }
+            if(raw_depth_shadow.is_open()) {
+                const uint32_t current_slot=latest_frame%8u;
+                const uint32_t previous_frame=valid_frames>1?latest_frame-1u:latest_frame;
+                const uint32_t previous_slot=previous_frame%8u;
+                const float* current_raw=range_ring+current_slot*320;
+                const float* previous_raw=range_ring+previous_slot*320;
+                const float* current_pose=pose_ring+current_slot*12;
+                const float* previous_pose=pose_ring+previous_slot*12;
+                float shadow_observation[nav_deployment::raw_depth_actor_observation_count];
+                nav_deployment::pack_raw_depth_observation(pooled,previous_pooled,context,
+                    current_raw,previous_raw,prior,shadow_observation);
+                float layout_error=0.0f;
+                for(int i=0;i<181;i++)layout_error=std::fmax(layout_error,std::fabs(shadow_observation[i]-observation[i]));
+                for(int ray=0;ray<320;ray++) {
+                    layout_error=std::fmax(layout_error,std::fabs(shadow_observation[nav_deployment::raw_current_range_offset+ray]-current_raw[ray]/12.0f));
+                    layout_error=std::fmax(layout_error,std::fabs(shadow_observation[nav_deployment::raw_previous_range_offset+ray]-previous_raw[ray]/12.0f));
+                    layout_error=std::fmax(layout_error,std::fabs(current_raw[ray]-current_ranges[ray]));
+                }
+                for(int j=0;j<3;j++)layout_error=std::fmax(layout_error,
+                    std::fabs(shadow_observation[nav_deployment::raw_geometry_hint_offset+j]-prior[j]));
+                raw_depth_shadow<<steps<<','<<current_time<<','<<latest_frame<<','<<previous_frame<<','
+                                <<range_capture_times[current_slot]<<','<<range_capture_times[previous_slot]<<','<<layout_error;
+                for(int i=0;i<12;i++)raw_depth_shadow<<','<<current_pose[i];
+                for(int i=0;i<12;i++)raw_depth_shadow<<','<<previous_pose[i];
+                for(int i=0;i<320;i++)raw_depth_shadow<<','<<current_raw[i];
+                for(int i=0;i<320;i++)raw_depth_shadow<<','<<previous_raw[i];
+                for(float value:shadow_observation)raw_depth_shadow<<','<<value;
+                raw_depth_shadow<<'\n';raw_depth_shadow.flush();
+                if(!raw_depth_shadow){std::fprintf(stderr,"raw depth shadow write failed\n");wb_robot_cleanup();return 2;}
+                raw_depth_shadow_rows++;
+            }
             nav_deployment::NavigationAction action;
-            if(navigation.infer(observation,action)){
+            const bool action_ready=config.policy_version==1
+                ?navigation.infer(observation,action)
+                :raw_depth_navigation.infer(observation,action);
+            if(action_ready){
                 const float nav_scale=diagnostics?config.diagnostic_nav_scale:1.0f;
                 for(int j=0;j<3;j++)target_velocity_body[j]=nav_scale*action.body_velocity_mps[j];
                 target_yaw_rate=nav_scale*action.yaw_rate_rps;
@@ -592,6 +673,11 @@ int main(int argc,char** argv) {
         std::fflush(stdout);
     }
     std::printf("WEBOTS_LOOP_EXIT steps=%u completed=%d\n",steps,completed?1:0);std::fflush(stdout);
+    if(raw_depth_shadow.is_open()) {
+        raw_depth_shadow.flush();raw_depth_shadow.close();
+        std::printf("WEBOTS_RAW_DEPTH_SHADOW rows=%u path=%s motor_policy_version=1\n",
+                    raw_depth_shadow_rows,config.raw_depth_shadow_path.c_str());std::fflush(stdout);
+    }
     const double* final_pos=wb_gps_get_values(gps);const float final_error=final_pos?float(std::sqrt(std::pow(goal[0]-final_pos[0],2)+std::pow(goal[1]-final_pos[1],2)+std::pow(goal[2]-final_pos[2],2))):NAN;
     std::ofstream metrics(result_dir/"last-run.json",std::ios::trunc);
     metrics<<"{\"phase\":\""<<config.phase<<"\",\"seed\":"<<config.seed
@@ -603,10 +689,13 @@ int main(int argc,char** argv) {
            <<(tracking_samples?std::sqrt(tracking_squared/(3.0*tracking_samples)):0.0)
            <<",\"sensor_updates\":"<<nav_updates<<",\"raptor_loaded\":"<<(raptor_loaded?"true":"false")
            <<",\"navigation_loaded\":"<<(policy_mode?"true":"false")
+           <<",\"policy_version\":"<<config.policy_version
            <<",\"goal_objective\":\""<<config.goal_objective<<"\",\"goal_radius_entry_count\":"<<goal_radius_entry_count
            <<",\"goal_radius_entry_first_time_s\":"<<goal_radius_entry_first_time_s
            <<",\"goal_radius_entry_last_time_s\":"<<goal_radius_entry_last_time_s
            <<",\"goal_dwell_s\":"<<goal_dwell_s<<",\"final_world_speed_mps\":"<<final_world_speed_mps
+           <<",\"raw_depth_shadow\":"<<(config.raw_depth_shadow?"true":"false")
+           <<",\"raw_depth_shadow_rows\":"<<raw_depth_shadow_rows
            <<",\"trajectory_trace\":"<<(config.capture_trajectory?"true":"false")
            <<",\"movie_recording\":"<<(movie_requested?"true":"false")<<",\"movie_failed\":"<<(movie_failed?"true":"false")
            <<",\"movie_file\":\""<<config.movie_file<<"\",\"view_snapshot_file\":\""<<config.view_snapshot_file

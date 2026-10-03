@@ -357,7 +357,7 @@ inline BankScore run(Metal& metal, const std::string& checkpoint_path,
     if (mode != 2 && mode != 13 && mode != 17) fail("mode must be 2, 13, or 17");
     if (!std::isfinite(speed) || speed <= 0 || speed > 3.0f) fail("speed must be finite and in (0,3]");
     if (max_steps == 0 || max_steps > kMaxSteps) fail("max_steps must be in 1..400 (maximum 20 seconds)");
-    if (mode >= 13 && fixed_ppo::actor_obs_dim != 184) fail("guided modes require the 184-input checkpoint build");
+    if (mode >= 13 && !fixed_ppo::has_geometry_prior) fail("guided modes require a supported guided checkpoint build");
 
     const std::string checkpoint_hash = sha256_file(checkpoint_path);
     std::ifstream checkpoint(checkpoint_path, std::ios::binary);

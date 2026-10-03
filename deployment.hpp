@@ -24,14 +24,25 @@
 namespace nav_deployment {
 
 constexpr uint32_t actor_observation_count=184;
+constexpr uint32_t raw_depth_actor_observation_count=824;
 constexpr uint32_t hidden_count=64;
 constexpr uint32_t action_count=4;
 constexpr uint32_t actor_weight_count=12104;
+constexpr uint32_t raw_depth_actor_weight_count=53064;
+constexpr uint32_t raw_current_range_offset=181;
+constexpr uint32_t raw_previous_range_offset=501;
+constexpr uint32_t raw_geometry_hint_offset=821;
+static_assert(raw_current_range_offset+320==raw_previous_range_offset&&
+              raw_previous_range_offset+320==raw_geometry_hint_offset&&
+              raw_geometry_hint_offset+3==raw_depth_actor_observation_count,
+              "raw-depth version-2 feature offsets changed");
 constexpr uint32_t metadata_bytes=64;
 constexpr uint32_t trailer_bytes=16;
 constexpr uint32_t body_frame_flu=0x00554c46u; // serialized little-endian bytes: "FLU\0"
 constexpr char file_magic[8]={'N','A','V','P','O','L','1','\0'};
 constexpr char provenance_magic[8]={'N','A','V','S','R','C','1','\0'};
+constexpr char raw_depth_file_magic[8]={'N','A','V','R','A','W','2','\0'};
+constexpr char raw_depth_provenance_magic[8]={'N','A','V','S','R','C','2','\0'};
 
 struct Metadata {
     uint32_t version=1;
@@ -58,6 +69,29 @@ struct NavigationAction {
     // Retain them for the next observation; they are not motor commands.
     float normalized_intent[4]={0,0,0,0};
 };
+
+// Shared Webots/native-v2 observation packer. Input ranges are metres; the
+// actor stores all range features in units of the 12m sensor maximum. Context
+// values are already normalized and retain v1 indices 160..180.
+inline void pack_raw_depth_observation(const float current_pooled_m[80],
+                                       const float previous_pooled_m[80],
+                                       const float context[21],
+                                       const float current_raw_m[320],
+                                       const float previous_raw_m[320],
+                                       const float geometry_hint[3],
+                                       float observation[raw_depth_actor_observation_count]) {
+    std::fill(observation,observation+raw_depth_actor_observation_count,0.0f);
+    for(uint32_t i=0;i<80;i++) {
+        observation[i]=current_pooled_m[i]/12.0f;
+        observation[80+i]=previous_pooled_m[i]/12.0f;
+    }
+    std::copy(context,context+21,observation+160);
+    for(uint32_t i=0;i<320;i++) {
+        observation[raw_current_range_offset+i]=current_raw_m[i]/12.0f;
+        observation[raw_previous_range_offset+i]=previous_raw_m[i]/12.0f;
+    }
+    std::copy(geometry_hint,geometry_hint+3,observation+raw_geometry_hint_offset);
+}
 
 inline uint64_t fnv1a64_file(const std::string& path,bool& ok) {
     std::ifstream f(path,std::ios::binary);
@@ -232,6 +266,184 @@ private:
         uint32_t bits;std::memcpy(&bits,&v,sizeof(bits));write_u32(f,bits);
     }
 };
+
+// Version-2 raw-depth policy. Its first 181 inputs are identical to v1's
+// pooled policy, raw current/previous ranges occupy 181..820, and geometry
+// guidance remains in the final three inputs. It has a separate file magic so
+// a v1 consumer cannot silently load this larger actor.
+class RawDepthNavigationPolicy {
+public:
+    using Weights=std::array<float,raw_depth_actor_weight_count>;
+
+    bool load(const std::string& path,std::string* error=nullptr) {
+        loaded_=false;
+        std::ifstream f(path,std::ios::binary);
+        if(!f)return fail(error,"cannot open raw-depth navigation policy: "+path);
+        char magic[8];if(!read_bytes(f,magic,sizeof(magic))||std::memcmp(magic,raw_depth_file_magic,8)!=0)
+            return fail(error,"raw-depth policy magic mismatch; expected policy version2");
+        Metadata m{};
+        if(!read_metadata(f,m))return fail(error,"truncated raw-depth policy metadata");
+        if(!valid_metadata(m))return fail(error,"unsupported raw-depth navigation policy metadata");
+        for(float& value:weights_) {
+            if(!read_float(f,value)||!std::isfinite(value))return fail(error,"invalid raw-depth actor weight");
+        }
+        char provenance[8];uint64_t source_hash=0;
+        if(!read_bytes(f,provenance,sizeof(provenance))||std::memcmp(provenance,raw_depth_provenance_magic,8)!=0||
+           !read_u64(f,source_hash))return fail(error,"raw-depth source provenance is missing");
+        char extra;if(f.read(&extra,1))return fail(error,"raw-depth policy has trailing bytes");
+        if(!f.eof())return fail(error,"raw-depth policy read failed");
+        metadata_=m;source_hash_=source_hash;loaded_=true;
+        if(error)error->clear();return true;
+    }
+
+    static bool write_file(const std::string& path,const float* actor_weights,size_t count,
+                           const Metadata& metadata,const std::string& source_checkpoint,
+                           std::string* error=nullptr) {
+        if(!actor_weights||count!=raw_depth_actor_weight_count||!valid_metadata(metadata))
+            return fail(error,"invalid raw-depth NAV actor dimensions or metadata");
+        for(size_t i=0;i<count;i++)if(!std::isfinite(actor_weights[i]))
+            return fail(error,"raw-depth actor has a non-finite parameter");
+        bool source_ok=false;const uint64_t source_hash=fnv1a64_file(source_checkpoint,source_ok);
+        if(!source_ok)return fail(error,"cannot hash raw-depth source checkpoint: "+source_checkpoint);
+        const std::filesystem::path output(path);
+        if(output.has_parent_path()) {
+            std::error_code ec;std::filesystem::create_directories(output.parent_path(),ec);
+            if(ec)return fail(error,"cannot create raw-depth policy directory: "+ec.message());
+        }
+        const std::string temp=path+".tmp";
+        std::ofstream f(temp,std::ios::binary|std::ios::trunc);
+        if(!f)return fail(error,"cannot create raw-depth navigation policy: "+temp);
+        f.write(raw_depth_file_magic,sizeof(raw_depth_file_magic));write_metadata(f,metadata);
+        for(size_t i=0;i<count;i++)write_float(f,actor_weights[i]);
+        f.write(raw_depth_provenance_magic,sizeof(raw_depth_provenance_magic));write_u64(f,source_hash);
+        f.flush();
+        if(!f){f.close();std::remove(temp.c_str());return fail(error,"raw-depth policy write failed");}
+        f.close();
+        if(std::rename(temp.c_str(),path.c_str())!=0) {
+            std::remove(temp.c_str());return fail(error,"cannot replace raw-depth policy: "+path);
+        }
+        if(error)error->clear();return true;
+    }
+
+    bool loaded()const{return loaded_;}
+    const Metadata& metadata()const{return metadata_;}
+    uint64_t source_checkpoint_hash()const{return source_hash_;}
+    const Weights& weights()const{return weights_;}
+
+    bool raw_mean(const float* observation,float mean[action_count])const {
+        if(mean)std::fill(mean,mean+action_count,0.0f);
+        if(!loaded_||!observation||!mean)return false;
+        for(uint32_t i=0;i<raw_depth_actor_observation_count;i++)
+            if(!std::isfinite(observation[i]))return false;
+        constexpr size_t b1=size_t(hidden_count)*raw_depth_actor_observation_count;
+        constexpr size_t w2=b1+hidden_count,b2=w2+action_count*hidden_count;
+        float hidden[hidden_count];
+        for(uint32_t h=0;h<hidden_count;h++) {
+            float z=weights_[b1+h];const size_t row=size_t(h)*raw_depth_actor_observation_count;
+            for(uint32_t i=0;i<raw_depth_actor_observation_count;i++)z+=weights_[row+i]*observation[i];
+            hidden[h]=std::tanh(z);
+        }
+        for(uint32_t a=0;a<action_count;a++) {
+            float z=weights_[b2+a];const size_t row=w2+size_t(a)*hidden_count;
+            for(uint32_t h=0;h<hidden_count;h++)z+=weights_[row+h]*hidden[h];
+            if(a<3)z+=observation[raw_geometry_hint_offset+a];
+            mean[a]=z;
+        }
+        return true;
+    }
+
+    bool infer(const float* observation,NavigationAction& command)const {
+        command=NavigationAction{};float mean[action_count];
+        if(!raw_mean(observation,mean))return false;
+        uint32_t overhead=0;
+        for(uint32_t k=0;k<20;k++)if(observation[k]*metadata_.range_max_m>2.5f)overhead++;
+        const float gate=.25f+.75f*float(overhead)/20.0f;
+        for(uint32_t j=0;j<3;j++)mean[j]=observation[raw_geometry_hint_offset+j]+gate*(mean[j]-observation[raw_geometry_hint_offset+j]);
+        mean[3]*=gate;
+        float velocity[3]={std::tanh(mean[0]),std::tanh(mean[1]),std::tanh(mean[2])};
+        for(uint32_t j=0;j<3;j++)command.normalized_intent[j]=velocity[j];
+        command.normalized_intent[3]=std::tanh(mean[3]);
+        const float norm=std::sqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1]+velocity[2]*velocity[2]);
+        const float scale=norm>1.0f?1.0f/norm:1.0f;
+        for(uint32_t j=0;j<3;j++)command.body_velocity_mps[j]=velocity[j]*scale*metadata_.max_speed_mps;
+        command.yaw_rate_rps=.5f*std::tanh(mean[3]);return true;
+    }
+
+private:
+    Metadata metadata_{};Weights weights_{};uint64_t source_hash_=0;bool loaded_=false;
+
+    static bool valid_metadata(const Metadata& m) {
+        return m.version==2&&m.observation_count==raw_depth_actor_observation_count&&
+            m.hidden_count_value==hidden_count&&m.action_count_value==action_count&&m.policy_mode==17&&
+            m.weight_count==raw_depth_actor_weight_count&&std::isfinite(m.max_speed_mps)&&m.max_speed_mps>0&&
+            m.sensor_rows==16&&m.sensor_columns==20&&std::fabs(m.range_max_m-12.0f)<1e-6f&&
+            std::fabs(m.navigation_period_s-.05f)<1e-6f&&std::fabs(m.native_period_s-.01f)<1e-6f&&
+            m.memory_frames==8&&m.body_frame==body_frame_flu;
+    }
+    static bool fail(std::string* error,const std::string& message){if(error)*error=message;return false;}
+    static bool read_metadata(std::istream& f,Metadata& m) {
+        return read_u32(f,m.version)&&read_u32(f,m.observation_count)&&read_u32(f,m.hidden_count_value)&&
+            read_u32(f,m.action_count_value)&&read_u32(f,m.policy_mode)&&read_u32(f,m.weight_count)&&
+            read_float(f,m.max_speed_mps)&&read_u32(f,m.sensor_rows)&&read_u32(f,m.sensor_columns)&&
+            read_float(f,m.range_max_m)&&read_float(f,m.navigation_period_s)&&read_float(f,m.native_period_s)&&
+            read_u32(f,m.memory_frames)&&read_u32(f,m.body_frame);
+    }
+    static void write_metadata(std::ostream& f,const Metadata& m) {
+        write_u32(f,m.version);write_u32(f,m.observation_count);write_u32(f,m.hidden_count_value);
+        write_u32(f,m.action_count_value);write_u32(f,m.policy_mode);write_u32(f,m.weight_count);
+        write_float(f,m.max_speed_mps);write_u32(f,m.sensor_rows);write_u32(f,m.sensor_columns);
+        write_float(f,m.range_max_m);write_float(f,m.navigation_period_s);write_float(f,m.native_period_s);
+        write_u32(f,m.memory_frames);write_u32(f,m.body_frame);
+    }
+    static bool read_bytes(std::istream& f,void* out,size_t n){f.read(static_cast<char*>(out),std::streamsize(n));return f.good();}
+    static bool read_u32(std::istream& f,uint32_t& out){
+        uint8_t b[4];if(!read_bytes(f,b,4))return false;
+        out=uint32_t(b[0])|(uint32_t(b[1])<<8)|(uint32_t(b[2])<<16)|(uint32_t(b[3])<<24);return true;
+    }
+    static bool read_u64(std::istream& f,uint64_t& out){
+        uint8_t b[8];if(!read_bytes(f,b,8))return false;out=0;
+        for(uint32_t i=0;i<8;i++)out|=uint64_t(b[i])<<(8*i);return true;
+    }
+    static bool read_float(std::istream& f,float& out){uint32_t bits;if(!read_u32(f,bits))return false;std::memcpy(&out,&bits,4);return true;}
+    static void write_u32(std::ostream& f,uint32_t v){
+        const uint8_t b[4]={uint8_t(v),uint8_t(v>>8),uint8_t(v>>16),uint8_t(v>>24)};f.write(reinterpret_cast<const char*>(b),4);
+    }
+    static void write_u64(std::ostream& f,uint64_t v){uint8_t b[8];for(uint32_t i=0;i<8;i++)b[i]=uint8_t(v>>(8*i));f.write(reinterpret_cast<const char*>(b),8);}
+    static void write_float(std::ostream& f,float value){uint32_t bits;std::memcpy(&bits,&value,4);write_u32(f,bits);}
+};
+
+// Copy a v1 guided actor into a v2 raw-depth actor. Its pooled/context inputs
+// retain their indices; the three prior skip inputs move to the final slots.
+inline bool lift_guided_actor_to_raw_depth(const float* old_weights,size_t old_count,
+                                           float* raw_weights,size_t raw_count,
+                                           std::string* error=nullptr) {
+    constexpr size_t old_count_expected=actor_weight_count;
+    if(!old_weights||!raw_weights||old_count!=old_count_expected||raw_count!=raw_depth_actor_weight_count) {
+        if(error)*error="guided actor lift dimensions mismatch";return false;
+    }
+    if(!std::all_of(old_weights,old_weights+old_count,[](float x){return std::isfinite(x);})) {
+        if(error)*error="guided actor lift source contains non-finite weights";return false;
+    }
+    std::fill(raw_weights,raw_weights+raw_count,0.0f);
+    constexpr size_t old_w1=0,old_b1=hidden_count*actor_observation_count;
+    constexpr size_t old_w2=old_b1+hidden_count,old_b2=old_w2+action_count*hidden_count;
+    constexpr size_t old_logstd=old_b2+action_count;
+    constexpr size_t new_w1=0,new_b1=hidden_count*raw_depth_actor_observation_count;
+    constexpr size_t new_w2=new_b1+hidden_count,new_b2=new_w2+action_count*hidden_count;
+    constexpr size_t new_logstd=new_b2+action_count;
+    for(size_t h=0;h<hidden_count;h++) {
+        const size_t old_row=old_w1+h*actor_observation_count;
+        const size_t new_row=new_w1+h*raw_depth_actor_observation_count;
+        std::copy(old_weights+old_row,old_weights+old_row+181,raw_weights+new_row);
+        for(size_t hint=0;hint<3;hint++)
+            raw_weights[new_row+raw_geometry_hint_offset+hint]=old_weights[old_row+181+hint];
+        raw_weights[new_b1+h]=old_weights[old_b1+h];
+    }
+    std::copy(old_weights+old_w2,old_weights+old_w2+action_count*hidden_count,raw_weights+new_w2);
+    std::copy(old_weights+old_b2,old_weights+old_b2+action_count,raw_weights+new_b2);
+    std::copy(old_weights+old_logstd,old_weights+old_logstd+action_count,raw_weights+new_logstd);
+    if(error)error->clear();return true;
+}
 
 static_assert(sizeof(float)==4&&std::numeric_limits<float>::is_iec559,
               "NAV deployment format requires IEEE-754 binary32");

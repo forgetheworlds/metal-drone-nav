@@ -445,8 +445,9 @@ struct SimConfig {
     float speed=2,distance=4,wind=0,depth_noise=0,dropout=0,risk_coef=0,entropy_coef=.005f,learning_rate=.0003f;uint32_t velocity_contract=1,geometry_memory=0;
 };
 static_assert(sizeof(SimRun)==184 && sizeof(SimConfig)==84,"sim layout mismatch");
-static_assert((fixed_ppo::actor_obs_dim==181||fixed_ppo::actor_obs_dim==184) || fixed_ppo::actor_obs_dim==661,
-              "navigation actor supports only pooled-181 or raw-661 observations");
+static_assert(fixed_ppo::actor_obs_dim==181||fixed_ppo::actor_obs_dim==184||
+              fixed_ppo::actor_obs_dim==661||fixed_ppo::actor_obs_dim==824,
+              "navigation actor dimension must match a supported fixed observation contract");
 using BufferBinding=std::pair<id<MTLBuffer>,size_t>;
 [[maybe_unused]] static void encode(Metal& m,id<MTLCommandBuffer> cb,const char* name,size_t count,std::initializer_list<BufferBinding> bindings,size_t group=128) {
     auto p=m.pipeline(name);auto e=[cb computeCommandEncoder];[e setComputePipelineState:p];uint j=0;for(auto binding:bindings)[e setBuffer:binding.first offset:binding.second atIndex:j++];
@@ -587,7 +588,7 @@ static EvalScore sim_evaluate(Metal& m,uint family,uint mode,const float* actor=
     require((family!=10 && family!=11 && family!=13) || (std::fabs(speed-1.5f)<1e-6f && std::fabs(distance-4.0f)<1e-6f),"flying-threat evaluation requires1.5m/s and4m goal");
     require(max_steps==0 || (max_steps>=1 && max_steps<=2000),"evaluation episode length unsupported");
     SimConfig cfg;cfg.n=128;cfg.family=family;cfg.mode=mode;cfg.eval=1;cfg.seed=seed;cfg.distance=distance;cfg.speed=speed;cfg.sensor_delay=sensor_delay;cfg.wind=wind;cfg.depth_noise=noise;cfg.dropout=dropout;cfg.command_delay=command_delay;cfg.velocity_contract=velocity_contract;cfg.geometry_memory=memory||mode>=13;cfg.max_steps=max_steps?max_steps:((family>=14 && family<=16)?400:200);require(sensor_delay<=6 && command_delay<=7,"delay rings support <=6 sensor frames and <=7 command steps");
-    if(mode==18||mode==19){require(actor!=nullptr&&fixed_ppo::actor_obs_dim==184,"modes 18/19 require a trained 184D guided checkpoint");std::cout<<"EVAL_ABLATION mode="<<mode<<(mode==18?" current-depth-only, newest-frame geometry memory":" fixed-speed, mode-17 guided direction and yaw")<<"; same checkpoint versus mode17; inference ablation, not a matched retrain\n";}
+    if(mode==18||mode==19){require(actor!=nullptr&&(fixed_ppo::actor_obs_dim==184||fixed_ppo::actor_obs_dim==824),"modes 18/19 require a guided checkpoint");std::cout<<"EVAL_ABLATION mode="<<mode<<(mode==18?" current-depth-only, newest-frame geometry memory":" fixed-speed, mode-17 guided direction and yaw")<<"; same checkpoint versus mode17; inference ablation, not a matched retrain\n";}
     std::cout<<"eval_budget_s="<<cfg.max_steps*.05f<<" speed_intent_cap="<<cfg.speed<<"\n";
     Sim sim(m,cfg,32);if(actor)std::memcpy(sim.actor.contents,actor,fixed_ppo::actor_param_count*4);
     double start=seconds();auto cb=[m.queue commandBuffer];sim.collect(cb,cfg.max_steps);double gpu=m.finish(cb);sim.report("eval family="+std::to_string(family)+" mode="+std::to_string(mode),seconds()-start);std::cout<<"eval_GPU_s="<<gpu<<"\n";
@@ -1223,6 +1224,277 @@ struct PPOTrainer {
     }
 };
 
+static float verify_raw_depth_lift(Metal& metal,const float* old_weights,
+                                   const float* lifted_weights,const std::string& old_checkpoint,
+                                   const std::string& lifted_checkpoint,const std::string& raw_policy_path,
+                                   const PpoCheckpointHeader& source_header) {
+    const auto dynamics=rl_physics_crazyflie_default();
+    nav_deployment::Metadata old_metadata;old_metadata.max_speed_mps=source_header.config.speed;
+    old_metadata.navigation_period_s=dynamics.dt*float(source_header.config.substeps);
+    old_metadata.native_period_s=dynamics.dt;
+    const std::string old_policy_path=raw_policy_path+".legacy-v1-probe";
+    std::string error;
+    require(nav_deployment::NavigationPolicy::write_file(old_policy_path,old_weights,
+                nav_deployment::actor_weight_count,old_metadata,old_checkpoint,&error),error);
+    nav_deployment::NavigationPolicy old_policy;
+    require(old_policy.load(old_policy_path,&error),error);
+    nav_deployment::Metadata raw_metadata;
+    raw_metadata.version=2;raw_metadata.observation_count=nav_deployment::raw_depth_actor_observation_count;
+    raw_metadata.weight_count=nav_deployment::raw_depth_actor_weight_count;
+    raw_metadata.max_speed_mps=source_header.config.speed;
+    raw_metadata.navigation_period_s=dynamics.dt*float(source_header.config.substeps);
+    raw_metadata.native_period_s=dynamics.dt;
+    require(nav_deployment::RawDepthNavigationPolicy::write_file(raw_policy_path,lifted_weights,
+                nav_deployment::raw_depth_actor_weight_count,raw_metadata,lifted_checkpoint,&error),error);
+    nav_deployment::RawDepthNavigationPolicy raw_policy;
+    require(raw_policy.load(raw_policy_path,&error),error);
+    nav_deployment::NavigationPolicy wrong_v1_reader;
+    nav_deployment::RawDepthNavigationPolicy wrong_v2_reader;
+    require(!wrong_v1_reader.load(raw_policy_path,&error),"v1 deployment reader accepted a v2 raw-depth file");
+    require(!wrong_v2_reader.load(old_policy_path,&error),"v2 deployment reader accepted a v1 pooled file");
+
+    float max_deployment_error=0.0f,max_metal_error=0.0f,max_pack_error=0.0f;
+    constexpr uint32_t batch=8;
+    std::vector<float> metal_observations(size_t(batch)*nav_deployment::raw_depth_actor_observation_count);
+    std::vector<float> expected_means(size_t(batch)*fixed_ppo::action_dim);
+    fixed_ppo::ActorParams lifted{};
+    std::copy(lifted_weights,lifted_weights+nav_deployment::raw_depth_actor_weight_count,lifted.values.begin());
+    for(uint32_t sample=0;sample<16;sample++) {
+        const auto old_obs=deployment_probe_observation(sample);
+        std::array<float,320> current_raw{},previous_raw{};
+        for(uint32_t ray=0;ray<320;ray++) {
+            current_raw[ray]=float((ray*17+sample*11)%119)/10.0f;
+            previous_raw[ray]=float((ray*29+sample*7)%117)/10.0f;
+        }
+        std::array<float,nav_deployment::raw_depth_actor_observation_count> raw_obs{};
+        std::copy(old_obs.begin(),old_obs.begin()+181,raw_obs.begin());
+        std::copy(current_raw.begin(),current_raw.end(),raw_obs.begin()+nav_deployment::raw_current_range_offset);
+        std::copy(previous_raw.begin(),previous_raw.end(),raw_obs.begin()+nav_deployment::raw_previous_range_offset);
+        std::copy(old_obs.begin()+181,old_obs.end(),raw_obs.begin()+nav_deployment::raw_geometry_hint_offset);
+        float old_mean[4],raw_mean[4];
+        require(old_policy.raw_mean(old_obs.data(),old_mean),"legacy actor mean probe failed at sample="+std::to_string(sample)+
+                " loaded="+std::to_string(old_policy.loaded())+" finite="+
+                std::to_string(std::all_of(old_obs.begin(),old_obs.end(),[](float x){return std::isfinite(x);} )));
+        require(raw_policy.raw_mean(raw_obs.data(),raw_mean),"raw-depth actor mean probe failed");
+        nav_deployment::NavigationAction old_command,raw_command;
+        require(old_policy.infer(old_obs.data(),old_command)&&raw_policy.infer(raw_obs.data(),raw_command),
+                "lifted actor command probe failed");
+        for(uint32_t action=0;action<4;action++)
+            max_deployment_error=std::max(max_deployment_error,std::fabs(old_mean[action]-raw_mean[action]));
+        for(uint32_t axis=0;axis<3;axis++) {
+            max_deployment_error=std::max(max_deployment_error,
+                std::fabs(old_command.body_velocity_mps[axis]-raw_command.body_velocity_mps[axis]));
+            max_deployment_error=std::max(max_deployment_error,
+                std::fabs(old_command.normalized_intent[axis]-raw_command.normalized_intent[axis]));
+        }
+        max_deployment_error=std::max(max_deployment_error,
+            std::fabs(old_command.yaw_rate_rps-raw_command.yaw_rate_rps));
+        // Different raw images must have no effect before those channels are learned.
+        for(uint32_t ray=0;ray<320;ray++)raw_obs[nav_deployment::raw_current_range_offset+ray]=1.0f-current_raw[ray]/12.0f;
+        nav_deployment::NavigationAction alternate;
+        require(raw_policy.infer(raw_obs.data(),alternate),"alternate raw-image policy probe failed");
+        for(uint32_t axis=0;axis<3;axis++)max_deployment_error=std::max(max_deployment_error,
+            std::fabs(alternate.body_velocity_mps[axis]-old_command.body_velocity_mps[axis]));
+
+        if(sample<batch) {
+            // The shared native packer must preserve the v1 prefix and append
+            // both raw channels and the hint at their declared version-2 offsets.
+            float pooled[80],previous_pooled[80],context[21],hint[3],packed[824];
+            for(uint32_t i=0;i<80;i++){pooled[i]=old_obs[i]*12.0f;previous_pooled[i]=old_obs[80+i]*12.0f;}
+            std::copy(old_obs.begin()+160,old_obs.begin()+181,context);
+            std::copy(old_obs.begin()+181,old_obs.end(),hint);
+            nav_deployment::pack_raw_depth_observation(pooled,previous_pooled,context,
+                current_raw.data(),previous_raw.data(),hint,packed);
+            for(uint32_t i=0;i<181;i++)max_pack_error=std::max(max_pack_error,std::fabs(packed[i]-old_obs[i]));
+            for(uint32_t i=0;i<320;i++) {
+                max_pack_error=std::max(max_pack_error,std::fabs(packed[181+i]-current_raw[i]/12.0f));
+                max_pack_error=std::max(max_pack_error,std::fabs(packed[501+i]-previous_raw[i]/12.0f));
+            }
+            for(uint32_t i=0;i<3;i++)max_pack_error=std::max(max_pack_error,std::fabs(packed[821+i]-hint[i]));
+        }
+        if(sample<batch) {
+            std::copy(raw_obs.begin(),raw_obs.end(),metal_observations.begin()+size_t(sample)*824);
+            float hidden[fixed_ppo::hidden_dim],mean[fixed_ppo::action_dim];
+            fixed_ppo::actor_forward(raw_obs.data(),lifted,hidden,mean);
+            std::copy(mean,mean+fixed_ppo::action_dim,expected_means.begin()+size_t(sample)*fixed_ppo::action_dim);
+        }
+    }
+    const uint32_t count=batch;
+    auto obs_buffer=metal.buffer(metal_observations.size()*sizeof(float),metal_observations.data());
+    auto param_buffer=metal.buffer(nav_deployment::raw_depth_actor_weight_count*sizeof(float),lifted_weights);
+    auto hidden_buffer=metal.buffer(size_t(batch)*fixed_ppo::hidden_dim*sizeof(float));
+    auto mean_buffer=metal.buffer(expected_means.size()*sizeof(float));
+    auto batch_buffer=metal.buffer(sizeof(count),&count);
+    auto cb=[metal.queue commandBuffer];
+    encode(metal,cb,"ppo_actor_forward_simd_fused",256,
+        {{obs_buffer,0},{param_buffer,0},{hidden_buffer,0},{mean_buffer,0},{batch_buffer,0}},256);
+    metal.finish(cb);
+    const float* metal_means=static_cast<const float*>(mean_buffer.contents);
+    for(size_t i=0;i<expected_means.size();i++)max_metal_error=std::max(max_metal_error,std::fabs(metal_means[i]-expected_means[i]));
+    require(max_deployment_error<2.0e-5f&&max_pack_error<2.0e-7f&&max_metal_error<2.0e-5f,
+            "raw-depth lifted policy or frontend parity failed");
+    std::remove(old_policy_path.c_str());
+    std::cout<<"raw-depth lift PASS deployment_command_error="<<max_deployment_error
+             <<" pack_error="<<max_pack_error<<" cpu_metal_mean_error="<<max_metal_error<<"\n";
+    return std::max(max_deployment_error,std::max(max_pack_error,max_metal_error));
+}
+
+static void raw_depth_canary_check(Metal& metal,const std::string& native_shadow_csv) {
+    require(fixed_ppo::actor_obs_dim==824,"raw-depth canary check requires the824-input build");
+    std::ifstream input(native_shadow_csv);
+    require(bool(input),"cannot open native raw-depth shadow CSV: "+native_shadow_csv);
+    std::string line;require(bool(std::getline(input,line)),"raw-depth shadow CSV has no header");
+    std::vector<std::string> header;{
+        std::stringstream row(line);std::string field;
+        while(std::getline(row,field,','))header.push_back(field);
+    }
+    std::array<int,nav_deployment::raw_depth_actor_observation_count> observation_columns{};
+    for(uint32_t i=0;i<observation_columns.size();i++) {
+        const std::string name="observation_"+std::to_string(i);
+        const auto found=std::find(header.begin(),header.end(),name);
+        require(found!=header.end(),"native shadow is missing "+name);
+        observation_columns[i]=int(found-header.begin());
+    }
+    std::array<float,824> selected_observation{};float largest_raw_pair_delta=0.0f;
+    uint32_t selected_pixel=0;std::string selected_step;
+    while(std::getline(input,line)) {
+        std::stringstream row(line);std::string field;std::vector<std::string> values;
+        while(std::getline(row,field,','))values.push_back(field);
+        if(values.size()!=header.size())continue;
+        std::array<float,824> observation{};
+        for(uint32_t i=0;i<observation.size();i++)observation[i]=std::stof(values[observation_columns[i]]);
+        for(uint32_t ray=0;ray<320;ray++) {
+            const float difference=std::fabs(observation[181+ray]-observation[501+ray]);
+            if(difference>largest_raw_pair_delta) {
+                largest_raw_pair_delta=difference;selected_pixel=ray;selected_observation=observation;
+                const auto step_column=std::find(header.begin(),header.end(),"step");
+                selected_step=step_column==header.end()?"unknown":values[size_t(step_column-header.begin())];
+            }
+        }
+    }
+    require(largest_raw_pair_delta>0.1f,"native raw current/previous frames did not expose a canary difference");
+    fixed_ppo::ActorParams canary{};
+    canary.values[nav_deployment::raw_current_range_offset+selected_pixel]=1.0f;
+    canary.values[fixed_ppo::actor_obs_dim+nav_deployment::raw_previous_range_offset+selected_pixel]=1.0f;
+    canary.values[fixed_ppo::actor_w2_offset+0*fixed_ppo::hidden_dim+0]=1.0f;
+    canary.values[fixed_ppo::actor_w2_offset+1*fixed_ppo::hidden_dim+1]=1.0f;
+    for(uint32_t j=0;j<3;j++)selected_observation[821+j]=0.0f;
+    constexpr uint32_t batch=3;
+    std::array<float,batch*824> observations{};
+    for(uint32_t i=0;i<824;i++)observations[i]=selected_observation[i];
+    std::copy(selected_observation.begin(),selected_observation.end(),observations.begin()+824);
+    observations[824+nav_deployment::raw_current_range_offset+selected_pixel]=
+        selected_observation[nav_deployment::raw_previous_range_offset+selected_pixel];
+    std::copy(selected_observation.begin(),selected_observation.end(),observations.begin()+2*824);
+    observations[2*824+nav_deployment::raw_previous_range_offset+selected_pixel]=
+        selected_observation[nav_deployment::raw_current_range_offset+selected_pixel];
+    std::array<float,batch*4> cpu_means{};
+    for(uint32_t sample=0;sample<batch;sample++) {
+        float hidden[fixed_ppo::hidden_dim],mean[4];
+        fixed_ppo::actor_forward(observations.data()+size_t(sample)*824,canary,hidden,mean);
+        std::copy(mean,mean+4,cpu_means.begin()+sample*4);
+    }
+    const uint32_t count=batch;
+    auto obs_buffer=metal.buffer(observations.size()*sizeof(float),observations.data());
+    auto actor_buffer=metal.buffer(sizeof(canary),&canary);
+    auto hidden_buffer=metal.buffer(size_t(batch)*fixed_ppo::hidden_dim*sizeof(float));
+    auto mean_buffer=metal.buffer(cpu_means.size()*sizeof(float));
+    auto count_buffer=metal.buffer(sizeof(count),&count);
+    auto cb=[metal.queue commandBuffer];
+    encode(metal,cb,"ppo_actor_forward_simd_fused",256,
+        {{obs_buffer,0},{actor_buffer,0},{hidden_buffer,0},{mean_buffer,0},{count_buffer,0}},256);
+    metal.finish(cb);
+    const float* gpu_means=static_cast<const float*>(mean_buffer.contents);
+    float cpu_metal_error=0.0f;
+    for(size_t i=0;i<cpu_means.size();i++)cpu_metal_error=std::max(cpu_metal_error,std::fabs(cpu_means[i]-gpu_means[i]));
+    const float current_axis_delta=std::fabs(cpu_means[0]-cpu_means[4]);
+    const float previous_axis_delta=std::fabs(cpu_means[1]-cpu_means[9]);
+    const float current_cross_delta=std::fabs(cpu_means[1]-cpu_means[5]);
+    const float previous_cross_delta=std::fabs(cpu_means[0]-cpu_means[8]);
+    std::cout<<"raw_depth_canary_probe pixel="<<selected_pixel<<" current_previous_delta="<<largest_raw_pair_delta
+             <<" current_effect="<<current_axis_delta<<" previous_effect="<<previous_axis_delta
+             <<" cross="<<std::max(current_cross_delta,previous_cross_delta)
+             <<" means="<<cpu_means[0]<<','<<cpu_means[1]<<';'<<cpu_means[4]<<','<<cpu_means[5]
+             <<';'<<cpu_means[8]<<','<<cpu_means[9]
+             <<" cpu_metal="<<cpu_metal_error<<"\n";
+    require(cpu_metal_error<2.0e-5f&&current_axis_delta>0.05f&&previous_axis_delta>0.05f&&
+            current_cross_delta<1.0e-7f&&previous_cross_delta<1.0e-7f,
+            "raw current/previous canary channels failed independent CPU/Metal checks");
+    std::cout<<"raw_depth_canary PASS native_step="<<selected_step<<" pixel="<<selected_pixel
+             <<" current_previous_delta="<<largest_raw_pair_delta
+             <<" current_axis_effect="<<current_axis_delta<<" previous_axis_effect="<<previous_axis_delta
+             <<" cross_effect="<<std::max(current_cross_delta,previous_cross_delta)
+             <<" cpu_metal_mean_error="<<cpu_metal_error<<"\n";
+}
+
+static void export_raw_depth_checkpoint(const std::string& checkpoint_path,const std::string& raw_policy_path) {
+    require(fixed_ppo::actor_obs_dim==824,"raw-depth export requires the824-input build");
+    std::ifstream file(checkpoint_path,std::ios::binary);
+    require(bool(file),"cannot open raw-depth checkpoint");
+    const PpoCheckpointHeader header=read_checkpoint_header(file);
+    require(header.version>=3&&header.version<=9&&header.actor_count==nav_deployment::raw_depth_actor_weight_count,
+            "raw-depth export requires an 824-input checkpoint");
+    std::vector<float> actor(header.actor_count);
+    file.read(reinterpret_cast<char*>(actor.data()),std::streamsize(actor.size()*sizeof(float)));
+    require(bool(file),"raw-depth checkpoint actor is truncated");
+    const RLPhysicsParams dynamics=rl_physics_crazyflie_default();
+    nav_deployment::Metadata metadata;metadata.version=2;
+    metadata.observation_count=nav_deployment::raw_depth_actor_observation_count;
+    metadata.weight_count=nav_deployment::raw_depth_actor_weight_count;
+    metadata.max_speed_mps=header.config.speed;
+    metadata.navigation_period_s=dynamics.dt*float(header.config.substeps);
+    metadata.native_period_s=dynamics.dt;
+    std::string error;
+    require(nav_deployment::RawDepthNavigationPolicy::write_file(raw_policy_path,actor.data(),actor.size(),
+                metadata,checkpoint_path,&error),error);
+    nav_deployment::RawDepthNavigationPolicy policy;require(policy.load(raw_policy_path,&error),error);
+    std::cout<<"RAW NAV export="<<raw_policy_path<<" source="<<checkpoint_path
+             <<" observations="<<metadata.observation_count<<" weights="<<metadata.weight_count
+             <<" mode="<<metadata.policy_mode<<" speed="<<metadata.max_speed_mps
+             <<" source_fnv64="<<std::hex<<policy.source_checkpoint_hash()<<std::dec<<"\n";
+}
+
+static void lift_guided_checkpoint_to_raw_depth(Metal& metal,const std::string& old_checkpoint,
+                                                const std::string& new_checkpoint,
+                                                const std::string& raw_policy_path) {
+    require(fixed_ppo::actor_obs_dim==824,"raw-depth lift requires the824-input build");
+    std::ifstream source(old_checkpoint,std::ios::binary);
+    require(bool(source),"cannot open v1 guided checkpoint");
+    const PpoCheckpointHeader old_header=read_checkpoint_header(source);
+    require(old_header.version>=3&&old_header.version<=9&&old_header.actor_count==nav_deployment::actor_weight_count&&
+            old_header.critic_count==fixed_ppo::critic_param_count,
+            "raw-depth lift accepts only a v1 184-input guided checkpoint");
+    require(old_header.config.velocity_contract==1&&old_header.config.geometry_memory==1&&
+            old_header.config.sensor_period==1&&old_header.config.substeps==5&&
+            std::fabs(old_header.config.speed-1.5f)<1.0e-6f,
+            "raw-depth lift requires the selected guided sensor/motion contract");
+    std::vector<float> old_actor(old_header.actor_count);
+    std::vector<float> critic(old_header.critic_count);
+    source.read(reinterpret_cast<char*>(old_actor.data()),std::streamsize(old_actor.size()*sizeof(float)));
+    source.read(reinterpret_cast<char*>(critic.data()),std::streamsize(critic.size()*sizeof(float)));
+    require(bool(source),"source guided actor or critic is truncated");
+    std::vector<float> raw_actor(nav_deployment::raw_depth_actor_weight_count);
+    std::string error;
+    require(nav_deployment::lift_guided_actor_to_raw_depth(old_actor.data(),old_actor.size(),
+                raw_actor.data(),raw_actor.size(),&error),error);
+
+    metal.compile(base_source()+PPO_TRAINER_MSL);
+    SimConfig config=old_header.config;
+    require(config.n>0&&config.n<=32768&&old_header.horizon>0,
+            "source guided checkpoint simulator dimensions are unsupported");
+    Sim sim(metal,config,old_header.horizon);
+    std::memcpy(sim.actor.contents,raw_actor.data(),raw_actor.size()*sizeof(float));
+    std::memcpy(sim.critic.contents,critic.data(),critic.size()*sizeof(float));
+    PPOTrainer trainer(sim,2);
+    trainer.save_checkpoint(new_checkpoint,old_header.family,old_header.base_seed,0);
+    export_raw_depth_checkpoint(new_checkpoint,raw_policy_path);
+    const float parity=verify_raw_depth_lift(metal,old_actor.data(),raw_actor.data(),old_checkpoint,
+                                              new_checkpoint,raw_policy_path,old_header);
+    std::cout<<"raw_depth_lift old="<<old_checkpoint<<" new_checkpoint="<<new_checkpoint
+             <<" asset="<<raw_policy_path<<" weights="<<raw_actor.size()
+             <<" parity_error="<<parity<<"\n";
+}
+
 static EvalScore evaluate_training_policy(Metal& m,const SimConfig& cfg,uint32_t mode,const float* actor) {
     if(cfg.family!=12 && cfg.family!=13)return sim_evaluate(m,cfg.family,mode,actor,cfg.speed,cfg.distance,700001,cfg.sensor_delay,cfg.wind,cfg.depth_noise,cfg.dropout,cfg.command_delay,cfg.velocity_contract,cfg.geometry_memory);
     std::vector<uint32_t> families={4,5,7};if(cfg.family==13){families.push_back(10);families.push_back(11);}
@@ -1242,7 +1514,7 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
     require((family!=10 && family!=11 && family!=13) || (std::fabs(speed-1.5f)<1e-6f && std::fabs(distance-4.0f)<1e-6f),"flying-threat families require 1.5m/s and a4m goal");
     require(sensor_delay<=6 && command_delay<=7,"training delay exceeds the sensor/command rings");
     require(std::isfinite(speed) && speed>0 && std::isfinite(distance) && distance>1 && std::isfinite(wind) && std::isfinite(noise) && noise>=0 && std::isfinite(dropout) && dropout>=0 && dropout<=1,"invalid training scene/corruption parameters");
-    require(evaluation_mode==4 || (fixed_ppo::actor_obs_dim==184 && evaluation_mode==17),"training selection supports learned mean4 or guided mode17");
+    require(evaluation_mode==4 || ((fixed_ppo::actor_obs_dim==184||fixed_ppo::actor_obs_dim==824) && evaluation_mode==17),"training selection supports learned mean4 or guided mode17");
     m.compile(base_source()+PPO_TRAINER_MSL);
     constexpr uint32_t horizon=32,base_seed=42;
     uint32_t n=128;
@@ -1525,12 +1797,29 @@ static void compare_webots_scenes(Metal& metal,const std::string& actor_path,
 }
 
 
+static challenge_evaluation::BankScore raw_depth_bank_evaluate(
+        Metal& metal,const std::string& checkpoint_path,const std::string& bank_path,
+        const std::string& split,const std::string& output_path,uint32_t mode=17,
+        float speed=1.5f,uint32_t max_steps=400) {
+    require(fixed_ppo::has_raw_depth_extension,"raw bank evaluation requires the raw guided build");
+    return challenge_evaluation::run(metal,checkpoint_path,bank_path,split,output_path,mode,speed,max_steps);
+}
+
+static challenge_evaluation::BankScore run_navigation_bank_evaluation(
+        Metal& metal,const std::string& checkpoint,const std::string& bank,
+        const std::string& split,const std::string& output,uint32_t mode=17,
+        float speed=1.5f,uint32_t max_steps=400) {
+    if(fixed_ppo::actor_obs_dim==824)
+        return raw_depth_bank_evaluate(metal,checkpoint,bank,split,output,mode,speed,max_steps);
+    return challenge_evaluation::run(metal,checkpoint,bank,split,output,mode,speed,max_steps);
+}
+
 static void challenge_bank_cli(Metal& m,int argc,char** argv) {
     require(argc>=6,"bank-eval CHECKPOINT BANK_JSONL SPLIT OUTPUT_CSV [MODE=17] [SPEED=1.5] [MAX_STEPS=400]");
     const uint32_t mode=argc>6?uint32_t(std::stoul(argv[6])):17u;
     const float speed=argc>7?std::stof(argv[7]):1.5f;
     const uint32_t max_steps=argc>8?uint32_t(std::stoul(argv[8])):400u;
-    challenge_evaluation::run(m,argv[2],argv[3],argv[4],argv[5],mode,speed,max_steps);
+    run_navigation_bank_evaluation(m,argv[2],argv[3],argv[4],argv[5],mode,speed,max_steps);
 }
 
 struct GeodesicAuxTargetCheck { uint32_t valid=0;float max_body_error=0.0f; };
@@ -1740,7 +2029,7 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
                                  const std::string& checkpoint,
                                  const std::string& warmstart,
                                  bool prioritized,uint32_t sampler_seed=42,uint32_t rehearsal_environments=0,float potential_scale=0,float risk_coef=.1f,uint32_t focus_family=0,float learning_rate=.0001f,float entropy=.0005f,float warm_logstd=-1,uint32_t epochs=2,float adv_clip=0,float value_coef=.5f,float anchor=0,float anchor_radius=0,float direction_aux_coefficient=0.0f) {
-    require(iterations>0 && fixed_ppo::actor_obs_dim==184,"bank training needs guided build and positive rollouts");
+    require(iterations>0 && (fixed_ppo::actor_obs_dim==184||fixed_ppo::actor_obs_dim==824),"bank training needs a guided build and positive rollouts");
     require(epochs>=1 && epochs<=4,"bank epochs must be1..4");
     require(std::isfinite(adv_clip) && (adv_clip==0.0f || (adv_clip>=0.5f && adv_clip<=100.0f)),
             "bank advantage clip must be0 (off) or0.5..100 standard deviations");
@@ -1870,10 +2159,10 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
             best_header.completed_rollouts,nullptr);
         require(best_reference_hash==anchor_reference_hash,
                 "best checkpoint PPO anchor reference differs from resumed run");
-        best=challenge_evaluation::run(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
+        best=run_navigation_bank_evaluation(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
     } else {
         save(checkpoint+".best",trainer.completed_rollouts);
-        best=challenge_evaluation::run(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
+        best=run_navigation_bank_evaluation(metal,checkpoint+".best",bank_path,"dev",checkpoint+".best-dev.csv");
     }
     std::ofstream history(checkpoint+".history.csv",std::ios::app);
     require(bool(history),"cannot write bank history");
@@ -1987,7 +2276,7 @@ static void train_challenge_bank(Metal& metal, uint32_t iterations,
         }
         if((rollout+1)%50==0 || rollout+1==finish) {
             save(checkpoint,rollout+1);
-            const auto score=challenge_evaluation::run(metal,checkpoint,bank_path,"dev",checkpoint+".dev.csv");
+            const auto score=run_navigation_bank_evaluation(metal,checkpoint,bank_path,"dev",checkpoint+".dev.csv");
             history<<rollout+1<<','<<uint64_t(rollout+1)*environments*horizon<<','<<seconds()-started
                    <<','<<gpu<<','<<score.success_rate()<<','<<score.worst_family_success()
                    <<','<<double(score.collisions)/score.episodes<<','<<double(score.timeouts)/score.episodes<<'\n';
@@ -2044,7 +2333,7 @@ static void trace_checkpoint(Metal& metal, const std::string& checkpoint, uint32
     const float navigation_dt=physics.dt*config.substeps;
     const float* privileged=static_cast<const float*>(simulator.co.contents);
     const float* observations=static_cast<const float*>(simulator.obs.contents);
-    const uint32_t depth_cells=(fixed_ppo::actor_obs_dim-(fixed_ppo::actor_obs_dim==184?24:21))/2;
+    const uint32_t depth_cells=fixed_ppo::actor_obs_dim==661?320u:80u;
     const uint32_t context=depth_cells*2;
 
     const std::filesystem::path output_path(output_prefix);
@@ -2083,6 +2372,10 @@ static void trace_checkpoint(Metal& metal, const std::string& checkpoint, uint32
     std::ofstream trace(output_prefix+".csv");require(bool(trace),"cannot write episode trace");
     trace<<"t_s,x,y,z,qw,qx,qy,qz,vx,vy,vz,wx,wy,wz,ref_x,ref_y,ref_z,cmd_vx,cmd_vy,cmd_vz,cmd_yaw_rate,clearance_m,sensor_ready,depth_capture_t_s";
     for(uint32_t cell=0;cell<depth_cells;cell++)trace<<",depth_"<<cell;
+    if(fixed_ppo::actor_obs_dim==824) {
+        for(uint32_t ray=0;ray<320;ray++)trace<<",raw_current_"<<ray;
+        for(uint32_t ray=0;ray<320;ray++)trace<<",raw_previous_"<<ray;
+    }
     trace<<'\n'<<std::setprecision(9);
     for(uint32_t tick=0;tick<episode.steps;tick++){
         const size_t row=size_t(tick)*config.n+environment;
@@ -2104,6 +2397,10 @@ static void trace_checkpoint(Metal& metal, const std::string& checkpoint, uint32
         for(uint32_t axis=0;axis<3;axis++)trace<<','<<rotation[axis*3]*velocity[0]+rotation[axis*3+1]*velocity[1]+rotation[axis*3+2]*velocity[2];
         trace<<','<<applied[3]*.5f<<','<<state[19]*5<<','<<(tick/config.sensor_period>=config.sensor_delay)<<','<<tick*navigation_dt-observation[context+17];
         for(uint32_t cell=0;cell<depth_cells;cell++)trace<<','<<observation[cell]*12;
+        if(fixed_ppo::actor_obs_dim==824) {
+            for(uint32_t ray=0;ray<320;ray++)trace<<','<<observation[181+ray]*12;
+            for(uint32_t ray=0;ray<320;ray++)trace<<','<<observation[501+ray]*12;
+        }
         trace<<'\n';
     }
     require(bool(trace),"episode trace write failed");
@@ -2166,8 +2463,8 @@ static void measure_reaction_latency(Metal& m,const std::string& checkpoint,uint
 }
 
 int main(int argc,char** argv){@autoreleasepool{try{
-    std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);geodesic_direction_gradient_test(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="geodesic-preflight"){require(argc>=5,"geodesic-preflight WARMSTART BANK_JSONL OUTPUT_JSON");geodesic_direction_preflight(m,argv[2],argv[3],argv[4]);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="compare-webots") {
+    std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="export-raw"){require(argc>=4,"export-raw CHECKPOINT OUTPUT_RAW_NAV");export_raw_depth_checkpoint(argv[2],argv[3]);return 0;}if(command=="lift-guided"){require(argc>=5,"lift-guided CHECKPOINT_184 OUTPUT_CHECKPOINT_824 OUTPUT_RAW_NAV");Metal metal;metal.compile(base_source()+PPO_TRAINER_MSL);lift_guided_checkpoint_to_raw_depth(metal,argv[2],argv[3],argv[4]);return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);geodesic_direction_gradient_test(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="raw-depth-canary-check"){require(argc>=3,"raw-depth-canary-check NATIVE_SHADOW_CSV");raw_depth_canary_check(m,argv[2]);}else if(command=="geodesic-preflight"){require(argc>=5,"geodesic-preflight WARMSTART BANK_JSONL OUTPUT_JSON");geodesic_direction_preflight(m,argv[2],argv[3],argv[4]);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="compare-webots") {
         require(argc>=5,"compare-webots NAV_ACTOR BOUNDED_METADATA_DIR OUTPUT_CSV");
         compare_webots_scenes(m,argv[2],argv[3],argv[4]);
     }else if(command=="reward-audit") {
