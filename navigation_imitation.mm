@@ -7,8 +7,11 @@
 
 namespace navigation_imitation {
 using Point = std::array<float,3>;
+constexpr uint observation_count = uint(fixed_ppo::actor_obs_dim);
+constexpr uint hint_offset = observation_count - 3;
+static_assert(observation_count==184 || observation_count==824, "imitation requires a versioned guided actor");
 struct Demonstration {
-    std::array<float,184> observation;
+    std::array<float,observation_count> observation;
     std::array<float,4> command; // body velocity / speed cap, yaw / .5
 };
 static Point difference(Point a,Point b){return {a[0]-b[0],a[1]-b[1],a[2]-b[2]};}
@@ -79,7 +82,7 @@ static Point student_velocity(const Demonstration& row,const fixed_ppo::ActorPar
     float hidden[64],mean[4],rotation[9];fixed_ppo::actor_forward(row.observation.data(),actor,hidden,mean);
     float open=0;for(uint k=0;k<20;k++)open+=row.observation[k]*12>2.5f;
     float gate=.25f+.75f*open/20;Point body{};
-    for(uint k=0;k<3;k++){float prior=row.observation[181+k];body[k]=std::tanh(prior+gate*(mean[k]-prior));}
+    for(uint k=0;k<3;k++){float prior=row.observation[hint_offset+k];body[k]=std::tanh(prior+gate*(mean[k]-prior));}
     float scale=1.5f/std::max(1.f,length(body));for(float& value:body)value*=scale;
     cpu_reference::rotation(state.orientation_wxyz,rotation);
     return {rotation[0]*body[0]+rotation[1]*body[1]+rotation[2]*body[2],
@@ -150,8 +153,8 @@ static const char* imitation_kernel=R"MSL(
 kernel void imitation_gradient(device const float* obs [[buffer(0)]],device const float* means [[buffer(1)]],
     device const float* target [[buffer(2)]],device float* gradient [[buffer(3)]],device float* losses [[buffer(4)]],
     constant uint& count [[buffer(5)]],uint n [[thread_position_in_grid]]){
-    if(n>=count)return;float open=0;for(uint k=0;k<20;k++)open+=obs[n*184+k]*12>2.5f;
-    float gate=.25f+.75f*open/20;float3 prior=float3(obs[n*184+181],obs[n*184+182],obs[n*184+183]);
+    if(n>=count)return;float open=0;for(uint k=0;k<20;k++)open+=obs[n*PPO_ACTOR_OBS+k]*12>2.5f;
+    float gate=.25f+.75f*open/20;float3 prior=float3(obs[n*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3],obs[n*PPO_ACTOR_OBS+PPO_ACTOR_OBS-2],obs[n*PPO_ACTOR_OBS+PPO_ACTOR_OBS-1]);
     float3 mean=float3(means[n*4],means[n*4+1],means[n*4+2]);float3 q=tanh(prior+gate*(mean-prior));
     float magnitude=length(q);float3 command=q/max(1.0f,magnitude);
     float3 desired=float3(target[n*4],target[n*4+1],target[n*4+2]);float3 delta=command-desired;
@@ -166,12 +169,12 @@ kernel void imitation_gradient(device const float* obs [[buffer(0)]],device cons
 )MSL";
 
 static void verify_gradient(Metal& metal,const std::string& output){
-    constexpr uint batch=3;std::array<float,batch*184> observations{};
+    constexpr uint batch=3;std::array<float,batch*observation_count> observations{};
     std::array<float,batch*4> means{{.5f,-.25f,.1f,.2f,3.f,2.f,-2.f,.5f,-.7f,.3f,.2f,-.2f}};
     std::array<float,batch*4> targets{{.2f,.4f,0,0,-.2f,.5f,.1f,0,.4f,-.3f,.1f,0}};
     for(uint n=0;n<batch;n++){
-        for(uint k=0;k<20;k++)observations[n*184+k]=n==0?.1f:(n==1?1.f:(k%2?1.f:.1f));
-        observations[n*184+181]=.2f;observations[n*184+182]=-.1f;
+        for(uint k=0;k<20;k++)observations[n*observation_count+k]=n==0?.1f:(n==1?1.f:(k%2?1.f:.1f));
+        observations[n*observation_count+hint_offset]=.2f;observations[n*observation_count+hint_offset+1]=-.1f;
     }
     auto obs=metal.buffer(sizeof(observations),observations.data()),mu=metal.buffer(sizeof(means),means.data());
     auto target=metal.buffer(sizeof(targets),targets.data()),gradient=metal.buffer(sizeof(means)),losses=metal.buffer(batch*4);
@@ -179,7 +182,7 @@ static void verify_gradient(Metal& metal,const std::string& output){
     metal.dispatch(cb,metal.pipeline("imitation_gradient"),batch,{obs,mu,target,gradient,losses,count},64);metal.finish(cb);
     const auto loss=[&](uint n){
         float gate=n==0?.25f:(n==1?1.f:.625f);Point q{};
-        for(uint k=0;k<3;k++){float prior=observations[n*184+181+k];q[k]=std::tanh(prior+gate*(means[n*4+k]-prior));}
+        for(uint k=0;k<3;k++){float prior=observations[n*observation_count+hint_offset+k];q[k]=std::tanh(prior+gate*(means[n*4+k]-prior));}
         float scale=1/std::max(1.f,length(q)),value=0;
         for(uint k=0;k<3;k++){float error=q[k]*scale-targets[n*4+k];value+=error*error;}
         float yaw=std::tanh(gate*means[n*4+3])-targets[n*4+3];return .5f*(value+yaw*yaw)/batch;
@@ -191,15 +194,22 @@ static void verify_gradient(Metal& metal,const std::string& output){
         worst=std::max(worst,std::fabs((plus-minus)/(2*epsilon)-static_cast<float*>(gradient.contents)[i]));
     }
     require(worst<1e-4f,"imitation deployed-command gradient differs from finite differences");
-    std::ofstream report(output);report<<"{\"passed\":true,\"cases\":3,\"checked_components\":12,\"includes_spherical_cap\":true,\"finite_difference_max_error\":"<<worst<<"}\n";
+    const std::filesystem::path path(output);
+    if(path.has_parent_path())std::filesystem::create_directories(path.parent_path());
+    std::ofstream report(output);require(bool(report),"cannot write gradient verification");report<<"{\"passed\":true,\"cases\":3,\"checked_components\":12,\"includes_spherical_cap\":true,\"finite_difference_max_error\":"<<worst<<"}\n";
     std::cout<<"imitation_gradient PASS max_error="<<worst<<std::endl;
+}
+
+static void evaluate_student(Metal& metal,const std::string& checkpoint,const std::string& bank,const std::string& output){
+    if constexpr(observation_count==824)raw_depth_bank_evaluate(metal,checkpoint,bank,"dev",output,17,1.5f,400);
+    else challenge_evaluation::run(metal,checkpoint,bank,"dev",output,17,1.5f,400);
 }
 
 static void train(Metal& metal,const std::vector<Demonstration>& dataset,const std::string& warm,const std::string& bank,const std::string& out,uint updates){
     constexpr uint batch=256;
     SimConfig cfg;cfg.mode=22;cfg.geometry_memory=1;cfg.speed=1.5;cfg.max_steps=400;cfg.seed=42;
     Sim policy(metal,cfg,32);navigation_training::load_actor(policy,warm,true);PPOTrainer checkpoint(policy);
-    auto observations=metal.buffer(batch*184*4),targets=metal.buffer(batch*4*4),hidden=metal.buffer(batch*64*4);
+    auto observations=metal.buffer(batch*observation_count*4),targets=metal.buffer(batch*4*4),hidden=metal.buffer(batch*64*4);
     auto means=metal.buffer(batch*4*4),dmean=metal.buffer(batch*4*4),dstd=metal.buffer(batch*4*4),delta=metal.buffer(batch*64*4);
     auto gradient=metal.buffer(fixed_ppo::actor_param_count*4),first=metal.buffer(fixed_ppo::actor_param_count*4),second=metal.buffer(fixed_ppo::actor_param_count*4);
     auto losses=metal.buffer(batch*4),count=PPOTrainer::scalar(metal,batch),parameter_count=PPOTrainer::scalar(metal,uint(fixed_ppo::actor_param_count));
@@ -209,11 +219,11 @@ static void train(Metal& metal,const std::vector<Demonstration>& dataset,const s
     std::ofstream history(out+"/history.csv");history<<"update,batch_command_mse,wall_s\n";
     const double start=seconds();
     checkpoint.save_checkpoint(out+"/warm.bin",0,42,0);
-    challenge_evaluation::run(metal,out+"/warm.bin",bank,"dev",out+"/warm-dev.csv",17,1.5f,400);
+    evaluate_student(metal,out+"/warm.bin",bank,out+"/warm-dev.csv");
     for(uint step=1;step<=updates;step++){@autoreleasepool{
         for(uint n=0;n<batch;n++){
             const auto& row=dataset[sample(random)];
-            std::memcpy(static_cast<float*>(observations.contents)+n*184,row.observation.data(),184*4);
+            std::memcpy(static_cast<float*>(observations.contents)+n*observation_count,row.observation.data(),observation_count*4);
             std::memcpy(static_cast<float*>(targets.contents)+n*4,row.command.data(),4*4);
         }
         PpoAdamHostConfig settings{.0003f,.9f,.999f,1e-8f,0,step};std::memcpy(optimizer.contents,&settings,sizeof(settings));
@@ -233,7 +243,7 @@ static void train(Metal& metal,const std::vector<Demonstration>& dataset,const s
             // Actor-only imitation: checkpoint optimizer buffers intentionally zero.
             // This is a compatible parameter warmstart, not a PPO resume receipt.
             checkpoint.save_checkpoint(path,0,42,0);
-            challenge_evaluation::run(metal,path,bank,"dev",out+"/dev-"+std::to_string(step)+".csv",17,1.5f,400);
+            evaluate_student(metal,path,bank,out+"/dev-"+std::to_string(step)+".csv");
             std::cout<<"imitation_update="<<step<<" command_mse="<<loss<<" wall_s="<<seconds()-start<<std::endl;
         }
     }}
@@ -255,6 +265,7 @@ int main(int argc,char** argv){@autoreleasepool{try{
     if(aggregate){
         std::ifstream file(argv[5],std::ios::binary);uint64_t count=0;file.read(reinterpret_cast<char*>(&count),sizeof(count));
         require(bool(file)&&count>0&&count+dataset.size()<=20000,"invalid or oversized previous demonstration dataset");
+        require(std::filesystem::file_size(argv[5])==8+count*sizeof(navigation_imitation::Demonstration),"previous demonstration observation format mismatch");
         size_t begin=dataset.size();dataset.resize(begin+count);
         file.read(reinterpret_cast<char*>(dataset.data()+begin),count*sizeof(navigation_imitation::Demonstration));
         require(bool(file),"truncated previous demonstration dataset");
