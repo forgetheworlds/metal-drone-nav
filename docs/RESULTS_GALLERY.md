@@ -5,7 +5,7 @@ Every figure, training record and video in this repository, with a caption, the 
 **How to read this page**
 
 - Each figure entry states *what it shows*, *the numbers in it*, *the exact input files*, and *where the full protocol is documented*.
-- Every PNG has an identical SVG twin next to it in [`artifacts/`](../artifacts) (same name, `.svg`).
+- Most figures have an SVG twin in [`artifacts/`](../artifacts). The reward audit below supplies a PNG and a separate reproduction command.
 - Rebuild all figures and their input-hash manifest without running Metal:
 
   ```sh
@@ -18,6 +18,23 @@ Every figure, training record and video in this repository, with a caption, the 
 - Nothing on this page is a hardware or airframe-fidelity claim. Simulation, parity and Webots results are labelled as such.
 
 ---
+
+## Navigation reward and credit audit
+
+![Actual source flight reward comparison](../artifacts/reward-credit-audit.png)
+
+120 real RAPTOR/Metal TRAIN episodes, 27,222 transitions: the selected actor
+contacts on 30/30 corners; privileged teachers complete 24/30. Two of those
+successful flights score below matched hovering in the finite discounted
+reward sum. The right panel is an analytical parameter-weight curve, not a
+training result; GAE still uses critic bootstrapping at rollout boundaries.
+No learned policy improved in this audit.
+
+Inputs: [episode table](../evidence/inputs/reward-audit/episodes.csv),
+[compressed transitions](../evidence/inputs/reward-audit/transitions.csv.gz),
+[provenance](../evidence/inputs/reward-audit/proof.json).
+[Protocol and limitations](RESEARCH_CREDIT_ASSIGNMENT.md).
+Rebuild with `python3 reward_audit.py`.
 
 ## Videos
 

@@ -64,7 +64,7 @@ The recorded execution completed stage 1, caught an infeasible stage-2 transform
 - `control-traces/` and `stage-3-traces/`: two mirrored frozen DEV trajectories per checkpoint with per-trajectory hashes.
 - `build.log`: successful Objective-C++/Metal host build.
 
-Source SHA-256: `332e6a5203070d75994d7a22d8d443183c41d1e9c6e298d9700e2197c9aa15e`. Compiled binary SHA-256: `4b7c44d09bb3f571ac6d4d6f0ec281d5afb393fbdbab57282f5d095f5bfe14c0`.
+Source SHA-256: `332e6a5203070d75994d7a22d8d443183c41d1e9c6e298d9700e2197c9aa15e2`. Compiled binary SHA-256: `4b7c44d09bb3f571ac6d4d6f0ec281d5afb393fbdbab57282f5d095f5bfe14c0`.
 
 No selected asset changed. No Webots run, final-split read, target-simulator training, or external training service was used. No PPO or trace process remains active.
 

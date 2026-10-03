@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-03T18:24:26.413499+00:00",
+  "parent_commit": "acf3976629af616b4ba1d96e969041f0d447445f",
+  "status": "source_reward_diagnostic_no_policy_gain",
+  "actual_episode_count": 120,
+  "split": "TRAIN only",
+  "actual_transition_count": 27222,
+  "actual_controls": [
+    "frozen_actor_mode17",
+    "privileged_route_teacher",
+    "two_second_scan_then_privileged_teacher",
+    "zero_velocity_through_raptor"
+  ],
+  "config": {
+    "actor_obs": 184,
+    "navigation_hz": 20,
+    "physics_and_raptor_hz": 100,
+    "speed_command_cap_mps": 1.5,
+    "collision_sphere_radius_m": 0.18,
+    "max_navigation_ticks": 400,
+    "goal_entry_m": 0.35,
+    "risk_coefficient": 0.1,
+    "gamma": 0.99,
+    "task_override": false,
+    "potential_shaping": false,
+    "domain_randomization": false,
+    "weights_changed": false
+  },
+  "input_sha256": {
+    "evidence/inputs/challenge-bank-mirrored-v1.jsonl": "e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e",
+    "assets/checkpoints/rooms-focused-experimental.bin.best": "7b14b5de557fa1538f48373a6022d74ae70270467b65f1028c28fe0df0510b73",
+    "assets/raptor.bin": "94e6c4ec01a1719f715097dbbd2d5cc6ab32471a64298db4f55f6a41ef9fa808",
+    "assets/physics.bin": "e446c2a5b799ca15abd93263aff9ef48e654b80b048498708a2635cecb0ef2f7"
+  },
+  "source_sha256": {
+    "main.mm": "06ded7f9c9dbf5c9cc8952100255b91ea0d157e4e02f621e48d23c3b3d730f85",
+    "sim.metal": "bd10207a54c8cc546ee273b09b100740a02acdf8accbf8182b4530be03546aa3",
+    "ppo.hpp": "cb840f8a038cb67b5a2a5bc0e0364ed2af41e299293f6fb6314cd81bedbd4147",
+    "ppo.metal": "b4ca3c44a18e9570f0d1c350c51dfdb2f72c2c4fbb52cf7519ff1e488435567a",
+    "physics.metal": "f21e672d0ca3c0ababf7c0ef0058d38eb2bd59d2a4dd2ea7b3f92cf4f4e03639",
+    "world.hpp": "5e651fdf2dcb2d252b64d688a46ab0b793849356bd10a1c205d2b7cd9fabffa2",
+    "navigation_imitation.mm": "1cf3b949c8accf4f5d038f91ffb837889130da6ae9c5d3e9ff60956898fe5b87",
+    "navigation_reward_audit.mm": "68b56204ed0f1665f33557fa85b1716f0fa849d5208836bd116a882cdb69d5b9",
+    "reward_audit.py": "d25af486aefc5969625f449f2c2fa2ae4285117f8b053efbdb674fcbbacd552f",
+    "raptor.metal": "ed03c2f3aeb3256a4a553b866d06ab5002530915dbe62d207d0ae9e368dc78d0",
+    "physics_domain.hpp": "78a0eda5c637efece3bcee769b7b61a4c05f47ff09aa44d80b34989a96290633",
+    "navigation_runtime.hpp": "31562211a858ab0220e6e990fab3ac1eda0a027c4ff35df318e47cb3953ef591",
+    "navigation_tasks.hpp": "561e730784af2ac1b337cc504da39395d12a53c1e86743caca80bcf2e6e12974",
+    "training_potential.hpp": "079bcd7269b06ae6c033ac187337701c7556952111ac94ebba1748d6d8a397a3",
+    "guidance.hpp": "19e2b0c0af38528f0dcb2686184757f9899c8cf94d0d6e9f732da0b57d735671",
+    "memory.metal": "d11160406781600c56e3611120c02a9d81bfedf1af14aa7e579480b7e346ed86",
+    "cpu_reference.hpp": "58ad073e3652a288e045e1b11fd79423e4c0e30715ed3438716607279ccebd01",
+    "navigation_training.hpp": "3800318f22aa1973c3138e993ec8b6f6f23321f52dcacf4f89ec9cf77846ae82",
+    "challenge_evaluation.hpp": "5656e8e71adcfe98d8d1ec63e857f14abbf1ff5358be4139de2624d0b18e8f6f"
+  },
+  "artifact_sha256": {
+    "evidence/inputs/reward-audit/episodes.csv": "1fc5549e2254cd67ce22efad248eaa730c3f9ed098110ed714e06ac1b85b0999",
+    "evidence/inputs/reward-audit/transitions.csv.gz": "13de7c9ab7d85f75aa7d743630fbf08f383e7004f0ffe61d41535fdcecb90520",
+    "artifacts/reward-credit-audit.png": "82b98983d510486bb60f5439c31e55dc0db0ab46e2a7a5f1fdffe74ce184f974"
+  },
+  "metrics": {
+    "control_aggregates": {
+      "actor": {
+        "episodes": 30,
+        "successes": 0,
+        "contacts": 30,
+        "timeouts": 0,
+        "mean_return": -4.840890815033333,
+        "mean_success_return": null,
+        "successful_below_hover": [],
+        "successful_below_hover_with_frozen_critic_bootstrap": []
+      },
+      "route_teacher": {
+        "episodes": 30,
+        "successes": 24,
+        "contacts": 6,
+        "timeouts": 0,
+        "mean_return": -1.1796799715625,
+        "mean_success_return": -0.11630193311979167,
+        "successful_below_hover": [
+          "f14-train-0005-sbe174559-w5e651fdf-mirror-y",
+          "f14-train-0010-sf713e66a-w5e651fdf"
+        ],
+        "successful_below_hover_with_frozen_critic_bootstrap": [
+          "f14-train-0005-sbe174559-w5e651fdf-mirror-y"
+        ]
+      },
+      "scan_then_teacher": {
+        "episodes": 30,
+        "successes": 24,
+        "contacts": 6,
+        "timeouts": 0,
+        "mean_return": -1.1542318197633332,
+        "mean_success_return": -0.4378832644125,
+        "successful_below_hover": [
+          "f14-train-0005-sbe174559-w5e651fdf-mirror-y",
+          "f14-train-0010-sf713e66a-w5e651fdf"
+        ],
+        "successful_below_hover_with_frozen_critic_bootstrap": []
+      },
+      "hover": {
+        "episodes": 30,
+        "successes": 0,
+        "contacts": 0,
+        "timeouts": 30,
+        "mean_return": -0.9654218126166667,
+        "mean_success_return": null,
+        "successful_below_hover": [],
+        "successful_below_hover_with_frozen_critic_bootstrap": []
+      }
+    },
+    "reward_gamma_counterfactuals": [
+      {
+        "gamma": 0.99,
+        "control": "route_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 2,
+        "mean_success_return": -0.11630193310383474,
+        "counterfactual_only_no_new_flights": true
+      },
+      {
+        "gamma": 0.99,
+        "control": "scan_then_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 2,
+        "mean_success_return": -0.4378832643404565,
+        "counterfactual_only_no_new_flights": true
+      },
+      {
+        "gamma": 0.995,
+        "control": "route_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 0,
+        "mean_success_return": 2.205568411465723,
+        "counterfactual_only_no_new_flights": true
+      },
+      {
+        "gamma": 0.995,
+        "control": "scan_then_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 0,
+        "mean_success_return": 1.406606325068665,
+        "counterfactual_only_no_new_flights": true
+      },
+      {
+        "gamma": 0.999,
+        "control": "route_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 0,
+        "mean_success_return": 8.326430804048401,
+        "counterfactual_only_no_new_flights": true
+      },
+      {
+        "gamma": 0.999,
+        "control": "scan_then_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 0,
+        "mean_success_return": 7.589846728067045,
+        "counterfactual_only_no_new_flights": true
+      },
+      {
+        "gamma": 1.0,
+        "control": "route_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 0,
+        "mean_success_return": 11.102122968149878,
+        "counterfactual_only_no_new_flights": true
+      },
+      {
+        "gamma": 1.0,
+        "control": "scan_then_teacher",
+        "successful_episodes": 24,
+        "successes_below_hover": 0,
+        "mean_success_return": 10.697594275995414,
+        "counterfactual_only_no_new_flights": true
+      }
+    ],
+    "transition_count": 27222,
+    "reconstruction_max_error": 4.9899995246960316e-09,
+    "discount_half_life_s": 3.448378196826421,
+    "gae_half_life_s": 0.564970786564309,
+    "rollout_s": 1.6
+  },
+  "public_source_reproduction": {
+    "same_first_train_case_four_controls": true,
+    "maximum_numeric_delta": 0,
+    "validation": "public source rebuild reproduces four first-case outcomes and numeric metrics"
+  },
+  "execution": {
+    "original_run": "first six TRAIN cases x4 controls, then remaining24 TRAIN cases x4; both successful under exclusive Metal lock",
+    "reproduction_run": "public rebuilt driver with BEGIN0 COUNT1, same four controls under exclusive Metal lock",
+    "build_exit": 0,
+    "run_exits": [
+      0,
+      0
+    ],
+    "analysis_exit": 0,
+    "reproduction_exit": 0
+  },
+  "counterfactuals": "Different gammas reweight the same recorded rewards only; they do not represent trained policies or new physics runs. GAE curve beyond32ticks is a hypothetical continued trace.",
+  "limitations": [
+    "finite reward sums differ from PPO continuing objective at timeouts; frozen critic bootstrap explicitly reported",
+    "teacher world routes are privileged, not learned-policy evidence",
+    "selected baseline actor gets no successes in these source corners",
+    "current ideal physics/clean sensors are unchanged; no independent transfer or hardware claim",
+    "no FINAL split evaluated; no Webots job used; no policy promotion"
+  ]
+}
