@@ -77,6 +77,38 @@ in Webots. The new training and verification missions are in progress.
 
 ## Reproduce this review
 
+### Post-training delay check
+
+All four frozen policies were re-evaluated on the same 128 DEV-b tasks.
+Two navigation ticks add 100 ms of sensor or command delay; no training
+occurred. All nominal counts reproduced the prior evaluation exactly.
+
+| Policy | Nominal | Sensor +100 ms | Command +100 ms | Both +100 ms |
+|---|---:|---:|---:|---:|
+| Preserved fast | 101/128 | 101/128 | 101/128 | 103/128 |
+| Imitation before PPO | 105/128 | 105/128 | 110/128 | 112/128 |
+| Imitation → PPO final | 101/128 | 100/128 | 94/128 | 89/128 |
+| PPO control final | 97/128 | 97/128 | 95/128 | 93/128 |
+
+This exposes a delay sensitivity in the faster post-PPO policy. It does
+not establish that delay generally helps imitation: episode startup uses
+12 m sensor padding until delayed data arrives, and zero commands for
+the initial command-delay ticks. Smoothing and startup timing can change
+the trajectory. This is one exposed development bank, without noise,
+wind, dynamics variation or independent native physics.
+
+![Actual frozen-policy delay probe](../artifacts/plots/posttraining-delay.png)
+
+[Delay records and all four frozen checkpoints](../evidence/inputs/posttraining-delay/records.tar.gz)
+are hashed and reproducible. `python3 posttraining_delay_review.py` verifies
+the archive and recomputes the table. `--figure artifacts/plots/posttraining-delay.png`
+regenerates the plot. `--run` reruns evaluation with the built
+`build/metal_nav_waypoint`; acquire the shared Metal lock around that command
+when another project mission is active. The frozen checkpoints are
+experimental evidence and do not change deployed defaults.
+
+### Original training comparison
+
 From the repository root:
 
 ```sh
