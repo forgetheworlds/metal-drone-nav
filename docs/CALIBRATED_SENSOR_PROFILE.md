@@ -82,4 +82,4 @@ describes the original native capture and adapter assumptions.
 
 [Proof and hashes](../evidence/inputs/sensor-profile/proof.json) bind the source, checkpoint,
 bank, records and checks. Closed-loop task learning and independent transfer remain separate
-requirements of [the active goal](../GOAL.md).
+requirements of [the active goal](../goal.md).

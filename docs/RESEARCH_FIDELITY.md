@@ -57,7 +57,7 @@ of making the model more complicated (SimpleFlight factor 4, arXiv 2412.11764).
 ## 3. Sensing and state: the larger gap
 
 - The actor receives **exact simulator ego state** (position-derived velocity,
-  attitude, rates) and **clean depth** by default. `docs/NEXT_PHASE.md` and
+  attitude, rates) and **clean depth** by default. `goal.md` and
   `docs/RESEARCH_NEXT_PHASE.md` already admit state-estimation error and
   long-route structure are out of distribution.
 - Depth Transfer (RA-L 2025, arXiv 2505.12428) reports a **large degradation

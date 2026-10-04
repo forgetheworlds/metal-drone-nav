@@ -7,9 +7,9 @@ Built on an Apple M3 (10 GPU cores, 16 GB unified memory). Everything reported h
 | Start here | |
 |---|---|
 | Every graph, training record and video, with its source data | [docs/RESULTS_GALLERY.md](docs/RESULTS_GALLERY.md) |
-| What "done" means and why each choice was made | [GOAL.md](GOAL.md) |
+| What "done" means and why each choice was made | [goal.md](goal.md) |
 | Every measured number, its machine, commit and exact command | [docs/BENCHMARKS.md](docs/BENCHMARKS.md) |
-| Current phase and what counts as evidence | [docs/NEXT_PHASE.md](docs/NEXT_PHASE.md) |
+| Current north star and local navigation contract | [goal.md](goal.md) |
 | Coding standard this repository is written to | [docs/CODE_DIRECTION.md](docs/CODE_DIRECTION.md) |
 | Hypothesis → experiment → result, **including rejected hypotheses** | [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md) |
 
@@ -26,7 +26,7 @@ This repository builds the second layer and, more importantly, **the entire trai
 
 ### The intended goal
 
-[GOAL.md](GOAL.md) specifies the outcome: a quadrotor that moves quickly through previously unseen, cluttered 3-D environments using onboard local perception.
+[goal.md](goal.md) specifies the outcome: a quadrotor that moves quickly through previously unseen, cluttered 3-D environments using onboard local perception.
 
 ```text
 depth sensor + ego state + relative goal
@@ -70,7 +70,7 @@ It must vary its speed with environmental complexity, react to moving collision 
 - **The deployed actor receives depth, ego state and the goal.** It receives no obstacle list or stored witness route. Ego sensing is ideal in the current Webots checks. The training critic may receive additional simulator truth and is discarded at export. Privileged waypoint tests are separate diagnostics.
 - **Three build targets**, sharing one 320-ray sensor: `metal_nav` (661 raw-ray inputs), `metal_nav_pooled` (181), `metal_nav_guided` (184 — **selected**: geometry prior + learned residual). Actor weights do not load across input dimensions.
 
-Why hand-written Metal rather than a framework: every dependency in the hot loop costs memory traffic, kernel-launch overhead and abstraction that do not contribute to that contract. Specialisation is what makes the measured training-speed optimisations possible. Full reasoning is in [GOAL.md](GOAL.md); the coding standard is [docs/CODE_DIRECTION.md](docs/CODE_DIRECTION.md).
+Why hand-written Metal rather than a framework: every dependency in the hot loop costs memory traffic, kernel-launch overhead and abstraction that do not contribute to that contract. Specialisation is what makes the measured training-speed optimisations possible. The current deployment contract is in [goal.md](goal.md); the coding standard is [docs/CODE_DIRECTION.md](docs/CODE_DIRECTION.md).
 
 ---
 
@@ -249,12 +249,12 @@ Machine, commit, configuration and caveats for every benchmark are in [docs/BENC
 
 | Path | What it holds |
 |---|---|
-| [GOAL.md](GOAL.md) | Outcome specification and execution contract — what "done" means and why |
+| [goal.md](goal.md) | Outcome specification and execution contract — what "done" means and why |
 | [docs/README.md](docs/README.md) | Index of the research and engineering documents |
 | [docs/RESULTS_GALLERY.md](docs/RESULTS_GALLERY.md) | Every figure, training record and video, with source data and captions |
 | [docs/BENCHMARKS.md](docs/BENCHMARKS.md) | Every measured number: machine, commit, command, and discarded measurements |
 | [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md) | Hypothesis → experiment → result, including failed and rejected hypotheses |
-| [docs/NEXT_PHASE.md](docs/NEXT_PHASE.md) | Current phase brief: general local navigation and what "evidence matters" means |
+
 | [docs/RESEARCH_FIDELITY.md](docs/RESEARCH_FIDELITY.md) | Fidelity assessment and the recommended next ablation |
 | `main.mm` | Objective-C++ host: device/queue/pipeline setup, harnesses, benchmarks, training orchestration |
 | `*.metal` | GPU kernels — physics, depth, RAPTOR, PPO forward/backward, geometry memory |

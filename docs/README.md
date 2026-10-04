@@ -1,12 +1,12 @@
 # Project documents
 
 Research, planning and measurement documents for the Metal drone navigation
-project. `README.md` and `GOAL.md` stay at the repository root; everything else
+project. `README.md` and `goal.md` stay at the repository root; everything else
 lives here.
 
 | Document | What it is |
 |---|---|
-| [NEXT_PHASE.md](NEXT_PHASE.md) | The current phase brief: general local navigation, training-distribution research, Webots validation, and what "evidence matters" means for this repo |
+| [../goal.md](../goal.md) | Current north star: reusable local navigation between supplied visual subgoals |
 | [RESEARCH_NAVIGATION_PAPERS.md](RESEARCH_NAVIGATION_PAPERS.md) | Google AI Mode leads checked against navigation papers; source-only supervision, curriculum and robustness hypotheses |
 | [RESEARCH_TRAINING.md](RESEARCH_TRAINING.md) | PPO collapse evidence, corrected source research and controlled next experiments |
 | [RESEARCH_NEXT_PHASE.md](RESEARCH_NEXT_PHASE.md) | The next experiment decision — PLR-style seeded task replay as the PPO baseline test, with the GR2PO and external-benchmark assessments |
@@ -21,5 +21,5 @@ Root-level context documents:
 | Document | What it is |
 |---|---|
 | [../README.md](../README.md) | Build, run, results and repository map |
-| [../GOAL.md](../GOAL.md) | The outcome specification and execution contract — what "done" means and why each design choice was made |
+| [../goal.md](../goal.md) | The outcome specification and execution contract — what "done" means and why each design choice was made |
 | [../THIRD_PARTY_LICENSES.txt](../THIRD_PARTY_LICENSES.txt) | MIT notices for the RAPTOR / RLtools source and weights |
