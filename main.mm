@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <cstring>
 #include "world.hpp"
+#include "sensor_profile.hpp"
 #include "threat_evaluation.hpp"
 #include "raptor.hpp"
 #include "physics.hpp"
@@ -83,7 +84,8 @@ kernel void physics_fixture(device const RLPhysicsState* states [[buffer(0)]],de
 static std::string base_source() {
     std::string root=SOURCE_DIR;
     const std::string actor_obs_define="#define FIXED_PPO_ACTOR_OBS_DIM "+std::to_string(fixed_ppo::actor_obs_dim)+"\n";
-    return "#include <metal_stdlib>\nusing namespace metal;\n"+read_text(root+"/world.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
+    const std::string sensor_profile_define="#define NAV_SENSOR_PROFILE "+std::to_string(NAV_SENSOR_PROFILE)+"\n";
+    return "#include <metal_stdlib>\nusing namespace metal;\n"+sensor_profile_define+read_text(root+"/world.hpp")+read_text(root+"/sensor_profile.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
 }
 static std::vector<float> poses(size_t n) { std::vector<float> p(n*12,0);for(size_t i=0;i<n;i++){p[i*12+2]=1.5f;p[i*12+3]=p[i*12+7]=p[i*12+11]=1;}return p; }
 static void world_tests(Metal& m) {
@@ -620,6 +622,149 @@ static void mixed_domain_tests(Metal& m) {
     std::cout<<"mixed domains PASS clean/stress and flying reset CPU/GPU observation_error="<<worst<<"\n";
 }
 
+// Camera-profile fixture. Verifies that (a) the legacy ray helpers are
+// bit-identical to the frozen world.hpp model, (b) the shared header and the
+// guidance grid agree at both profiles, and (c) the Metal depth/observation
+// path matches the CPU reference at the calibrated profile. Emits the ray
+// table used by the native-fixture comparison.
+struct ProfileParity { float sensor_error=0,observation_error=0; };
+static ProfileParity profile_parity(Metal& m) {
+    SimConfig cfg;cfg.n=16;cfg.family=12;cfg.eval=0;cfg.mode=17;
+    cfg.speed=1.5f;cfg.distance=4;cfg.geometry_memory=1;cfg.sensor_delay=0;cfg.command_delay=0;
+    Sim sim(m,cfg,1);cpu_reference::Trainer cpu(cfg,1,load_raptor(),rl_physics_crazyflie_default());
+    auto cb=[m.queue commandBuffer];auto c=sim.configs[0];
+    m.dispatch(cb,sim.depth_p,cfg.n*320,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.physics,c,sim.poses});
+    m.dispatch(cb,sim.memory_points_p,cfg.n*640,{sim.states,sim.runs,sim.sensors,sim.poses,sim.memory_points,sim.physics,c});
+    m.dispatch(cb,sim.memory_candidates_p,cfg.n*85,{sim.states,sim.worlds,sim.memory_points,sim.memory_clearances,c});
+    m.dispatch(cb,sim.observe_p,cfg.n,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.obs,sim.co,sim.physics,c,sim.poses,sim.memory_clearances},64);m.finish(cb);
+    cpu.run(1);
+    ProfileParity result;
+    const float* gpu_sensors=static_cast<const float*>(sim.sensors.contents);
+    for(size_t i=0;i<cpu.sensors.size();i++)
+        result.sensor_error=std::max(result.sensor_error,std::fabs(gpu_sensors[i]-cpu.sensors[i]));
+    const float* gpu_obs=static_cast<const float*>(sim.obs.contents);
+    for(size_t i=0;i<cpu.observations.size();i++)
+        result.observation_error=std::max(result.observation_error,std::fabs(gpu_obs[i]-cpu.observations[i]));
+    return result;
+}
+
+// Geometry-only four-frame pose fixture, not a flight or learning result.
+// Test the optimized cache directly: guidance output alone can miss a wrong
+// vertical projection when its selected command is insensitive to that point.
+static void sensor_memory_cache_profile_check(Metal& metal) {
+    SimConfig config;config.n=4;config.family=12;config.eval=1;config.mode=17;
+    config.geometry_memory=1;config.sensor_period=1;
+    Sim sim(metal,config,1);
+    auto* states=static_cast<RLPhysicsState*>(sim.states.contents);
+    auto* runs=static_cast<SimRun*>(sim.runs.contents);
+    auto* worlds=static_cast<WWorld*>(sim.worlds.contents);
+    for(uint tick=0;tick<4;tick++) {
+        for(uint n=0;n<config.n;n++) {
+            const float yaw=.17f*float(tick+n);
+            states[n].position[0]=.1f*tick;states[n].position[1]=.13f*tick;states[n].position[2]=1.5f+.03f*tick;
+            states[n].orientation_wxyz[0]=std::cos(yaw/2);states[n].orientation_wxyz[1]=states[n].orientation_wxyz[2]=0;states[n].orientation_wxyz[3]=std::sin(yaw/2);
+            states[n].linear_velocity[0]=.3f;states[n].linear_velocity[1]=.2f;states[n].linear_velocity[2]=.1f;
+            runs[n].steps=tick;runs[n].elapsed=.05f*tick;
+        }
+        auto cb=[metal.queue commandBuffer];
+        metal.dispatch(cb,sim.depth_p,config.n*320,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.physics,sim.configs[0],sim.poses});
+        metal.finish(cb);
+    }
+    auto cb=[metal.queue commandBuffer];
+    metal.dispatch(cb,sim.memory_points_p,config.n*640,{sim.states,sim.runs,sim.sensors,sim.poses,sim.memory_points,sim.physics,sim.configs[0]});
+    metal.dispatch(cb,sim.memory_candidates_p,config.n*85,{sim.states,sim.worlds,sim.memory_points,sim.memory_clearances,sim.configs[0]});
+    metal.finish(cb);
+    const float* ranges=static_cast<const float*>(sim.sensors.contents);
+    const float* poses=static_cast<const float*>(sim.poses.contents);
+    const float* points=static_cast<const float*>(sim.memory_points.contents);
+    const float* clearances=static_cast<const float*>(sim.memory_clearances.contents);
+    float point_error=0,clearance_error=0;
+    for(uint n=0;n<config.n;n++) {
+        float rotation[9];cpu_reference::rotation(states[n].orientation_wxyz,rotation);
+        float body_pose[12];for(uint j=0;j<3;j++)body_pose[j]=states[n].position[j];for(uint j=0;j<9;j++)body_pose[j+3]=rotation[j];
+        for(uint back=0;back<4;back++)for(uint cell=0;cell<80;cell++) {
+            const uint frame=3-back,px=(cell/10)*40+(cell%10)*2;
+            const float* image=ranges+(n*8+frame)*320;
+            uint hit=px;for(uint candidate:{px+1,px+20,px+21})if(image[candidate]<image[hit])hit=candidate;
+            if(image[hit]<=.01f||image[hit]>=11.9f)continue;
+            const WVec ray=nav_sensor_pixel_ray(1,NAV_SENSOR_ACTIVE_TAN_V,hit);
+            const float* pose=poses+(n*8+frame)*12;float delta[3];
+            for(uint j=0;j<3;j++)delta[j]=pose[j]+image[hit]*(pose[3+j*3]*ray.x+pose[4+j*3]*ray.y+pose[5+j*3]*ray.z)-body_pose[j];
+            const float* actual=points+(n*640+back*80+cell)*4;
+            for(uint j=0;j<3;j++) {
+                const float expected=rotation[j]*delta[0]+rotation[3+j]*delta[1]+rotation[6+j]*delta[2];
+                point_error=std::max(point_error,std::fabs(expected-actual[j]));
+            }
+        }
+        float goal[3],velocity[3];const float dx=worlds[n].goal[0]-body_pose[0],dy=worlds[n].goal[1]-body_pose[1],dz=worlds[n].goal[2]-body_pose[2];
+        const float distance=std::sqrt(dx*dx+dy*dy+dz*dz);
+        for(uint j=0;j<3;j++) {
+            goal[j]=(rotation[j]*dx+rotation[3+j]*dy+rotation[6+j]*dz)/distance;
+            velocity[j]=rotation[j]*.3f+rotation[3+j]*.2f+rotation[6+j]*.1f;
+        }
+        for(uint candidate=0;candidate<85;candidate++) {
+            float direction[3]={0,0,0};
+            if(candidate<80)nav_ray(candidate/10,candidate%10,NAV_SENSOR_ACTIVE_TAN_V,direction);
+            else if(candidate==80)std::copy(goal,goal+3,direction);
+            else if(candidate<83)direction[2]=candidate==81?1:-1;
+            else direction[1]=candidate==83?1:-1;
+            float sweep[3],norm=0;for(uint j=0;j<3;j++){sweep[j]=1.2f*direction[j]+.35f*velocity[j];norm+=sweep[j]*sweep[j];}
+            for(float& value:sweep)value/=std::sqrt(norm);
+            const float expected=nav_memory_clearance(sweep,ranges+n*8*320,poses+n*8*12,body_pose,3,4,.05f,NAV_SENSOR_ACTIVE_TAN_V);
+            clearance_error=std::max(clearance_error,std::fabs(expected-clearances[n*85+candidate]));
+        }
+    }
+    std::cout<<"profile="<<NAV_SENSOR_ACTIVE_NAME<<" point_error_m="<<point_error<<" clearance_error_m="<<clearance_error<<'\n';
+    require(point_error<3e-5f&&clearance_error<3e-4f,"optimized sensor-memory cache differs from direct reference");
+}
+
+static void sensor_profile_check(Metal& m,const std::string& ray_csv) {
+    // (a) Legacy helper must reproduce the frozen world.hpp camera bit-exactly.
+    uint32_t mismatched_bits=0;
+    for(uint32_t k=0;k<NAV_SENSOR_PIXELS;k++) {
+        const WVec expected=wcamera(k);
+        const WVec actual=nav_sensor_pixel_ray(NAV_SENSOR_TAN_H,NAV_SENSOR_LEGACY_TAN_V,k);
+        mismatched_bits+=std::memcmp(&expected,&actual,sizeof(WVec))!=0;
+    }
+    require(mismatched_bits==0,"legacy pixel ray differs from world.hpp::wcamera");
+    // (b) The header pooled grid and the guidance grid must agree at both profiles.
+    for(float tan_v:{NAV_SENSOR_LEGACY_TAN_V,NAV_SENSOR_NATIVE_TAN_V}) {
+        for(uint32_t r=0;r<NAV_SENSOR_POOL_ROWS;r++)for(uint32_t c=0;c<NAV_SENSOR_POOL_COLS;c++) {
+            const WVec a=nav_sensor_pooled_ray(NAV_SENSOR_TAN_H,tan_v,r,c);
+            float b[3];nav_ray(r,c,tan_v,b);
+            require(std::memcmp(&a,&b,sizeof(float)*3)==0,"pooled ray differs from guidance nav_ray");
+        }
+    }
+    std::cout<<"sensor profile PASS legacy_pixel_ray_bit_exact=1 pooled_grid_agreement=1 profiles=2\n";
+    // (c) Metal/CPU depth and observation parity for the compiled profile.
+    sensor_memory_cache_profile_check(m);
+    const ProfileParity parity=profile_parity(m);
+    require(parity.sensor_error<3e-5f && parity.observation_error<3e-5f,
+            std::string("CPU/GPU profile parity failed for ")+NAV_SENSOR_ACTIVE_NAME);
+    std::cout<<"profile_parity profile="<<NAV_SENSOR_ACTIVE_NAME
+             <<" sensor_error="<<parity.sensor_error<<" observation_error="<<parity.observation_error<<"\n";
+    if(ray_csv.empty())return;
+    std::ofstream out(ray_csv);require(bool(out),"cannot write sensor ray fixture: "+ray_csv);
+    out<<std::setprecision(9)<<"kind,profile,pixel,row,col,dir_x,dir_y,dir_z,dir_norm,ray_x,ray_y,ray_z\n";
+    for(const auto& profile:{nav_sensor::legacy(),nav_sensor::native()}) {
+        const char* name=nav_sensor::name(profile.id);
+        for(uint32_t k=0;k<NAV_SENSOR_PIXELS;k++) {
+            const uint32_t row=k/20,col=k%20;
+            const WVec d=nav_sensor_pixel_direction(NAV_SENSOR_TAN_H,profile.tan_v,row,col);
+            const WVec ray=nav_sensor_pixel_ray(NAV_SENSOR_TAN_H,profile.tan_v,k);
+            out<<"pixel,"<<name<<','<<k<<','<<row<<','<<col<<','<<d.x<<','<<d.y<<','<<d.z<<','
+               <<nav_sensor_pixel_norm(NAV_SENSOR_TAN_H,profile.tan_v,row,col)<<','
+               <<ray.x<<','<<ray.y<<','<<ray.z<<'\n';
+        }
+        for(uint32_t r=0;r<NAV_SENSOR_POOL_ROWS;r++)for(uint32_t c=0;c<NAV_SENSOR_POOL_COLS;c++) {
+            const WVec ray=nav_sensor_pooled_ray(NAV_SENSOR_TAN_H,profile.tan_v,r,c);
+            out<<"pooled,"<<name<<",-1,"<<r<<','<<c<<",0,0,0,0,"
+               <<ray.x<<','<<ray.y<<','<<ray.z<<'\n';
+        }
+    }
+    std::cout<<"sensor_profile_rays="<<ray_csv<<" rows="<<(2*NAV_SENSOR_PIXELS+2*80)<<"\n";
+}
+
 static void deployed_action_map_test(Metal& metal) {
     if(fixed_ppo::actor_obs_dim!=184)return;
     SimConfig config;config.n=32;config.family=4;config.eval=1;
@@ -814,7 +959,7 @@ static_assert(sizeof(PpoCheckpointHeader) == 136, "PPO checkpoint header layout 
 
 static PpoCheckpointHeader read_checkpoint_header(std::ifstream& file) {
     PpoCheckpointHeader h{};static_assert(offsetof(PpoCheckpointHeader,config)==48,"checkpoint prefix");
-    file.read((char*)&h,48);require(file && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=9),"checkpoint prefix/version");
+    file.read((char*)&h,48);require(file && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=10),"checkpoint prefix/version");
     file.read((char*)&h.config,64);
     if(h.version>=4){file.read((char*)&h+112,16);if(h.version>=6)file.read((char*)&h+128,8);else h.config.geometry_memory=0;if(h.version==4)h.config.velocity_contract=0;}
     else{h.config.risk_coef=0;h.config.entropy_coef=h.family==7?.002f:.005f;h.config.learning_rate=.0003f;h.config.velocity_contract=0;h.config.geometry_memory=0;}
@@ -879,7 +1024,7 @@ static void export_navigation_checkpoint(const std::string& source_checkpoint,
     std::ifstream file(source_checkpoint,std::ios::binary);
     require(bool(file),"cannot open guided checkpoint: "+source_checkpoint);
     const PpoCheckpointHeader h=read_checkpoint_header(file);
-    require(h.version>=6 && h.version<=9,"navigation export requires checkpoint version6..9");
+    require(h.version>=6 && h.version<=10,"navigation export requires checkpoint version6..10");
     require(h.actor_count==nav_deployment::actor_weight_count,
             "navigation export requires a 184-input,64-hidden,four-action actor");
     require(h.config.geometry_memory==1 && h.config.velocity_contract==1,
@@ -1040,9 +1185,11 @@ struct PPOTrainer {
     void load_checkpoint(const std::string& path,uint32_t family,uint32_t horizon,uint32_t n,uint32_t seed) {
         std::ifstream f(path,std::ios::binary); if(!f)return;
         PpoCheckpointHeader h=read_checkpoint_header(f);
-        require(f && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=9),"invalid PPO checkpoint header");
+        require(f && std::memcmp(h.magic,"PPOFIX1",7)==0 && (h.version>=3&&h.version<=10),"invalid PPO checkpoint header");
         require(h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"PPO checkpoint dimensions mismatch");
         require(h.family==family && h.horizon==horizon && h.n==n && h.base_seed==seed,"PPO checkpoint config mismatch");
+        require(h.version>=10 || NAV_SENSOR_ACTIVE_ID==NAV_SENSOR_LEGACY_ID,
+                "legacy checkpoint cannot resume with calibrated sensors; use an explicit parameter warmstart");
         require(h.config.family==sim.cfg.family && h.config.n==sim.cfg.n && h.config.substeps==sim.cfg.substeps &&
                 h.config.sensor_period==sim.cfg.sensor_period && h.config.sensor_delay==sim.cfg.sensor_delay &&
                 h.config.command_delay==sim.cfg.command_delay && h.config.max_steps==sim.cfg.max_steps &&
@@ -1086,6 +1233,17 @@ struct PPOTrainer {
         } else require(((const TrainingPotentialControl*)sim.potential_control.contents)->enabled==0,
                        "legacy resume cannot infer shaping settings; use explicit parameter warmstart");
         sim.set_config(h.config);
+        // Version 10 binds the complete simulator resume to the calibrated
+        // camera. Older files have the historical legacy camera contract.
+        if(h.version>=10) {
+            nav_sensor::Profile saved{};f.read((char*)&saved,sizeof(saved));
+            const auto expected=nav_sensor::active();
+            require(bool(f) && saved.id==expected.id && saved.tan_h==expected.tan_h &&
+                    saved.tan_v==expected.tan_v && saved.mount_x_m==expected.mount_x_m &&
+                    saved.min_range_m==expected.min_range_m && saved.max_range_m==expected.max_range_m,
+                    "checkpoint camera contract mismatch; use an explicit parameter warmstart");
+        } else require(NAV_SENSOR_ACTIVE_ID==NAV_SENSOR_LEGACY_ID,
+                       "legacy checkpoint cannot resume with calibrated sensors; use an explicit parameter warmstart");
         char extra; require(!f.read(&extra,1),"PPO checkpoint has trailing data");
         optimizer_step=h.optimizer_step;completed_rollouts=h.completed_rollouts;
         require(optimizer_step<=uint64_t(std::numeric_limits<uint32_t>::max()),"PPO checkpoint Adam step is too large");
@@ -1099,6 +1257,7 @@ struct PPOTrainer {
         // The binary header has alignment padding. Initialize those bytes too
         // so paired checkpoint hashes do not depend on the host stack.
         std::memset(&h,0,sizeof(h));std::memcpy(h.magic,"PPOFIX1",7);h.version=((const TrainingPotentialControl*)sim.potential_control.contents)->enabled ? 9 : (((const NavigationRuntimeConfig*)sim.runtime_control.contents)->enabled || ((const NavigationTaskControl*)sim.task_control.contents)->enabled ? 8 : 6);
+        if(NAV_SENSOR_ACTIVE_ID==NAV_SENSOR_NATIVE_ID)h.version=10;
         h.actor_count=fixed_ppo::actor_param_count;h.critic_count=fixed_ppo::critic_param_count;
         h.horizon=sim.horizon;h.n=sim.cfg.n;h.family=family;h.base_seed=seed;h.completed_rollouts=completed_rollouts;
         h.optimizer_step=optimizer_step;h.config=sim.cfg;h.config.tick=0;
@@ -1117,6 +1276,11 @@ struct PPOTrainer {
         }
         if(h.version>=9) {
             writebytes(sim.potential_control);writebytes(sim.potential_spec);writebytes(sim.potential_hash);
+        }
+        if(h.version>=10) {
+            const auto camera=nav_sensor::active();
+            static_assert(sizeof(camera)==24,"checkpoint camera layout");
+            f.write((const char*)&camera,sizeof(camera));
         }
         f.flush();require(bool(f),"PPO checkpoint write failed: "+temp);f.close();
         require(std::rename(temp.c_str(),path.c_str())==0,"cannot replace PPO checkpoint: "+path);
@@ -1432,7 +1596,7 @@ static void export_raw_depth_checkpoint(const std::string& checkpoint_path,const
     std::ifstream file(checkpoint_path,std::ios::binary);
     require(bool(file),"cannot open raw-depth checkpoint");
     const PpoCheckpointHeader header=read_checkpoint_header(file);
-    require(header.version>=3&&header.version<=9&&header.actor_count==nav_deployment::raw_depth_actor_weight_count,
+    require(header.version>=3&&header.version<=10&&header.actor_count==nav_deployment::raw_depth_actor_weight_count,
             "raw-depth export requires an 824-input checkpoint");
     std::vector<float> actor(header.actor_count);
     file.read(reinterpret_cast<char*>(actor.data()),std::streamsize(actor.size()*sizeof(float)));
@@ -1454,6 +1618,51 @@ static void export_raw_depth_checkpoint(const std::string& checkpoint_path,const
              <<" source_fnv64="<<std::hex<<policy.source_checkpoint_hash()<<std::dec<<"\n";
 }
 
+// Export an 824-input checkpoint under the calibrated native sensor contract.
+// The actor weights are unchanged (param-only); only the declared camera
+// profile differs, and the file carries it so the controller can verify it.
+static void export_calibrated_checkpoint(const std::string& checkpoint_path,const std::string& policy_path) {
+    require(fixed_ppo::actor_obs_dim==824,"calibrated export requires the824-input build");
+    require(NAV_SENSOR_ACTIVE_ID==NAV_SENSOR_NATIVE_ID,
+            "calibrated export requires a binary built for the native sensor profile");
+    std::ifstream file(checkpoint_path,std::ios::binary);
+    require(bool(file),"cannot open calibrated checkpoint");
+    const PpoCheckpointHeader header=read_checkpoint_header(file);
+    require(header.version>=3&&header.version<=10&&header.actor_count==nav_deployment::raw_depth_actor_weight_count,
+            "calibrated export requires an 824-input checkpoint");
+    std::vector<float> actor(header.actor_count);
+    file.read(reinterpret_cast<char*>(actor.data()),std::streamsize(actor.size()*sizeof(float)));
+    require(bool(file),"calibrated checkpoint actor is truncated");
+    const RLPhysicsParams dynamics=rl_physics_crazyflie_default();
+    nav_deployment::Metadata metadata;metadata.version=3;
+    metadata.observation_count=nav_deployment::raw_depth_actor_observation_count;
+    metadata.weight_count=nav_deployment::raw_depth_actor_weight_count;
+    metadata.max_speed_mps=header.config.speed;
+    metadata.navigation_period_s=dynamics.dt*float(header.config.substeps);
+    metadata.native_period_s=dynamics.dt;
+    nav_deployment::SensorContract contract;
+    contract.profile_id=NAV_SENSOR_NATIVE_ID;
+    contract.tan_h=NAV_SENSOR_TAN_H;
+    contract.tan_v=NAV_SENSOR_NATIVE_TAN_V;
+    contract.mount_x_m=NAV_SENSOR_NATIVE_MOUNT_X;
+    contract.min_range_m=NAV_SENSOR_MIN_RANGE_M;
+    contract.max_range_m=NAV_SENSOR_MAX_RANGE_M;
+    contract.noise_m=0.0f;
+    std::string error;
+    require(nav_deployment::RawDepthNavigationPolicy::write_calibrated_file(policy_path,actor.data(),actor.size(),
+                metadata,contract,checkpoint_path,&error),error);
+    nav_deployment::RawDepthNavigationPolicy policy;require(policy.load(policy_path,&error),error);
+    require(policy.has_sensor_contract()&&nav_deployment::valid_native_contract(policy.sensor_contract()),
+            "calibrated export did not round-trip its sensor contract");
+    std::cout<<"CALIBRATED NAV export="<<policy_path<<" source="<<checkpoint_path
+             <<" profile="<<policy.sensor_contract().profile_id
+             <<" tan_v="<<policy.sensor_contract().tan_v
+             <<" mount_x_m="<<policy.sensor_contract().mount_x_m
+             <<" observations="<<metadata.observation_count<<" weights="<<metadata.weight_count
+             <<" mode="<<metadata.policy_mode<<" speed="<<metadata.max_speed_mps
+             <<" source_fnv64="<<std::hex<<policy.source_checkpoint_hash()<<std::dec<<"\n";
+}
+
 static void lift_guided_checkpoint_to_raw_depth(Metal& metal,const std::string& old_checkpoint,
                                                 const std::string& new_checkpoint,
                                                 const std::string& raw_policy_path) {
@@ -1461,7 +1670,7 @@ static void lift_guided_checkpoint_to_raw_depth(Metal& metal,const std::string& 
     std::ifstream source(old_checkpoint,std::ios::binary);
     require(bool(source),"cannot open v1 guided checkpoint");
     const PpoCheckpointHeader old_header=read_checkpoint_header(source);
-    require(old_header.version>=3&&old_header.version<=9&&old_header.actor_count==nav_deployment::actor_weight_count&&
+    require(old_header.version>=3&&old_header.version<=10&&old_header.actor_count==nav_deployment::actor_weight_count&&
             old_header.critic_count==fixed_ppo::critic_param_count,
             "raw-depth lift accepts only a v1 184-input guided checkpoint");
     require(old_header.config.velocity_contract==1&&old_header.config.geometry_memory==1&&
@@ -1529,7 +1738,7 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
     Sim sim(m,cfg,horizon);PPOTrainer trainer(sim);trainer.load_checkpoint(checkpoint,family,horizon,n,base_seed);
     if(!warmstart.empty() && trainer.completed_rollouts==0) {
         std::ifstream f(warmstart,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);
-        require(f && (h.version>=3&&h.version<=9) && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
+        require(f && (h.version>=3&&h.version<=10) && h.actor_count==fixed_ppo::actor_param_count && h.critic_count==fixed_ppo::critic_param_count,"warmstart checkpoint format mismatch");
         f.read((char*)sim.actor.contents,fixed_ppo::actor_param_count*4);f.read((char*)sim.critic.contents,fixed_ppo::critic_param_count*4);require(bool(f),"warmstart read failed");
         for(uint j=0;j<4;j++)((float*)sim.actor.contents)[fixed_ppo::actor_log_std_offset+j]=warmstart_log_std;
         std::cout<<"warmstart parameters from "<<warmstart<<"; reset optimizer, exploration_log_std="<<warmstart_log_std<<"\n";
@@ -1568,7 +1777,7 @@ static void train_navigation(Metal& m,uint32_t iterations,uint32_t family,const 
 }
 
 static void evaluate_checkpoint(Metal& m,const std::string& checkpoint,uint mode,uint family,uint32_t seed=800001,float speed=1,float distance=3,uint32_t sensor_delay=0,float wind=0,float noise=0,float dropout=0,uint32_t command_delay=0,uint32_t max_steps=0) {
-    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);require(f && (h.version>=3&&h.version<=9) && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay,h.config.velocity_contract,h.config.geometry_memory,max_steps);
+    std::ifstream f(checkpoint,std::ios::binary);PpoCheckpointHeader h=read_checkpoint_header(f);require(f && (h.version>=3&&h.version<=10) && h.actor_count==fixed_ppo::actor_param_count,"evaluation checkpoint format");std::vector<float>a(h.actor_count);f.read((char*)a.data(),a.size()*4);require(bool(f),"evaluation policy read");sim_evaluate(m,family,mode,a.data(),speed,distance,seed,sensor_delay,wind,noise,dropout,command_delay,h.config.velocity_contract,h.config.geometry_memory,max_steps);
 }
 
 // Depends on Sim, SimRun, SimConfig, PpoCheckpointHeader and
@@ -2463,8 +2672,24 @@ static void measure_reaction_latency(Metal& m,const std::string& checkpoint,uint
 }
 
 int main(int argc,char** argv){@autoreleasepool{try{
-    std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="export-raw"){require(argc>=4,"export-raw CHECKPOINT OUTPUT_RAW_NAV");export_raw_depth_checkpoint(argv[2],argv[3]);return 0;}if(command=="lift-guided"){require(argc>=5,"lift-guided CHECKPOINT_184 OUTPUT_CHECKPOINT_824 OUTPUT_RAW_NAV");Metal metal;metal.compile(base_source()+PPO_TRAINER_MSL);lift_guided_checkpoint_to_raw_depth(metal,argv[2],argv[3],argv[4]);return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
-    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);geodesic_direction_gradient_test(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="raw-depth-canary-check"){require(argc>=3,"raw-depth-canary-check NATIVE_SHADOW_CSV");raw_depth_canary_check(m,argv[2]);}else if(command=="geodesic-preflight"){require(argc>=5,"geodesic-preflight WARMSTART BANK_JSONL OUTPUT_JSON");geodesic_direction_preflight(m,argv[2],argv[3],argv[4]);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="compare-webots") {
+    // Explicit camera-profile opt-in. Default is the legacy source model; the
+    // flag is stripped so it can appear anywhere on the command line.
+    std::vector<char*> args(argv,argv+argc);
+    for(size_t i=1;i<args.size();) {
+        if(std::string(args[i])=="--sensor-profile"&&i+1<args.size()) {
+            uint32_t id=0;require(nav_sensor::parse(args[i+1],id),"sensor profile must be legacy or native");
+            require(id==NAV_SENSOR_ACTIVE_ID,
+                    std::string("this binary was built for the ")+NAV_SENSOR_ACTIVE_NAME+
+                    " sensor profile; rebuild with the matching profile instead of mixing contracts");
+            args.erase(args.begin()+i,args.begin()+i+2);
+        } else ++i;
+    }
+    argc=int(args.size());argv=args.data();
+    std::cout<<"sensor_profile="<<NAV_SENSOR_ACTIVE_NAME
+             <<" tan_h="<<NAV_SENSOR_TAN_H<<" tan_v="<<NAV_SENSOR_ACTIVE_TAN_V
+             <<" mount_x_m="<<NAV_SENSOR_ACTIVE_MOUNT_X<<"\n";
+    std::string command=argc>1?argv[1]:"test";if(command=="export"){require(argc>=3,"export CHECKPOINT [OUTPUT]");require(fixed_ppo::actor_obs_dim==184,"export requires the guided binary");export_navigation_checkpoint(argv[2],argc>3?argv[3]:"assets/navigation.bin");return 0;}if(command=="export-raw"){require(argc>=4,"export-raw CHECKPOINT OUTPUT_RAW_NAV");export_raw_depth_checkpoint(argv[2],argv[3]);return 0;}if(command=="export-calibrated"){require(argc>=4,"export-calibrated CHECKPOINT_824 OUTPUT_CAL_NAV");export_calibrated_checkpoint(argv[2],argv[3]);return 0;}if(command=="lift-guided"){require(argc>=5,"lift-guided CHECKPOINT_184 OUTPUT_CHECKPOINT_824 OUTPUT_RAW_NAV");Metal metal;metal.compile(base_source()+PPO_TRAINER_MSL);lift_guided_checkpoint_to_raw_depth(metal,argv[2],argv[3],argv[4]);return 0;}if(command=="policy-bench"){benchmark_navigation_policy(argc>2?argv[2]:"assets/navigation.bin");return 0;}if(command=="cpu-bench"){cpu_reference_benchmark(argc>2?std::stoul(argv[2]):3,argc>4?std::stoul(argv[4]):1,argc>3?std::stoul(argv[3]):128);return 0;}Metal m(command=="profile");m.compile(base_source());std::cout<<"device="<<m.device.name.UTF8String<<" FP32 safe/precise\n";
+    if(command=="test"){world_tests(m);raptor_tests(m);physics_tests(m);raptor_px4_adapter_tests();require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");ppo_tests(m);geodesic_direction_gradient_test(m);closed_loop_tests(m);mixed_domain_tests(m);deployed_action_map_test(m);}else if(command=="raw-depth-canary-check"){require(argc>=3,"raw-depth-canary-check NATIVE_SHADOW_CSV");raw_depth_canary_check(m,argv[2]);}else if(command=="geodesic-preflight"){require(argc>=5,"geodesic-preflight WARMSTART BANK_JSONL OUTPUT_JSON");geodesic_direction_preflight(m,argv[2],argv[3],argv[4]);}else if(command=="reaction-latency"){require(argc>=3,"reaction-latency CHECKPOINT [SENSOR_DELAY] [COMMAND_DELAY]");measure_reaction_latency(m,argv[2],argc>3?std::stoul(argv[3]):0,argc>4?std::stoul(argv[4]):0);}else if(command=="threat-eval"){require(argc>=7,"threat-eval CHECKPOINT MODE KIND SPEED TTC [SEED] [SENSOR_DELAY] [COMMAND_DELAY]");evaluate_threat(m,argv[2],std::stoul(argv[3]),std::stoul(argv[4]),std::stof(argv[5]),std::stof(argv[6]),argc>7?std::stoul(argv[7]):800001,argc>8?std::stoul(argv[8]):0,argc>9?std::stoul(argv[9]):0);}else if(command=="bench-depth")depth_benchmark(m);else if(command=="sensor-profile-check"){require(argc>=3,"sensor-profile-check RAY_CSV");sensor_profile_check(m,argv[2]);}else if(command=="eval-policy")evaluate_navigation_policy(m,argc>2?argv[2]:"assets/navigation.bin",argc>3?std::stoul(argv[3]):8,argc>4?std::stoul(argv[4]):800001);else if(command=="compare-webots") {
         require(argc>=5,"compare-webots NAV_ACTOR BOUNDED_METADATA_DIR OUTPUT_CSV");
         compare_webots_scenes(m,argv[2],argv[3],argv[4]);
     }else if(command=="reward-audit") {

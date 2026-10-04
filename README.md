@@ -74,6 +74,8 @@ Why hand-written Metal rather than a framework: every dependency in the hot loop
 
 ---
 
+The optional [calibrated camera profile](docs/CALIBRATED_SENSOR_PROFILE.md) now matches measured native projection and mount geometry. Frozen-policy Metal results are 51/90 with that profile versus 54/90 with the default; it is not adopted as a policy gain.
+
 ## What works today
 
 Each line links to the evidence that supports it. Nothing here is a hardware claim.
@@ -88,7 +90,7 @@ Each line links to the evidence that supports it. Nothing here is a hardware cla
 | Paired connected-room transfer | Same 30 development rooms: **25/30 Metal → 18/30 Webots**, 12 contacts in hard scenes | [paired proof](evidence/inputs/room-webots-transfer/proof.json), [figure](docs/RESULTS_GALLERY.md#webots-transfer) |
 | Two native Webots recordings | Doorway 6.91 s stable hold, no contact; connected room first entry at 5.23 s, no contact | [native-flight-videos manifest](evidence/inputs/native-flight-videos/manifest.json) |
 
-The final challenge-bank split (90 levels) has **never been evaluated or used for selection**. Development levels were used for selection and are labelled as such everywhere.
+The final challenge-bank split has **not been policy-evaluated**. Earlier research exposed aggregate FINAL geometry, so it is no longer fully blind. Future final evidence requires a fresh sealed suite after weights and navigation logic are frozen. Development levels are labelled as selection feedback.
 
 ### Obstacles encountered, and how we improved
 

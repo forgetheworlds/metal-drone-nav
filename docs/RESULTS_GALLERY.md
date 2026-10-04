@@ -66,7 +66,7 @@ These two are the requested course videos: **unmodified Webots R2025a Supervisor
 [![Native connected-room view](../artifacts/videos/native-connected-rooms-preview.jpg)](../artifacts/videos/native-connected-rooms.mp4)
 `artifacts/videos/native-connected-rooms.mp4` — two offset doors with a table, room policy, first entry at 5.23 s.
 
-**Limits stated with these clips:** two *selected successful examples*, not a success rate; the room policy was selected on development scenes and the final split is untouched; room success is first entry at 1.56434 m/s, not a stop; the visible airframe uses simple primitives rather than verified hardware CAD; collision uses a conservative 0.18 m sphere with clean depth and ideal ego sensors.
+**Limits stated with these clips:** two *selected successful examples*, not a success rate; the room policy was selected on development scenes and the original final records are unchanged and not policy-evaluated, but later research exposed aggregate geometry; room success is first entry at 1.56434 m/s, not a stop; the visible airframe uses simple primitives rather than verified hardware CAD; collision uses a conservative 0.18 m sphere with clean depth and ideal ego sensors.
 
 **Evidence and reproduction**
 
@@ -347,7 +347,7 @@ The user has accepted the obstacle-course milestone and asked for **longer varie
 
 Intent, in outcome terms:
 
-1. **Longer varied courses** — extend the frozen bank's route difficulty (longer connected sequences, more offset/narrow doorways) while keeping the final split untouched and PPO as the control.
+1. **Longer varied courses** — extend the frozen bank's route difficulty (longer connected sequences, more offset/narrow doorways) while preserving original final records, requiring a fresh sealed suite for blind proof, and keeping PPO as the control.
 2. **Moving obstacles on real routes** — combine the moving-threat behaviour (which works in short encounters) with route-following tasks; today those two bodies of evidence are separate.
 3. **Narrow passages** — attack the measured failure mode at choice points (grazing collision at corners and door choices), where a global clearance tax was already measured and rejected.
 4. **Speed** — raise useful navigation speed without losing reliability, measured against the same success contracts rather than against the requested cap.
@@ -384,3 +384,15 @@ The [source-only imitation experiment](IMITATION_EXPERIMENT.md) reduced command 
 - **New plots generated for this page.** This gallery only catalogs figures that already exist and were produced by [`evidence.py`](../evidence.py) from hashed inputs. No figure was manufactured, regenerated or re-thresholded to make a claim look complete.
 - **Any final-split result.** There is none; the final 90 levels have never been evaluated.
 - **Hardware or airframe fidelity claims.** Numerical parity and simulator agreement are software checks.
+
+## Calibrated camera sensitivity
+
+![Frozen-policy camera sensitivity](../artifacts/sensor-profile-dev.png)
+
+Same frozen rooms weights and 90 development tasks in Metal: legacy 54/90 versus calibrated
+51/90 after the point-cache correction. This is input-profile sensitivity, not independent
+transfer or new learning. The 14-pose native fixture calibrates projection and mount only.
+
+- Protocol and limits: [calibrated profile](CALIBRATED_SENSOR_PROFILE.md).
+- Input records and hashes: [proof](../evidence/inputs/sensor-profile/proof.json).
+- Reproduce this figure: `python3 sensor_profile_results.py`.

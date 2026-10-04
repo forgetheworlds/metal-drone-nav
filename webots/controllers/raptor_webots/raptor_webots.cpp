@@ -7,6 +7,7 @@
 #include <webots/supervisor.h>
 #include <webots/contact_point.h>
 
+#include "sensor_profile.hpp"
 #include "deployment.hpp"
 #include "guidance.hpp"
 #include "physics.hpp"
@@ -47,6 +48,9 @@ struct Config {
     float diagnostic_nav_scale=1.0f;
     std::string policy="../assets/navigation.bin";
     uint32_t policy_version=1;
+    // Camera profile: 1 = legacy source model (0.75, body origin), 2 = native
+    // RangeFinder (0.8, mount 0.08). Must match the loaded policy contract.
+    uint32_t sensor_profile=NAV_SENSOR_LEGACY_ID;
     bool raw_depth_shadow=false;
     uint32_t seed=1;
     uint32_t max_steps=800;
@@ -85,6 +89,11 @@ Config parse_config(const char* custom) {
             else if(key=="diagnostic_nav_scale")parse_float(value,c.diagnostic_nav_scale);
             else if(key=="policy")c.policy=value;
             else if(key=="policy_version")c.policy_version=uint32_t(std::strtoul(value.c_str(),nullptr,10));
+            else if(key=="sensor_profile") {
+                uint32_t id=0;
+                if(nav_sensor::parse(value.c_str(),id))c.sensor_profile=id;
+                else c.sensor_profile=uint32_t(std::strtoul(value.c_str(),nullptr,10));
+            }
             else if(key=="raw_depth_shadow")c.raw_depth_shadow=(value=="1"||value=="true");
             else if(key=="seed")c.seed=uint32_t(std::strtoul(value.c_str(),nullptr,10));
             else if(key=="max_steps")c.max_steps=uint32_t(std::strtoul(value.c_str(),nullptr,10));
@@ -114,10 +123,13 @@ Config parse_config(const char* custom) {
 }
 
 float clampf(float x,float lo,float hi){return std::fmax(lo,std::fmin(hi,x));}
-void normalize_ranges(const float* raw,int width,int height,float hfov,float* ranges) {
+// Map the native axial-depth image onto the source ray-range grid for the
+// selected camera profile. tan_v_model = 0.75 is the legacy source model;
+// tan_v_model = tan_v_native = 0.8 makes the row mapping an identity and leaves
+// only the axial->ray-range conversion (the calibrated native contract).
+void normalize_ranges(const float* raw,int width,int height,float hfov,float tan_v_model,float* ranges) {
     const float tan_h=std::tan(0.5f*hfov);
     const float tan_v_native=tan_h*float(height)/float(width);
-    const float tan_v_model=0.75f;
     for(int y=0;y<height;y++)for(int x=0;x<width;x++) {
         const float u=(2.0f*(float(x)+0.5f)/float(width)-1.0f)*tan_h;
         const float v=(1.0f-2.0f*(float(y)+0.5f)/float(height))*tan_v_model;
@@ -203,9 +215,19 @@ int main(int argc,char** argv) {
     }
     const int step_ms=10; // RAPTOR remains100Hz with finer ODE integration.
     const Config config=parse_config(wb_robot_get_custom_data());
-    if(config.policy_version!=1&&config.policy_version!=2) {
-        std::fprintf(stderr,"policy_version must be1 or2\n");wb_robot_cleanup();return 2;
+    if(config.policy_version!=1&&config.policy_version!=2&&config.policy_version!=3) {
+        std::fprintf(stderr,"policy_version must be1,2, or3\n");wb_robot_cleanup();return 2;
     }
+    if(config.sensor_profile!=NAV_SENSOR_LEGACY_ID&&config.sensor_profile!=NAV_SENSOR_NATIVE_ID) {
+        std::fprintf(stderr,"sensor_profile must be legacy(1) or native(2)\n");wb_robot_cleanup();return 2;
+    }
+    const float sensor_tan_v=config.sensor_profile==NAV_SENSOR_NATIVE_ID
+        ?NAV_SENSOR_NATIVE_TAN_V:NAV_SENSOR_LEGACY_TAN_V;
+    std::printf("WEBOTS_SENSOR_PROFILE profile=%s tan_v=%.4f mount_x_m=%.3f policy_version=%u\n",
+                nav_sensor::name(config.sensor_profile),sensor_tan_v,
+                config.sensor_profile==NAV_SENSOR_NATIVE_ID?NAV_SENSOR_NATIVE_MOUNT_X:NAV_SENSOR_LEGACY_MOUNT_X,
+                config.policy_version);
+    std::fflush(stdout);
     if(config.goal_objective!="entry"&&config.goal_objective!="hold") {
         std::fprintf(stderr,"goal_objective must be entry or hold\n");wb_robot_cleanup();return 2;
     }
@@ -305,10 +327,39 @@ int main(int argc,char** argv) {
         std::filesystem::path policy_path=config.policy;
         if(policy_path.is_relative())policy_path=root/policy_path;
         std::string error;
-        const bool loaded=config.policy_version==1
-            ?navigation.load(policy_path.string(),&error)
-            :raw_depth_navigation.load(policy_path.string(),&error);
+        bool loaded=false;
+        if(config.policy_version==1) {
+            loaded=navigation.load(policy_path.string(),&error);
+            if(config.sensor_profile!=NAV_SENSOR_LEGACY_ID) {
+                std::fprintf(stderr,"policy_version1 uses the legacy sensor profile; sensor_profile must be legacy\n");
+                wb_robot_cleanup();return 2;
+            }
+        } else {
+            loaded=raw_depth_navigation.load(policy_path.string(),&error);
+            if(loaded) {
+                const bool calibrated=raw_depth_navigation.has_sensor_contract();
+                const uint32_t declared=calibrated?raw_depth_navigation.sensor_contract().profile_id:NAV_SENSOR_LEGACY_ID;
+                if(declared!=config.sensor_profile) {
+                    std::fprintf(stderr,"policy declares sensor profile %u but controller sensor_profile=%u\n",
+                                 declared,config.sensor_profile);
+                    wb_robot_cleanup();return 2;
+                }
+                if(config.policy_version==3&&!calibrated) {
+                    std::fprintf(stderr,"policy_version3 requires a calibrated NAVCAL3 policy\n");
+                    wb_robot_cleanup();return 2;
+                }
+                if(config.policy_version==2&&calibrated) {
+                    std::fprintf(stderr,"a calibrated policy must run with policy_version3\n");
+                    wb_robot_cleanup();return 2;
+                }
+            }
+        }
         if(!loaded){std::fprintf(stderr,"policy version%u load failed: %s\n",config.policy_version,error.c_str());wb_robot_cleanup();return 2;}
+        std::printf("WEBOTS_POLICY profile=%s contract=%s policy_version=%u\n",
+                    nav_sensor::name(config.sensor_profile),
+                    raw_depth_navigation.has_sensor_contract()?"declared":"implicit-legacy",
+                    config.policy_version);
+        std::fflush(stdout);
     }
     RaptorWeights raptor{};bool raptor_loaded=false;
     std::filesystem::path raptor_path=root/"../assets/raptor.bin";
@@ -411,7 +462,7 @@ int main(int argc,char** argv) {
         bool new_depth=(steps%kNavEvery==kNavEvery-1 && steps>=kNavEvery-1);
         if(new_depth){
             const float* image=wb_range_finder_get_range_image(depth);
-            if(image){normalize_ranges(image,width,height,hfov,current_ranges);
+            if(image){normalize_ranges(image,width,height,hfov,sensor_tan_v,current_ranges);
                 if(config.sensor_audit&&!sensor_audit_written){
                     const double* camera_position=wb_supervisor_node_get_position(depth_node);
                     const double* camera_rotation=wb_supervisor_node_get_orientation(depth_node);
@@ -478,7 +529,7 @@ int main(int argc,char** argv) {
             float delta_world[3]={goal[0]-position[0],goal[1]-position[1],goal[2]-position[2]},goal_body[3];rotate_world_to_body(rotation,delta_world,goal_body);
             const float distance=vector_norm3(delta_world),inv_distance=distance>1e-6f?1.0f/distance:0.0f;for(int j=0;j<3;j++)goal_body[j]*=inv_distance;
             float pose[12];for(int i=0;i<3;i++)pose[i]=position[i];for(int i=0;i<9;i++)pose[3+i]=rotation[i];
-            float prior[3]={0,0,0};nav_guidance_memory(pooled,previous_pooled,goal_body,distance,body_velocity,kSensorDt,range_ring,pose_ring,pose,latest_frame,valid_frames,prior);
+            float prior[3]={0,0,0};nav_guidance_memory(pooled,previous_pooled,goal_body,distance,body_velocity,kSensorDt,sensor_tan_v,range_ring,pose_ring,pose,latest_frame,valid_frames,prior);
             float nav_previous_intent[4];for(int j=0;j<4;j++)nav_previous_intent[j]=previous_nav_intent[j];
             float observation[nav_deployment::raw_depth_actor_observation_count]{};
             float context[21]{};
@@ -690,6 +741,8 @@ int main(int argc,char** argv) {
            <<",\"sensor_updates\":"<<nav_updates<<",\"raptor_loaded\":"<<(raptor_loaded?"true":"false")
            <<",\"navigation_loaded\":"<<(policy_mode?"true":"false")
            <<",\"policy_version\":"<<config.policy_version
+           <<",\"sensor_profile\":\""<<nav_sensor::name(config.sensor_profile)
+           <<"\",\"sensor_tan_v\":"<<sensor_tan_v
            <<",\"goal_objective\":\""<<config.goal_objective<<"\",\"goal_radius_entry_count\":"<<goal_radius_entry_count
            <<",\"goal_radius_entry_first_time_s\":"<<goal_radius_entry_first_time_s
            <<",\"goal_radius_entry_last_time_s\":"<<goal_radius_entry_last_time_s
@@ -705,8 +758,8 @@ int main(int argc,char** argv) {
     std::ofstream marker(result_dir/"last-run-exit.marker",std::ios::trunc);
     marker<<"loop_exit steps="<<steps<<" completed="<<(completed?1:0)<<"\n";
     marker.flush();marker.close();
-    std::printf("WEBOTS_RESULT phase=%s objective=%s seed=%u success=%d collision=%d timeout=%d steps=%u time_s=%.4f path_m=%.4f final_error_m=%.4f mean_speed_mps=%.4f peak_speed_mps=%.4f tracking_rms_mps=%.4f min_sensor_range_m=%.4f altitude_min_m=%.4f altitude_max_m=%.4f raptor_loaded=%d nav_loaded=%d nav_updates=%u goal_entries=%u goal_dwell_s=%.3f final_speed_mps=%.4f\n",
-        config.phase.c_str(),config.goal_objective.c_str(),config.seed,success?1:0,collision?1:0,timeout?1:0,steps,current_time,path,final_error,
+    std::printf("WEBOTS_RESULT phase=%s objective=%s seed=%u sensor_profile=%s success=%d collision=%d timeout=%d steps=%u time_s=%.4f path_m=%.4f final_error_m=%.4f mean_speed_mps=%.4f peak_speed_mps=%.4f tracking_rms_mps=%.4f min_sensor_range_m=%.4f altitude_min_m=%.4f altitude_max_m=%.4f raptor_loaded=%d nav_loaded=%d nav_updates=%u goal_entries=%u goal_dwell_s=%.3f final_speed_mps=%.4f\n",
+        config.phase.c_str(),config.goal_objective.c_str(),config.seed,nav_sensor::name(config.sensor_profile),success?1:0,collision?1:0,timeout?1:0,steps,current_time,path,final_error,
         steps?path/(steps*step_ms*0.001):0,peak_speed,tracking_samples?std::sqrt(tracking_squared/(3.0*tracking_samples)):0,minimum_sensor_range,altitude_min,altitude_max,raptor_loaded?1:0,policy_mode?1:0,nav_updates,goal_radius_entry_count,goal_dwell_s,final_world_speed_mps);
     std::fflush(stdout);
     wb_supervisor_simulation_quit(movie_failed?2:0);

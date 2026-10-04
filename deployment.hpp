@@ -43,6 +43,31 @@ constexpr char file_magic[8]={'N','A','V','P','O','L','1','\0'};
 constexpr char provenance_magic[8]={'N','A','V','S','R','C','1','\0'};
 constexpr char raw_depth_file_magic[8]={'N','A','V','R','A','W','2','\0'};
 constexpr char raw_depth_provenance_magic[8]={'N','A','V','S','R','C','2','\0'};
+// Calibrated native-profile raw-depth actor. Separate magic and an explicit
+// sensor contract so a legacy consumer cannot load it and a calibrated
+// consumer cannot silently accept the legacy 0.75/body-origin contract.
+constexpr char calibrated_file_magic[8]={'N','A','V','C','A','L','3','\0'};
+constexpr char calibrated_provenance_magic[8]={'N','A','V','S','C','C','3','\0'};
+
+// Declared camera contract of a calibrated actor. Values are the measured
+// native RangeFinder geometry from sensor_profile.hpp.
+struct SensorContract {
+    uint32_t profile_id=0;      // nav_sensor profile id: 2 = native
+    float tan_h=0.0f;
+    float tan_v=0.0f;
+    float mount_x_m=0.0f;
+    float min_range_m=0.0f;
+    float max_range_m=0.0f;
+    float noise_m=0.0f;
+    uint32_t reserved=0;
+};
+static_assert(sizeof(SensorContract)==32,"sensor contract layout");
+
+inline bool valid_native_contract(const SensorContract& c) {
+    return c.profile_id==2u && std::fabs(c.tan_h-1.0f)<1e-6f && std::fabs(c.tan_v-0.8f)<1e-6f &&
+        std::fabs(c.mount_x_m-0.08f)<1e-6f && std::fabs(c.min_range_m-0.03f)<1e-6f &&
+        std::fabs(c.max_range_m-12.0f)<1e-6f && std::fabs(c.noise_m)<1e-6f && c.reserved==0;
+}
 
 struct Metadata {
     uint32_t version=1;
@@ -276,23 +301,66 @@ public:
     using Weights=std::array<float,raw_depth_actor_weight_count>;
 
     bool load(const std::string& path,std::string* error=nullptr) {
-        loaded_=false;
+        loaded_=false;has_contract_=false;
         std::ifstream f(path,std::ios::binary);
         if(!f)return fail(error,"cannot open raw-depth navigation policy: "+path);
-        char magic[8];if(!read_bytes(f,magic,sizeof(magic))||std::memcmp(magic,raw_depth_file_magic,8)!=0)
-            return fail(error,"raw-depth policy magic mismatch; expected policy version2");
+        char magic[8];if(!read_bytes(f,magic,sizeof(magic)))
+            return fail(error,"raw-depth policy magic read failed");
+        const bool calibrated=std::memcmp(magic,calibrated_file_magic,8)==0;
+        if(!calibrated&&std::memcmp(magic,raw_depth_file_magic,8)!=0)
+            return fail(error,"raw-depth policy magic mismatch; expected policy version2 or3");
         Metadata m{};
         if(!read_metadata(f,m))return fail(error,"truncated raw-depth policy metadata");
-        if(!valid_metadata(m))return fail(error,"unsupported raw-depth navigation policy metadata");
+        if(calibrated){if(!valid_calibrated_metadata(m))return fail(error,"unsupported calibrated policy metadata");}
+        else if(!valid_metadata(m))return fail(error,"unsupported raw-depth navigation policy metadata");
+        SensorContract contract{};
+        if(calibrated) {
+            if(!read_contract(f,contract))return fail(error,"truncated calibrated sensor contract");
+            if(!valid_native_contract(contract))return fail(error,"calibrated policy does not declare the native sensor profile");
+        }
         for(float& value:weights_) {
             if(!read_float(f,value)||!std::isfinite(value))return fail(error,"invalid raw-depth actor weight");
         }
         char provenance[8];uint64_t source_hash=0;
-        if(!read_bytes(f,provenance,sizeof(provenance))||std::memcmp(provenance,raw_depth_provenance_magic,8)!=0||
+        const char* expected_provenance=calibrated?calibrated_provenance_magic:raw_depth_provenance_magic;
+        if(!read_bytes(f,provenance,sizeof(provenance))||std::memcmp(provenance,expected_provenance,8)!=0||
            !read_u64(f,source_hash))return fail(error,"raw-depth source provenance is missing");
         char extra;if(f.read(&extra,1))return fail(error,"raw-depth policy has trailing bytes");
         if(!f.eof())return fail(error,"raw-depth policy read failed");
-        metadata_=m;source_hash_=source_hash;loaded_=true;
+        metadata_=m;contract_=contract;has_contract_=calibrated;source_hash_=source_hash;loaded_=true;
+        if(error)error->clear();return true;
+    }
+
+    // Write the calibrated (native-profile) variant. The legacy v2 writer is
+    // unchanged, so old raw-depth assets keep loading through the same class.
+    static bool write_calibrated_file(const std::string& path,const float* actor_weights,size_t count,
+                                      const Metadata& metadata,const SensorContract& contract,
+                                      const std::string& source_checkpoint,std::string* error=nullptr) {
+        if(!actor_weights||count!=raw_depth_actor_weight_count||!valid_calibrated_metadata(metadata)||
+           !valid_native_contract(contract))
+            return fail(error,"invalid calibrated NAV actor dimensions, metadata, or sensor contract");
+        for(size_t i=0;i<count;i++)if(!std::isfinite(actor_weights[i]))
+            return fail(error,"calibrated actor has a non-finite parameter");
+        bool source_ok=false;const uint64_t source_hash=fnv1a64_file(source_checkpoint,source_ok);
+        if(!source_ok)return fail(error,"cannot hash calibrated source checkpoint: "+source_checkpoint);
+        const std::filesystem::path output(path);
+        if(output.has_parent_path()) {
+            std::error_code ec;std::filesystem::create_directories(output.parent_path(),ec);
+            if(ec)return fail(error,"cannot create calibrated policy directory: "+ec.message());
+        }
+        const std::string temp=path+".tmp";
+        std::ofstream f(temp,std::ios::binary|std::ios::trunc);
+        if(!f)return fail(error,"cannot create calibrated navigation policy: "+temp);
+        f.write(calibrated_file_magic,sizeof(calibrated_file_magic));write_metadata(f,metadata);
+        write_contract(f,contract);
+        for(size_t i=0;i<count;i++)write_float(f,actor_weights[i]);
+        f.write(calibrated_provenance_magic,sizeof(calibrated_provenance_magic));write_u64(f,source_hash);
+        f.flush();
+        if(!f){f.close();std::remove(temp.c_str());return fail(error,"calibrated policy write failed");}
+        f.close();
+        if(std::rename(temp.c_str(),path.c_str())!=0) {
+            std::remove(temp.c_str());return fail(error,"cannot replace calibrated policy: "+path);
+        }
         if(error)error->clear();return true;
     }
 
@@ -327,10 +395,14 @@ public:
 
     bool loaded()const{return loaded_;}
     const Metadata& metadata()const{return metadata_;}
+    // True only for the calibrated variant; the contract is the declared
+    // native sensor profile the caller must already be running.
+    bool has_sensor_contract()const{return has_contract_;}
+    const SensorContract& sensor_contract()const{return contract_;}
     uint64_t source_checkpoint_hash()const{return source_hash_;}
     const Weights& weights()const{return weights_;}
 
-    bool raw_mean(const float* observation,float mean[action_count])const {
+    bool raw_mean(const float* observation,float mean[action_count])const{
         if(mean)std::fill(mean,mean+action_count,0.0f);
         if(!loaded_||!observation||!mean)return false;
         for(uint32_t i=0;i<raw_depth_actor_observation_count;i++)
@@ -370,7 +442,8 @@ public:
     }
 
 private:
-    Metadata metadata_{};Weights weights_{};uint64_t source_hash_=0;bool loaded_=false;
+    Metadata metadata_{};SensorContract contract_{};Weights weights_{};
+    uint64_t source_hash_=0;bool loaded_=false;bool has_contract_=false;
 
     static bool valid_metadata(const Metadata& m) {
         return m.version==2&&m.observation_count==raw_depth_actor_observation_count&&
@@ -379,6 +452,19 @@ private:
             m.sensor_rows==16&&m.sensor_columns==20&&std::fabs(m.range_max_m-12.0f)<1e-6f&&
             std::fabs(m.navigation_period_s-.05f)<1e-6f&&std::fabs(m.native_period_s-.01f)<1e-6f&&
             m.memory_frames==8&&m.body_frame==body_frame_flu;
+    }
+    static bool valid_calibrated_metadata(const Metadata& m) {
+        Metadata v=m;v.version=2;return m.version==3 && valid_metadata(v);
+    }
+    static bool read_contract(std::istream& f,SensorContract& c) {
+        return read_u32(f,c.profile_id)&&read_float(f,c.tan_h)&&read_float(f,c.tan_v)&&
+            read_float(f,c.mount_x_m)&&read_float(f,c.min_range_m)&&read_float(f,c.max_range_m)&&
+            read_float(f,c.noise_m)&&read_u32(f,c.reserved);
+    }
+    static void write_contract(std::ostream& f,const SensorContract& c) {
+        write_u32(f,c.profile_id);write_float(f,c.tan_h);write_float(f,c.tan_v);
+        write_float(f,c.mount_x_m);write_float(f,c.min_range_m);write_float(f,c.max_range_m);
+        write_float(f,c.noise_m);write_u32(f,c.reserved);
     }
     static bool fail(std::string* error,const std::string& message){if(error)*error=message;return false;}
     static bool read_metadata(std::istream& f,Metadata& m) {

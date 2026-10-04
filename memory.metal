@@ -59,7 +59,7 @@ kernel void nav_memory_build_points(device const RLPhysicsState* states [[buffer
 
     const device float* old_pose = poses + (n * NAV_MEMORY_FRAMES + frame) * 12;
     const float ry = 1.0f - (float(hit % 20) + 0.5f) / 10.0f;
-    const float rz = 0.75f * (1.0f - (float(hit / 20) + 0.5f) / 8.0f);
+    const float rz = NAV_SENSOR_ACTIVE_TAN_V * (1.0f - (float(hit / 20) + 0.5f) / 8.0f);
     const float inv = 1.0f / sqrt(1.0f + ry * ry + rz * rz);
     const float ray[3] = {inv, ry * inv, rz * inv};
     const float wx = old_pose[3] * ray[0] + old_pose[4] * ray[1] + old_pose[5] * ray[2];
@@ -114,7 +114,7 @@ kernel void nav_memory_candidate_clearance(device const RLPhysicsState* states [
     float direction[3];
     if (candidate < NAV_MEMORY_CELLS) {
         float pooled_ray[3];
-        nav_ray(candidate / 10, candidate % 10, pooled_ray);
+        nav_ray(candidate / 10, candidate % 10, NAV_SENSOR_ACTIVE_TAN_V, pooled_ray);
         direction[0] = pooled_ray[0]; direction[1] = pooled_ray[1]; direction[2] = pooled_ray[2];
     } else if (candidate == 80) {
         direction[0] = goal_unit[0]; direction[1] = goal_unit[1]; direction[2] = goal_unit[2];

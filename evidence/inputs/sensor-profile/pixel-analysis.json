@@ -1,0 +1,151 @@
+{
+  "audit_world_sha256": "b3ff6a6ea2ed6c7aea510f151d6192b68100090d9fe20f5f16e9bf29cd40df1c",
+  "calibrated_end_to_end_residual_m": {
+    "max": 0.006063045562508584,
+    "median": 0.000291935732527282,
+    "n": 4480,
+    "p95": 0.0016282828431384289
+  },
+  "captures": 14,
+  "finite_pixels": 4480,
+  "legacy_adapter_over_legacy_model_ratio": {
+    "CEILING": {
+      "max": 0.9377678824734746,
+      "median": 0.9375670044016967,
+      "min": 0.2925000112532043,
+      "n": 386
+    },
+    "GROUND": {
+      "max": 0.9376875309996563,
+      "median": 0.9375000000028522,
+      "min": 0.3920312634296382,
+      "n": 678
+    }
+  },
+  "legacy_adapter_vs_legacy_model_m": {
+    "max": 8.16354707412045,
+    "median": 0.08484131123541028,
+    "n": 4480,
+    "p95": 0.5323814329296379
+  },
+  "legacy_source_model_vs_native_ray_range_m": {
+    "max": 6.734340520209999,
+    "median": 0.07270198248572557,
+    "n": 4480,
+    "p95": 0.37347834326289675
+  },
+  "legacy_vs_calibrated_primitive_disagreements": 148,
+  "limits": [
+    "static axis-aligned rig, no noise (configured off), no motion",
+    "native resolution 0.001 m and pixel-centre ray model are the only quantisation sources in the calibrated residual",
+    "min/max range clipping not exercised in these poses",
+    "not a flight, transfer or navigation result"
+  ],
+  "native_axial_geometric_residual_m": {
+    "max": 0.00566615000001125,
+    "median": 0.00023099609466825655,
+    "n": 4480,
+    "p95": 0.001364025206608943
+  },
+  "native_fixture": "evidence/inputs/sensor-profile/native-frames.jsonl",
+  "native_fixture_sha256": "68c840ffe697eb7779458aa06d34c1b8308f7179034db89b9299dfd6b36d2d33",
+  "pixels": 4480,
+  "primitive_disagreement_fraction": 0.033035714285714286,
+  "range_clipped_pixels": 0,
+  "ray_table": "results/omp-calibrated-sensors/root-profile-rays.csv",
+  "schema": "sensor-profile-native-fixture-v1",
+  "worst_calibrated_pixels": [
+    {
+      "case": "floor_low",
+      "col": 13,
+      "kind": 0,
+      "pixel": 193,
+      "residual_m": 0.00566615000001125,
+      "row": 9
+    },
+    {
+      "case": "front_far",
+      "col": 13,
+      "kind": 0,
+      "pixel": 93,
+      "residual_m": 0.00300012857142562,
+      "row": 4
+    },
+    {
+      "case": "front_far",
+      "col": 11,
+      "kind": 0,
+      "pixel": 91,
+      "residual_m": 0.00300012857142562,
+      "row": 4
+    },
+    {
+      "case": "front_far",
+      "col": 10,
+      "kind": 0,
+      "pixel": 90,
+      "residual_m": 0.00300012857142562,
+      "row": 4
+    },
+    {
+      "case": "front_far",
+      "col": 9,
+      "kind": 0,
+      "pixel": 89,
+      "residual_m": 0.00300012857142562,
+      "row": 4
+    }
+  ],
+  "worst_legacy_edge_pixels": [
+    {
+      "adapter_minus_model_m": 5.602683118573576,
+      "case": "discontinuity",
+      "col": 6,
+      "kind": 0,
+      "legacy_hit": "LEFT_WALL",
+      "native_hit": "CEILING",
+      "pixel": 86,
+      "row": 4
+    },
+    {
+      "adapter_minus_model_m": 5.602683118573574,
+      "case": "discontinuity",
+      "col": 13,
+      "kind": 0,
+      "legacy_hit": "RIGHT_WALL",
+      "native_hit": "CEILING",
+      "pixel": 93,
+      "row": 4
+    },
+    {
+      "adapter_minus_model_m": 4.97277679256468,
+      "case": "floor_low",
+      "col": 4,
+      "kind": 0,
+      "legacy_hit": "LEFT_WALL",
+      "native_hit": "CEILING",
+      "pixel": 24,
+      "row": 1
+    },
+    {
+      "adapter_minus_model_m": 4.831638616168003,
+      "case": "front_mid",
+      "col": 4,
+      "kind": 0,
+      "legacy_hit": "LEFT_WALL",
+      "native_hit": "CEILING",
+      "pixel": 24,
+      "row": 1
+    },
+    {
+      "adapter_minus_model_m": 4.77175763692676,
+      "case": "front_mid",
+      "col": 12,
+      "kind": 0,
+      "legacy_hit": "POLE",
+      "native_hit": "CEILING",
+      "pixel": 32,
+      "row": 1
+    }
+  ]
+}

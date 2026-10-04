@@ -1,0 +1,129 @@
+{
+  "schema": "camera-profile-evidence-v1",
+  "recorded_utc": "2026-10-04T11:17:11.711218+00:00",
+  "purpose": "camera calibration and frozen-policy input sensitivity; not new learning or independent navigation proof",
+  "source_hashes": {
+    "sensor_profile.hpp": "491739a81c40a00e501ab3db51f6bed3dffdcdafdecd9e316a9596f6ac442e1d",
+    "main.mm": "fe55d0d049a733e3ce35252d20a938573e266627d94f2cd19de36f235f25daef",
+    "sim.metal": "53451f9dff026d44d63b0a9456d004c0c5834ae581b639b5509690a4fff5efda",
+    "memory.metal": "98ffaa105dbaa5eba7896e9bfbc9dde07004d8e426224aa207be0fd7c4472a41",
+    "guidance.hpp": "0af4600a86e49e30c8d4981b89020fc92adc0c4fb7805da95d9f2ad99691d7a6",
+    "cpu_reference.hpp": "3f75ef338b557f5185221d519427308b63a08ec13efd72a436a36fd1d2d0d355",
+    "deployment.hpp": "2509fdb40d7ac88563a11239001c3e00cd6e302687d5399eaa2460a6e66ad2ff",
+    "webots/controllers/raptor_webots/raptor_webots.cpp": "be40dc5df74f09d91059dccf0768f9f2b871849c239338c53751cc906a85a09e",
+    "webots/worlds/sensor-geometry-audit.wbt": "b3ff6a6ea2ed6c7aea510f151d6192b68100090d9fe20f5f16e9bf29cd40df1c",
+    "webots/controllers/sensor_geometry_audit/sensor_geometry_audit.c": "75f7a540ae267b0ff2832b84ba7a1c86af4766040a136039419e630323655cf6",
+    "webots/controllers/sensor_geometry_audit/analyze.py": "f149cdda9fdc8a529698413954efd7e8f9849b8407d0eb4c5b3fb8b69dbebf5b",
+    "webots/sensor_profile_fixture.py": "f9f17243bff5a90994b94f74b4319154091afa8156b99951efefdc4d3049d715",
+    "sensor_profile_results.py": "01d242e663212fe76ef59c0a17630d0f6ae0aa3fabc177fa0ee73a097f5174bc",
+    "artifacts/sensor-profile-dev.png": "fcb6b6b1fdb93df1c2061e6a9871d5a88bc10ef35abe0cf30288c7190223aff3",
+    "evidence/inputs/sensor-profile/native-frames.jsonl": "68c840ffe697eb7779458aa06d34c1b8308f7179034db89b9299dfd6b36d2d33",
+    "evidence/inputs/sensor-profile/legacy-dev.csv": "6a4f72d292bca9a75ad3c5893f7cbf5510a18fdef3f96d6d5a78b255611c2574",
+    "evidence/inputs/sensor-profile/native-dev.csv": "5b718e199ce8d595d8699e22c9c2029942cca2e1cde47eab001e51baf9a8b82d",
+    "evidence/inputs/sensor-profile/pixel-analysis.json": "5aa2add08e3484bd582a6e3877d0c4531465171c7cf05791a6d609c470663f06"
+  },
+  "world_sha256": "5e651fdf2dcb2d252b64d688a46ab0b793849356bd10a1c205d2b7cd9fabffa2",
+  "checkpoint": {
+    "path": "assets/checkpoints/rooms-focused-experimental.bin.best",
+    "sha256": "7b14b5de557fa1538f48373a6022d74ae70270467b65f1028c28fe0df0510b73"
+  },
+  "bank": {
+    "path": "evidence/inputs/challenge-bank-mirrored-v1.jsonl",
+    "sha256": "e2170fbe8e8c2d074ffb08de4269175a6de0bdcd410c3b60bd699ee7b5fc491e",
+    "split": "dev",
+    "n": 90
+  },
+  "source_outcomes": {
+    "legacy": {
+      "14": {
+        "success": 0,
+        "collision": 30,
+        "timeout": 0,
+        "n": 30
+      },
+      "15": {
+        "success": 25,
+        "collision": 5,
+        "timeout": 0,
+        "n": 30
+      },
+      "16": {
+        "success": 29,
+        "collision": 1,
+        "timeout": 0,
+        "n": 30
+      }
+    },
+    "native_cache_fixed": {
+      "14": {
+        "success": 0,
+        "collision": 30,
+        "timeout": 0,
+        "n": 30
+      },
+      "15": {
+        "success": 23,
+        "collision": 7,
+        "timeout": 0,
+        "n": 30
+      },
+      "16": {
+        "success": 28,
+        "collision": 2,
+        "timeout": 0,
+        "n": 30
+      }
+    }
+  },
+  "checks": {
+    "legacy90_strong_control_exact_all_rows": true,
+    "native_cache_max_point_error_m": 1.90735e-06,
+    "native_cache_max_clearance_error_m": 5.72205e-06,
+    "legacy_cache_max_point_error_m": 9.53674e-07,
+    "legacy_cache_max_clearance_error_m": 5.00679e-06,
+    "cpu_gpu_sensor_error_m": 0,
+    "cpu_gpu_observation_error": 1.19209e-07,
+    "legacy_original_test_suite": "pass",
+    "checkpoint_native_roundtrip": "pass",
+    "checkpoint_legacy_roundtrip": "pass",
+    "cross_profile_resume_rejections": [
+      {
+        "consumer": "legacy",
+        "file": "native.bin",
+        "exit_code": 1,
+        "message": "checkpoint camera contract mismatch; use an explicit parameter warmstart"
+      },
+      {
+        "consumer": "native",
+        "file": "legacy.bin",
+        "exit_code": 1,
+        "message": "legacy checkpoint cannot resume with calibrated sensors; use an explicit parameter warmstart"
+      }
+    ],
+    "calibrated_asset_validation": [
+      {
+        "case": "valid",
+        "exit": 0,
+        "message": "asset load PASS"
+      },
+      {
+        "case": "wrong-version",
+        "exit": 1,
+        "message": "unsupported calibrated policy metadata"
+      },
+      {
+        "case": "reserved-contract",
+        "exit": 1,
+        "message": "calibrated policy does not declare the native sensor profile"
+      }
+    ]
+  },
+  "limits": [
+    "controlled static14pose native sensor fixture; no flight calibration",
+    "min/max clipping, noise, flight motion not exercised",
+    "native51of90 uses Metal physics; same frozen weights; legacy54of90 remains control",
+    "old48of90 prototype had inconsistent optimized point cache; archived locally",
+    "no new policy adopted",
+    "original FINAL records not policy-evaluated; earlier research exposed aggregate geometry; fresh sealed suite required for future blind proof"
+  ]
+}

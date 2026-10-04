@@ -18,6 +18,7 @@
 #include <random>
 #include <vector>
 #include "world.hpp"
+#include "sensor_profile.hpp"
 #include "raptor.hpp"
 #include "physics.hpp"
 #include "ppo.hpp"
@@ -132,7 +133,8 @@ public:
         const size_t envs=cfg.n, rows=envs*size_t(horizon);
         states.resize(envs);runs.resize(envs);worlds.resize(envs);
         camera_rays.resize(sensor_pixels);
-        for(uint32_t k=0;k<sensor_pixels;k++)camera_rays[k]=wcamera(k);
+        for(uint32_t k=0;k<sensor_pixels;k++)
+            camera_rays[k]=nav_sensor_pixel_ray(NAV_SENSOR_TAN_H,NAV_SENSOR_ACTIVE_TAN_V,k);
         sensors.resize(envs*sensor_frames*sensor_pixels);
         poses.resize(envs*sensor_frames*12);
         commands.resize(envs*sensor_frames*action_dim);
@@ -271,14 +273,19 @@ private:
         if(run.steps%cfg.sensor_period==0) {
             float r[9];rotation(s.orientation_wxyz,r);
             const size_t frame=(run.steps/cfg.sensor_period)%sensor_frames;
-            for(uint32_t j=0;j<3;j++)poses[(size_t(n)*sensor_frames+frame)*12+j]=s.position[j];
+            // Camera pose = body pose + mount offset along body +X.
+            const float mx=NAV_SENSOR_ACTIVE_MOUNT_X;
+            const WVec origin=wv(s.position[0]+mx*r[0],s.position[1]+mx*r[3],s.position[2]+mx*r[6]);
+            poses[(size_t(n)*sensor_frames+frame)*12+0]=origin.x;
+            poses[(size_t(n)*sensor_frames+frame)*12+1]=origin.y;
+            poses[(size_t(n)*sensor_frames+frame)*12+2]=origin.z;
             for(uint32_t j=0;j<9;j++)poses[(size_t(n)*sensor_frames+frame)*12+3+j]=r[j];
             for(uint32_t k=0;k<sensor_pixels;k++) {
                 const WVec ray=camera_rays[k];
                 const WVec d=wv(r[0]*ray.x+r[1]*ray.y+r[2]*ray.z,
                                 r[3]*ray.x+r[4]*ray.y+r[5]*ray.z,
                                 r[6]*ray.x+r[7]*ray.y+r[8]*ray.z);
-                float depth=wray(world,wv(s.position[0],s.position[1],s.position[2]),d,run.elapsed);
+                float depth=wray(world,origin,d,run.elapsed);
                 const float noise=effective_depth_noise(n),dropout=effective_dropout(n);
                 if(noise!=0 || dropout!=0) {
                     uint32_t rng=run.rng+k*1664525u+run.steps*1013904223u;
@@ -354,11 +361,11 @@ private:
             if(cfg.geometry_memory) {
                 const uint32_t valid_frames=available>=sensor_delay
                     ?std::min(frame+1,sensor_frames-sensor_delay):0;
-                nav_guidance_memory(cur,prev_range,goal,distance,vel,sensor_dt,
+                nav_guidance_memory(cur,prev_range,goal,distance,vel,sensor_dt,NAV_SENSOR_ACTIVE_TAN_V,
                     sensors.data()+size_t(n)*sensor_frames*sensor_pixels,
                     poses.data()+size_t(n)*sensor_frames*12,current_pose,
                     frame,valid_frames,hint);
-            } else nav_guidance(cur,prev_range,goal,distance,vel,sensor_dt,hint);
+            } else nav_guidance(cur,prev_range,goal,distance,vel,sensor_dt,NAV_SENSOR_ACTIVE_TAN_V,hint);
             for(uint32_t j=0;j<3;j++)observations[row+actor_dim-3+j]=hint[j];
         }
         critic_observation(s,world,run,critic_observations.data()+crow);
