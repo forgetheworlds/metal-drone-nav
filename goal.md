@@ -1,5 +1,18 @@
 # Goal
 
+## Operator clarification — 2026-10-04
+
+The navigator receives a geometric goal. Training goals outside the current
+sensor view can be useful when they teach the required behaviours: inspecting,
+braking, short memory, detours and safe goal-directed motion. Do not reject a
+task merely because its goal is outside the camera frustum. Judge training by
+learned navigation capability and transfer. Keep visibility labels accurate,
+and check physical feasibility and whether needed geometry can be observed in
+time. A visible-goal training mixture is an experiment, not a universal task
+acceptance rule.
+
+## North star
+
 The eventual system is a drone capable of carrying out open-ended tasks in unfamiliar environments.
 A larger cloud multimodal model performs slow semantic reasoning. It receives camera observations approximately every few seconds, or after a selected local destination has been reached, and decides what visually meaningful place the drone should reach next based on the user's task and its current view.
 Example mission:

@@ -58,9 +58,9 @@ This rejects the tested recipe, not all ToA losses or reward shaping.
 The existing bank gives most tasks an initial goal outside the full camera
 frustum: only 169/1,024 are in view. Initial velocity always points toward
 the goal. These conditions differ from normal visually grounded subgoal
-issue and may encourage motion toward geometry that has not been observed.
-This is a measured distribution mismatch and a causal hypothesis, not proof
-that every failed task was impossible.
+issue, but out-of-view goals can also teach useful inspection and memory.
+They are not inherently bad training tasks. Their effect on learning is a
+hypothesis to test, not proof that every failed task was impossible.
 
 The independent full-TRAIN flight probe recorded 796 successes, 205 contacts
 and 23 timeouts. A blind goal seeker recorded 675/349/0; hover recorded
@@ -68,8 +68,9 @@ and 23 timeouts. A blind goal seeker recorded 675/349/0; hover recorded
 that every route is physically attainable within the deadline.
 
 The next controlled source experiment will test a deployment-aligned local
-capability distribution with independently varied velocity, verified visible
-goals or openings, nontrivial detours, and broad rehearsal. Both arms must be
+capability distribution with independently varied velocity, local detours,
+useful observation challenges and broad rehearsal. Visible goals or openings
+are one experimental mixture; they are not mandatory for all training. Both arms must be
 graded on the same new development tasks and the old retention banks. A
 frozen candidate must then pass independent native checks without training
 in Webots. The new training and verification missions are in progress.
