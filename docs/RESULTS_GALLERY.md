@@ -36,6 +36,19 @@ Inputs: [episode table](../evidence/inputs/reward-audit/episodes.csv),
 [Protocol and limitations](RESEARCH_CREDIT_ASSIGNMENT.md).
 Rebuild with `python3 reward_audit.py`.
 
+## Matched discount training experiment
+
+![All-90 development outcomes during training](../artifacts/credit-arms-dev-outcomes.png)
+
+Two800-rollout PPO arms, gamma.99 and.995, shared the same warm start and sampler
+procedure. Both completed zero TRAIN and DEV corners and lost room retention.
+Every point is recorded; no candidate was adopted.
+
+[Training losses](../artifacts/credit-arms-train-loss.png) ·
+[Cumulative TRAIN success by family](../artifacts/credit-arms-cumulative-train.png) ·
+[Protocol, data and reproduction](DISCOUNT_EXPERIMENT.md).
+Rebuild with `python3 discount_experiment.py`.
+
 ## Videos
 
 ### Native Webots recordings

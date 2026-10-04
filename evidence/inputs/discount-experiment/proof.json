@@ -3,7 +3,7 @@
   "status": "completed_negative_experiment_no_candidate",
   "parent_commit": "fbb36504817ed327b26c11e4146f62499946488c",
   "source_sha256": "9f87732591f76dbed7bc446772036220575cfadf1e395ea4042c7cd3c3946da1",
-  "plot_script_sha256": "41f4cfefd463ca69e277555d8632471c8215153e8c6cae52fd051a88253ea440",
+  "plot_script_sha256": "7ab0559fb2b238fd6e48e46da97029b66762318d51ecc20e3d9e93c9d1d60c8e",
   "arms": {
     "gamma0990": {
       "stages": [
