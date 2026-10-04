@@ -1,0 +1,116 @@
+{
+  "schema": "local-waypoint-evidence-v1",
+  "description": "Recorded local waypoint PPO experiments. Development evidence; single-seed modest gains; conditional successful arrival times. Exact training runner bytes recovered; original runtime shader archive was not pinned.",
+  "produced_by": "python3 local_waypoint_results.py",
+  "denominators": {
+    "eval_splits": 128,
+    "train_bank_tasks": 1024,
+    "dev_bank_tasks": 128,
+    "train_rollouts": 2000,
+    "transitions_per_rollout": 4096
+  },
+  "files": {
+    "banks/dev-a-128.csv": {
+      "sha256": "50d76ffad4ad708b6acd9a0a434c7726f9a2bd353307e2ac71dff76655f9ea38",
+      "bytes": 29182
+    },
+    "banks/dev-a-128.json": {
+      "sha256": "0871164689e54715b7c2b0ced789ac64a518863b737de84d1473b342b75f5cc4",
+      "bytes": 571
+    },
+    "banks/dev-a.bin": {
+      "sha256": "95ac736a739aa8bc7b91a7fc3a3fc94f2c07ba6bfec5226f3e786a9a9c1cc63a",
+      "bytes": 96856
+    },
+    "banks/dev-b-128.csv": {
+      "sha256": "1e034505e1b2c6fdc3ee47489f273b0033135b27575b602f64ddd5bf3b697e0f",
+      "bytes": 29104
+    },
+    "banks/dev-b-128.json": {
+      "sha256": "f798846efe0e4f6158ff1a92d38f4360acccb59948abf1f8e288c87df671bfcb",
+      "bytes": 571
+    },
+    "banks/train-source-1024.csv": {
+      "sha256": "64665ba38ff258d300094da372cb9e3d5c1bcfdba08ae213a49da1b547bb85da",
+      "bytes": 230268
+    },
+    "banks/train-source-1024.json": {
+      "sha256": "67ed92f1c5ff572e36736211a79a21e24b9f568bcb9db421f41c5d807ecfc821",
+      "bytes": 577
+    },
+    "evaluation-records.csv": {
+      "sha256": "5e01b258c96658b1df252684252ccbd8e30356327c08b6fd31fc01d15c0b1216",
+      "bytes": 5154553
+    },
+    "metrics-headline.csv": {
+      "sha256": "593425de719c6920c3e4c70288713771c096f58aaecc58daaff78595c40f4d01",
+      "bytes": 4124
+    },
+    "metrics-paired.csv": {
+      "sha256": "ebd71991a6e1a8a325522bf35f69c56e8e6208165c7cbd25f00ebdf82d7e0253",
+      "bytes": 2069
+    },
+    "proof/bank-provenance.json": {
+      "sha256": "7c4b39b44f92912365bd501b241a595a15a8c2b1d1725331a15a732527f3a303",
+      "bytes": 5779
+    },
+    "proof/legacy-retention.log": {
+      "sha256": "85e93f5130b9c66271efaf4ee33598d1f646683623991a69d4f749433f333bac",
+      "bytes": 2261
+    },
+    "proof/probe-coverage.json": {
+      "sha256": "d497c2afb8ae393350695cb53df5c5d71b936b74d9707213cc18d3dd14881764",
+      "bytes": 1933
+    },
+    "proof/probe-coverage.md": {
+      "sha256": "531da85f8b04c278a992b4a7063afd44a70659c205cd10a82cfdfd404e272732",
+      "bytes": 1594
+    },
+    "proof/resume-checks.log": {
+      "sha256": "b8f330c83a9da3f2b5af483133bcadfeef9035918a37263cbcd8b0bd6b21fcc3",
+      "bytes": 2186
+    },
+    "proof/selection-record.json": {
+      "sha256": "11e9f1a9b3ee2081ee141ca45d3e4e76ca3e091c75b440a024bd0afb07468b34",
+      "bytes": 3430
+    },
+    "proof/source-recovery.json": {
+      "sha256": "e74f91cfdce216d4b27a1d83409e7ca1161ed8b9b14cc192d1c46b67552555ad",
+      "bytes": 730
+    },
+    "proof/training-runners.tar.gz": {
+      "sha256": "83533b37db8ad385e4228dbc665c0315751a38740e0c035fc75caec67cfa211d",
+      "bytes": 34298
+    },
+    "training/rollout-behaviour.csv": {
+      "sha256": "42035af191c29663877ebd9832896dd4b301e2b724df02bd7075ee84fa9b8d7c",
+      "bytes": 233353
+    },
+    "training/runs-history.csv": {
+      "sha256": "66fd87762c22fdbd3ad739f51eae42ad6ee26e1d42af510dc94f44ba7f7f63e4",
+      "bytes": 4280
+    },
+    "trajectory-records.csv": {
+      "sha256": "578303637354d19c8e1f3ef8bbca4392ede5e6f7a24a5360f9f3fc7737838702",
+      "bytes": 1963376
+    }
+  },
+  "limits": [
+    "Single training seed per arm; one DEV split used for selection.",
+    "Paired intervals span or nearly span zero: no success-rate gain is statistically established.",
+    "Local component only; whole-route global navigation is a different component.",
+    "Metal simulator only; the native camera geometry is a Metal-side sensor sensitivity, not an independent simulator.",
+    "The frozen 90-level bank and the final suite were never loaded, scored or used for selection."
+  ],
+  "code": {
+    "navigation_waypoint_training.mm": "aabe46e7c7c5aeddef1feca13fd930d5e2cf02567909f79f75c830f4a745344f",
+    "local_waypoint_results.py": "14813c090489b86e983f4834eeb074cb6337af51c01e84df06115886f32a1353",
+    "navigation_visibility_audit.mm": "6db0e604cd087b01f0af874ad525e9b3c5ee19d17e6c70a1321f94ced2c1b247"
+  },
+  "metric_corrections": {
+    "completed_episodes": "count across128environments, not per-environment count",
+    "mean_completed_episode_time_s": "all completed episodes, not successful arrivals only",
+    "active_episode_min_clearance_m": "current active episodes at rollout end, not full historical collision minimum"
+  },
+  "csv_storage": "Public CSV line endings normalized to LF; recorded values unchanged."
+}

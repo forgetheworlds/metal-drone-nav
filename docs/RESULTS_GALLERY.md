@@ -396,3 +396,23 @@ transfer or new learning. The 14-pose native fixture calibrates projection and m
 - Protocol and limits: [calibrated profile](CALIBRATED_SENSOR_PROFILE.md).
 - Input records and hashes: [proof](../evidence/inputs/sensor-profile/proof.json).
 - Reproduce this figure: `python3 sensor_profile_results.py`.
+
+## Local waypoint learning and frozen native transfer
+
+![Local development outcomes](../artifacts/local-waypoint-eval-success.png)
+
+![Observed source learning progression](../artifacts/local-waypoint-training-curves.png)
+
+![Contacts and conditional successful arrival time](../artifacts/local-waypoint-behaviour.png)
+
+![XY projections of four recorded source tasks](../artifacts/local-waypoint-trajectories.png)
+
+These measure local 1–3 m provided goals, single-seed training and development feedback.
+Rebuild from published records with `python3 local_waypoint_results.py`.
+[Protocol/source provenance/limits](LOCAL_WAYPOINT_EXPERIMENT.md).
+
+[![Actual native local flight](../artifacts/videos/native-local-waypoint-preview.png)](../artifacts/videos/native-local-waypoint.mp4)
+
+This selected success is an actual native Webots scene. Paired 32-flight verdicts
+agree 31/32 with Metal; the faster actor reaches 12/16 in both. No global routing,
+noise, moving-obstacle or blind final claim is made.

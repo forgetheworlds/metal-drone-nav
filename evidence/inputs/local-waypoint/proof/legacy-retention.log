@@ -1,0 +1,11 @@
+metal-training.lock acquired
+LEGACY candidate  family=7 family=7 mode=17 episodes=128 success=0.914062 collision=0.0859375 timeout=0 progress=0.879694 mean_goal_time=2.85513 mean_speed=1.40735 peak_speed=2.42927 min_clearance=-0.0109661 wall_s=0.173953
+LEGACY candidate  family=8 family=8 mode=17 episodes=128 success=0.9375 collision=0.0625 timeout=0 progress=0.906876 mean_goal_time=2.78083 mean_speed=1.42755 peak_speed=2.45773 min_clearance=-0.00311449 wall_s=0.102074
+LEGACY fast       family=7 family=7 mode=17 episodes=128 success=0.851562 collision=0.148438 timeout=0 progress=0.850242 mean_goal_time=2.80046 mean_speed=1.45722 peak_speed=2.42108 min_clearance=-0.014556 wall_s=0.0958407
+LEGACY fast       family=8 family=8 mode=17 episodes=128 success=0.960938 collision=0.0390625 timeout=0 progress=0.911458 mean_goal_time=2.81179 mean_speed=1.43487 peak_speed=2.44629 min_clearance=-0.00962937 wall_s=0.0964806
+LEGACY control    family=7 family=7 mode=17 episodes=128 success=0.875 collision=0.125 timeout=0 progress=0.857491 mean_goal_time=2.70446 mean_speed=1.46599 peak_speed=2.43072 min_clearance=-0.0146124 wall_s=0.0913818
+LEGACY control    family=8 family=8 mode=17 episodes=128 success=0.945312 collision=0.0546875 timeout=0 progress=0.904417 mean_goal_time=2.75909 mean_speed=1.44644 peak_speed=2.69273 min_clearance=-0.00858933 wall_s=0.0936989
+LEGACY arrival    family=7 family=7 mode=17 episodes=128 success=0.84375 collision=0.15625 timeout=0 progress=0.846975 mean_goal_time=2.79722 mean_speed=1.44897 peak_speed=2.83222 min_clearance=-0.0240023 wall_s=0.0998986
+LEGACY arrival    family=8 family=8 mode=17 episodes=128 success=0.960938 collision=0.0390625 timeout=0 progress=0.904206 mean_goal_time=2.78211 mean_speed=1.44161 peak_speed=2.40142 min_clearance=-0.0035048 wall_s=0.0927282
+LEGACY packaged   family=7 family=7 mode=17 episodes=128 success=0.898438 collision=0.101562 timeout=0 progress=0.872398 mean_goal_time=2.77652 mean_speed=1.47268 peak_speed=2.69353 min_clearance=-0.0184291 wall_s=0.0990315
+LEGACY packaged   family=8 family=8 mode=17 episodes=128 success=0.890625 collision=0.109375 timeout=0 progress=0.862798 mean_goal_time=2.83684 mean_speed=1.44559 peak_speed=2.38161 min_clearance=-0.0081982 wall_s=0.0993489

@@ -1,0 +1,41 @@
+{
+  "scope": "16predeclaredpairedlocal1\u20133mDEVtasks\u00d72frozenactors; notwhole-route orblindfinal",
+  "root_review": {
+    "rows": 32,
+    "outcome_agreement": 31,
+    "manifest_artifacts_checked": 276,
+    "all_manifest_hashes_match": true,
+    "native_receipts_verified": 32,
+    "native_outcomes": {
+      "arrival": {
+        "success": 11,
+        "collision": 4,
+        "timeout": 1
+      },
+      "fast": {
+        "success": 12,
+        "collision": 3,
+        "timeout": 1
+      }
+    },
+    "limits": [
+      "16 predeclared paired sourceDEVlocal1\u20133m goals, no globalroute test",
+      "sourceDEVusedforselection, not blindfinal",
+      "single trainingseed, no broad robustness/movers/speed envelope",
+      "isolated source\u2192native adapter reset/reference fix needed; discardedpassretained"
+    ]
+  },
+  "published_files": {
+    "webots/local_waypoint_transfer.py": "61598d72ba3bbb7ce4400da479192773bd810575e054f967c023c30120310a61",
+    "webots/controllers/local_waypoint_transfer/local_waypoint_transfer.cpp": "9c364b4cb88231e891187988d288d4df5ead5024bd714d649691439181de886f",
+    "artifacts/videos/native-local-waypoint.mp4": "411697c91696a381bf9ce96fa82494f4fd80d21156c33361f021fe0371020a0d",
+    "assets/navigation-local-waypoint-experimental.bin": "5b636f0984c953641d03140e38b657013c6b5b9a5560e0afa4fe7a8fd64c8cc0",
+    "assets/checkpoints/local-waypoint-fast-experimental.bin.best": "7a37ace8e86bfe7ce94c6a2df6e49ee61e398054ef8a74b7ec9cc035071dd4b6"
+  },
+  "limits": [
+    "prototype discardedfirstpass reset-reference mismatch retained locally",
+    "public runner changes artifact defaults only; scored controller bytes unchanged",
+    "shared1msODE,100HzRAPTOR,20Hznavigation,.18collision sphere,20sbudget,.35radius,.5speed/.2shold",
+    "ideal ego sensing; no hardware, broad robustness orglobalroute claim"
+  ]
+}

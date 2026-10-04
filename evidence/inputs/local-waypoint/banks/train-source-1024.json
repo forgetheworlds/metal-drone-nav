@@ -1,0 +1,17 @@
+{
+  "schema":"local-waypoint-bank-v1",
+  "spec":"source",
+  "seed":20261004,
+  "environments":128,
+  "period":8,
+  "scene_distance_m":4,
+  "goal_min_m":1,
+  "goal_max_m":3,
+  "start_velocity_max_mps":1,
+  "route_length_ratio_max":2.5,
+  "endpoint_clearance_m":0.300000012,
+  "families":[0,1,2,4,5,14,15,16],
+  "bank_file":"/Users/muadhsambul/.codex/worktrees/calibrated-navigation-sensors/RL/results/omp-local-waypoints/banks/source.bin",
+  "bank_sha256":"72ba5a3ac913d8dcecadad80455dbc5c4a6c0ea08f8be6fcda77e65b36e375f8",
+  "actor_sees":"depth,ego,provided_local_goal_only"
+}

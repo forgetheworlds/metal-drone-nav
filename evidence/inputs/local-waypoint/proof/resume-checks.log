@@ -1,0 +1,35 @@
+== parity: uninterrupted 24 vs split 12 + resumed 12 ==
+PASS uninterrupted 24 rollouts
+PASS split part 1 (12 rollouts)
+PASS split part 2 (resumed 12)
+PASS resume contract validated before load
+PASS on-disk bank re-validated on resume
+PASS checkpoint parity sha256=3cb4dd56cd28d6347b2f84481bbc14c4fa2941202dbd913f29e4b1368f9ce5b9
+PASS dev evaluation parity sha256=652c9237f275c4a0c4a3b34ffb0c8cb6b9d0c579e519f8fba18ab785cd26f5a8
+== rejection: wrong training bank ==
+PASS wrong-bank-spec rejected: resume sidecar key "bank_spec" is "source" but this run uses "dev-b"
+== rejection: wrong evaluation sampler ==
+PASS wrong-eval-spec rejected: resume sidecar key "eval_spec" is "dev-a" but this run uses "dev-b"
+== rejection: wrong optimizer recipe ==
+PASS wrong-learning-rate rejected: resume sidecar key "learning_rate" is 0.000100 but this run uses 0.000200
+PASS wrong-entropy rejected: resume sidecar key "entropy_coef" is 0.001000 but this run uses 0.002000
+== rejection: wrong task reward ==
+PASS wrong-time-cost rejected: resume sidecar key "time_cost_per_s" is 0.200000 but this run uses 1.000000
+== rejection: wrong evaluation cadence ==
+PASS wrong-eval-every rejected: resume sidecar key "eval_every" is 12 but this run uses 50
+== rejection: wrong warmstart ==
+PASS wrong-warmstart rejected: resume sidecar key "warmstart_sha256" is 
+== rejection: wrong sensor profile (native build on a legacy sidecar) ==
+PASS wrong-profile rejected: resume sidecar key "sensor_profile" is "legacy" but this run uses "native"
+== rejection: tampered compiled-source hash in the sidecar ==
+PASS tampered-core-hash rejected: resume sidecar key "core_sha256" is "0000000000000000000000000000000000000000000000000000000000000000" but this run uses
+== rejection: sidecar with a missing key (existence is never enough) ==
+PASS incomplete-sidecar rejected: resume sidecar is missing required key "core_sha256"
+== rejection: legacy v1 sidecar from a completed run ==
+PASS legacy v1 sidecar rejected without artifact changes
+== rejection: missing sidecar ==
+PASS missing sidecar rejected
+== rejection: on-disk bank swapped for a different split ==
+PASS swapped on-disk bank rejected
+
+resume_checks ALL PASS

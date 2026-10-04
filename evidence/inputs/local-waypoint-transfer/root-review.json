@@ -1,0 +1,25 @@
+{
+  "rows": 32,
+  "outcome_agreement": 31,
+  "manifest_artifacts_checked": 276,
+  "all_manifest_hashes_match": true,
+  "native_receipts_verified": 32,
+  "native_outcomes": {
+    "arrival": {
+      "success": 11,
+      "collision": 4,
+      "timeout": 1
+    },
+    "fast": {
+      "success": 12,
+      "collision": 3,
+      "timeout": 1
+    }
+  },
+  "limits": [
+    "16 predeclared paired sourceDEVlocal1\u20133m goals, no globalroute test",
+    "sourceDEVusedforselection, not blindfinal",
+    "single trainingseed, no broad robustness/movers/speed envelope",
+    "isolated source\u2192native adapter reset/reference fix needed; discardedpassretained"
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "schema": "local-waypoint-probe-coverage-v1",
+  "groups": {
+    "local-eval, legacy camera geometry": {
+      "logs": 90,
+      "reset_pass": 90,
+      "obs_pass": 90,
+      "obs_skipped": 0,
+      "bank_eval": 90,
+      "errors": 0
+    },
+    "local-eval, delay sweep": {
+      "logs": 18,
+      "reset_pass": 18,
+      "obs_pass": 0,
+      "obs_skipped": 18,
+      "bank_eval": 18,
+      "errors": 0
+    },
+    "local-test (production parity gates + probes on all five banks)": {
+      "logs": 2,
+      "reset_pass": 2,
+      "obs_pass": 2,
+      "obs_skipped": 0,
+      "bank_eval": 0,
+      "errors": 0
+    },
+    "local-eval, native camera geometry": {
+      "logs": 12,
+      "reset_pass": 12,
+      "obs_pass": 12,
+      "obs_skipped": 0,
+      "bank_eval": 12,
+      "errors": 0
+    },
+    "local-trace": {
+      "logs": 6,
+      "reset_pass": 6,
+      "obs_pass": 6,
+      "obs_skipped": 0,
+      "bank_eval": 0,
+      "errors": 0
+    }
+  },
+  "training": {
+    "candidate-local": {
+      "source": "runs/candidate-local.log",
+      "reset_pass_lines": 41,
+      "observation_pass_lines": 41,
+      "command": "local-train (this runner)"
+    },
+    "candidate-fast": {
+      "source": "runs/candidate-fast.log",
+      "reset_pass_lines": 41,
+      "observation_pass_lines": 41,
+      "command": "local-train (this runner)"
+    },
+    "control-source": {
+      "source": "runs/control-source.log",
+      "reset_pass_lines": 0,
+      "observation_pass_lines": 0,
+      "command": "train-tasks (unchanged production command)"
+    }
+  },
+  "resume": {
+    "resumed_half": {
+      "file": "checks/split-part2.log",
+      "resume_contract_pass": 1,
+      "resume_bank_file_pass": 1,
+      "reset_pass_lines": 2,
+      "observation_pass_lines": 2
+    },
+    "negative_cases": {
+      "refused_before_load": 13,
+      "refused_after_running_a_probe": 0,
+      "expected": "refused_after_running_a_probe must stay 0"
+    }
+  }
+}

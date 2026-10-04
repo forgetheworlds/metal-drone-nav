@@ -1,0 +1,172 @@
+{
+  "schema": "local-waypoint-bank-provenance-v1",
+  "hash_semantics": {
+    "entries_sha256": "SHA-256 over the WPBANK1 payload only (period*count 756-byte BankEntry records); this is the byte stream the GPU reads and what train.json bank_entry_sha256 (v2) / bank_sha256 (v1) names.",
+    "file_sha256": "SHA-256 over the whole file including the 88-byte WPBANK1 header; this is what manifest.json banks names.",
+    "bank_seed": "Spec RNG seed, the generator INPUT (source=20261004).",
+    "scene_seed": "Per-task world seed, an RNG OUTPUT recorded on every CSV row; distinct from bank_seed."
+  },
+  "banks": {
+    "clutter": {
+      "file_sha256": "30da214c7ae8b386a68179aae72691c74d6082fda051882b224c9f7fc96be973",
+      "entries_sha256": "8455652eea8f885c7e89883a64a1f477273ee03c7a56239141d70e7bd4a1eb25",
+      "header": {
+        "magic": "WPBANK1",
+        "version": 1,
+        "period": 1,
+        "count": 128,
+        "entry_bytes": 756,
+        "entry_sha256": "8455652eea8f885c7e89883a64a1f477273ee03c7a56239141d70e7bd4a1eb25"
+      },
+      "payload_bytes": 96768,
+      "matches_manifest": false,
+      "ok": true
+    },
+    "dev-a": {
+      "file_sha256": "95ac736a739aa8bc7b91a7fc3a3fc94f2c07ba6bfec5226f3e786a9a9c1cc63a",
+      "entries_sha256": "517a8f97489b004ac94fac93e8e6d3c68493806609c26494b29709bb45c960b9",
+      "header": {
+        "magic": "WPBANK1",
+        "version": 1,
+        "period": 1,
+        "count": 128,
+        "entry_bytes": 756,
+        "entry_sha256": "517a8f97489b004ac94fac93e8e6d3c68493806609c26494b29709bb45c960b9"
+      },
+      "payload_bytes": 96768,
+      "matches_manifest": false,
+      "ok": true
+    },
+    "dev-b": {
+      "file_sha256": "394233f7d7e5012e8ac603eee6014a178b634be9f4090a8e6ddd04704067619e",
+      "entries_sha256": "33094fb090c5e85d8d4bd81550a35036a4a2ca535a1e491286a30f0f4583a479",
+      "header": {
+        "magic": "WPBANK1",
+        "version": 1,
+        "period": 1,
+        "count": 128,
+        "entry_bytes": 756,
+        "entry_sha256": "33094fb090c5e85d8d4bd81550a35036a4a2ca535a1e491286a30f0f4583a479"
+      },
+      "payload_bytes": 96768,
+      "matches_manifest": false,
+      "ok": true
+    },
+    "open": {
+      "file_sha256": "27611c470f27366576dde29911c328e9b8ab6df4015aff90bda8d765daef0555",
+      "entries_sha256": "420fcf151dc9736751744f95bddc5f44f6ae47774e13a73899fe2c445f19e5a4",
+      "header": {
+        "magic": "WPBANK1",
+        "version": 1,
+        "period": 1,
+        "count": 128,
+        "entry_bytes": 756,
+        "entry_sha256": "420fcf151dc9736751744f95bddc5f44f6ae47774e13a73899fe2c445f19e5a4"
+      },
+      "payload_bytes": 96768,
+      "matches_manifest": false,
+      "ok": true
+    },
+    "source": {
+      "file_sha256": "72ba5a3ac913d8dcecadad80455dbc5c4a6c0ea08f8be6fcda77e65b36e375f8",
+      "entries_sha256": "d8db583ae543f5eb68e729d8bcd1d89d85dc10e8064267d513b13b60a01323ac",
+      "header": {
+        "magic": "WPBANK1",
+        "version": 1,
+        "period": 8,
+        "count": 1024,
+        "entry_bytes": 756,
+        "entry_sha256": "d8db583ae543f5eb68e729d8bcd1d89d85dc10e8064267d513b13b60a01323ac"
+      },
+      "payload_bytes": 774144,
+      "matches_manifest": false,
+      "ok": true
+    }
+  },
+  "source_bank_file_identity": {
+    "files": {
+      "banks/source.bin": "72ba5a3ac913d8dcecadad80455dbc5c4a6c0ea08f8be6fcda77e65b36e375f8",
+      "runs/candidate-local.bin.bank.bin": "72ba5a3ac913d8dcecadad80455dbc5c4a6c0ea08f8be6fcda77e65b36e375f8",
+      "runs/candidate-fast.bin.bank.bin": "72ba5a3ac913d8dcecadad80455dbc5c4a6c0ea08f8be6fcda77e65b36e375f8"
+    },
+    "byte_identical": true
+  },
+  "spec_seeds": {
+    "source": {
+      "bank_seed_spec_input": 20261004,
+      "first_row_scene_seed_rng_output": 549169502,
+      "distinct_scene_seeds": 1024,
+      "tasks": 1024
+    },
+    "dev-a": {
+      "bank_seed_spec_input": 20261005,
+      "first_row_scene_seed_rng_output": 549423487,
+      "distinct_scene_seeds": 128,
+      "tasks": 128
+    },
+    "dev-b": {
+      "bank_seed_spec_input": 20261007,
+      "first_row_scene_seed_rng_output": 548915517,
+      "distinct_scene_seeds": 128,
+      "tasks": 128
+    },
+    "open": {
+      "bank_seed_spec_input": 20261008,
+      "first_row_scene_seed_rng_output": 549989091,
+      "distinct_scene_seeds": 128,
+      "tasks": 128
+    },
+    "clutter": {
+      "bank_seed_spec_input": 20261009,
+      "first_row_scene_seed_rng_output": 550243010,
+      "distinct_scene_seeds": 128,
+      "tasks": 128
+    }
+  },
+  "train_dev_separation": {
+    "dev-a": {
+      "tasks": 128,
+      "scene_seed_overlap_with_train": 0,
+      "exact_task_overlap_with_train": 0,
+      "disjoint": true
+    },
+    "dev-b": {
+      "tasks": 128,
+      "scene_seed_overlap_with_train": 0,
+      "exact_task_overlap_with_train": 0,
+      "disjoint": true
+    },
+    "open": {
+      "tasks": 128,
+      "scene_seed_overlap_with_train": 0,
+      "exact_task_overlap_with_train": 0,
+      "disjoint": true
+    },
+    "clutter": {
+      "tasks": 128,
+      "scene_seed_overlap_with_train": 0,
+      "exact_task_overlap_with_train": 0,
+      "disjoint": true
+    }
+  },
+  "sidecars": {
+    "candidate-fast.bin.train.json": {
+      "schema": "local-waypoint-train-v1",
+      "bank_spec": "source",
+      "bank_seed": "20261004",
+      "bank_entries": "1024",
+      "bank_period": "8",
+      "entries_sha256": "d8db583ae543f5eb68e729d8bcd1d89d85dc10e8064267d513b13b60a01323ac"
+    },
+    "candidate-local.bin.train.json": {
+      "schema": "local-waypoint-train-v1",
+      "bank_spec": "source",
+      "bank_seed": "20261004",
+      "bank_entries": "1024",
+      "bank_period": "8",
+      "entries_sha256": "d8db583ae543f5eb68e729d8bcd1d89d85dc10e8064267d513b13b60a01323ac"
+    }
+  },
+  "problems": [],
+  "verified": true
+}

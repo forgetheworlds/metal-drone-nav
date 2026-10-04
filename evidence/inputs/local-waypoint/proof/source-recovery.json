@@ -1,0 +1,20 @@
+{
+  "journal_sha256": "68b55ca19de830c3fc7ef0af9b9b068ee324fd3a8aa57de04da88215ff544328",
+  "literal_source_operations_applied": 45,
+  "unapplied_operations": [],
+  "matches": [
+    {
+      "arm": "candidate-local",
+      "sha256": "12d3319fc7d84ca091c0b729a87be0c3254c28285b5c2b1a31915e04d2ae5759",
+      "event_index": 59431,
+      "tool_call_id": "call_00_e5n7n6e7mwgu5rp7ahf6mqvt"
+    },
+    {
+      "arm": "candidate-fast",
+      "sha256": "0d25ab9391b2f4628642c095ed62d90c282e7184b370a1adec8d12872eda26b8",
+      "event_index": 80203,
+      "tool_call_id": "call_00_anl2xpk4q3zqc5edwpp0u5nh"
+    }
+  ],
+  "method": "replayed successful write and unique literal edit operations only; never executed journal shell commands"
+}

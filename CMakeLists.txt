@@ -48,3 +48,11 @@ target_compile_definitions(metal_nav_imitation PRIVATE
     SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" FIXED_PPO_ACTOR_OBS_DIM=184)
 target_link_libraries(metal_nav_imitation PRIVATE
     "-framework Foundation" "-framework Metal" "-framework Accelerate")
+
+# Local waypoint training remains an experimental component; defaults unchanged.
+add_executable(metal_nav_waypoint navigation_waypoint_training.mm)
+target_compile_options(metal_nav_waypoint PRIVATE -O3 -fobjc-arc -Wall -Wextra)
+target_compile_definitions(metal_nav_waypoint PRIVATE
+    SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" FIXED_PPO_ACTOR_OBS_DIM=184)
+target_link_libraries(metal_nav_waypoint PRIVATE
+    "-framework Foundation" "-framework Metal" "-framework Accelerate")

@@ -1,0 +1,16 @@
+{
+  "task_count": 128,
+  "success": 100,
+  "contact_count": 27,
+  "raw_and_pooled_unseen_contact_geometry": 17,
+  "proved_entire_collider_outside_fov_all_frames": 6,
+  "visible_to_80x64_counterfactual_same_fov_and_poses": 0,
+  "remaining_inconclusive_or_occluded": 11,
+  "limits": [
+    "posthoc collider identity from source geometry never input to actor",
+    "seeing any part of an obstacle does not prove the contact surface or safe route was observable",
+    "dense80x64 ray grid is analytic counterfactual; not a trained policy or independent sensor validation",
+    "single selected184-input policy and128sourceDEVlocaltasks; no whole-route claim",
+    "camera histories use static scene fixture; current measured320ray attribution error zero"
+  ]
+}

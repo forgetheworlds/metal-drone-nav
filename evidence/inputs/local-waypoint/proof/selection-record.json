@@ -1,0 +1,101 @@
+{
+  "schema": "local-waypoint-selection-record-v1",
+  "entries": [
+    {
+      "arm": "candidate",
+      "checkpoint": "runs/candidate-local.bin.best",
+      "checkpoint_sha256": "a2f38aec929e1a107660becbbcdb6aee9d6f43da999c03e185573736343f6a8e",
+      "checkpoint_mtime": "2026-10-04 03:07:28",
+      "selection_csv": "runs/candidate-local.bin.best-dev.csv",
+      "selection_csv_sha256": "cff6bf48e23a657ab1639553efc37c92be9811d689bc200347770d99b75e9a9a",
+      "selection_csv_mtime": "2026-10-04 03:07:28",
+      "same_second": true,
+      "record_counts": {
+        "tasks": 128,
+        "successes": 103,
+        "contacts": 23,
+        "timeouts": 2,
+        "arrival_mean_s": 4.507309942524272
+      },
+      "selection_rollout_from_history": 800,
+      "independent_reevaluation": {
+        "tasks": 128,
+        "successes": 103,
+        "contacts": 23,
+        "timeouts": 2,
+        "arrival_mean_s": 4.507309942524272
+      },
+      "reevaluation_matches": true,
+      "selection_time_record": {
+        "path": "runs/candidate-local.bin.best-dev.csv",
+        "rows": 128,
+        "cells_differing_vs_fresh_reevaluation": 0,
+        "columns_added_since_training": [
+          "sensor_delay",
+          "command_delay"
+        ]
+      }
+    },
+    {
+      "arm": "fast",
+      "checkpoint": "runs/candidate-fast.bin.best",
+      "checkpoint_sha256": "7a37ace8e86bfe7ce94c6a2df6e49ee61e398054ef8a74b7ec9cc035071dd4b6",
+      "checkpoint_mtime": "2026-10-04 03:20:04",
+      "selection_csv": "runs/candidate-fast.bin.best-dev.csv",
+      "selection_csv_sha256": "42726f3385eb85b2fbc9f7835a8d33235333bfc1ece03c74d7dd6a2b6e4349c2",
+      "selection_csv_mtime": "2026-10-04 03:20:04",
+      "same_second": true,
+      "record_counts": {
+        "tasks": 128,
+        "successes": 100,
+        "contacts": 27,
+        "timeouts": 1,
+        "arrival_mean_s": 3.6805147951999997
+      },
+      "selection_rollout_from_history": 1150,
+      "independent_reevaluation": {
+        "tasks": 128,
+        "successes": 100,
+        "contacts": 27,
+        "timeouts": 1,
+        "arrival_mean_s": 3.6805147951999997
+      },
+      "reevaluation_matches": true,
+      "selection_time_record": {
+        "path": "runs/candidate-fast.bin.best-dev.csv",
+        "rows": 128,
+        "cells_differing_vs_fresh_reevaluation": 0,
+        "columns_added_since_training": [
+          "sensor_delay",
+          "command_delay"
+        ]
+      }
+    },
+    {
+      "arm": "control",
+      "checkpoint": "runs/control-source.bin.best",
+      "checkpoint_sha256": "c28d327dc21c716e6a90036919ad69a8171281f44e83e328765b262ef8d0a2ea",
+      "checkpoint_mtime": "2026-10-04 03:09:55",
+      "selection_csv": "runs/control-source.bin.best-dev.csv",
+      "selection_csv_sha256": "bc461e2293909cb17ce56d684623364274f6dbd2b89417d8fcf85cca94848665",
+      "selection_csv_mtime": "2026-10-04 03:09:55",
+      "same_second": true,
+      "record_counts": {
+        "tasks": 128,
+        "successes": 113,
+        "contacts": 15,
+        "timeouts": 0,
+        "arrival_mean_s": 4.500453716814159
+      },
+      "selection_rollout_from_history": 1950,
+      "independent_reevaluation": {},
+      "reevaluation_matches": false,
+      "selection_time_record": {
+        "path": "runs/control-source.bin.best-dev.csv",
+        "rows": 128,
+        "cells_differing_vs_fresh_reevaluation": null,
+        "columns_added_since_training": []
+      }
+    }
+  ]
+}

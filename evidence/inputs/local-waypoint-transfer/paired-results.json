@@ -1,0 +1,1785 @@
+{
+  "diagnosis": {
+    "aggregate": {
+      "arrival": {
+        "contact_mean_clearance_m": -0.00016115150122618382,
+        "flights": 16,
+        "max_reference_error_m": 5.115676669712122e-06,
+        "mean_first_entries": 0.8125,
+        "mean_min_clearance_m": 0.30358822600587415,
+        "mean_min_sensor_range_m": 0.912728125,
+        "mean_path_ratio": 1.3006121938359956,
+        "mean_tracking_rms_mps": 0.320817125,
+        "success_mean_clearance_m": 0.4397447098869902
+      },
+      "fast": {
+        "contact_mean_clearance_m": -2.7716048510373348e-05,
+        "flights": 16,
+        "max_reference_error_m": 5.115676669712122e-06,
+        "mean_first_entries": 0.75,
+        "mean_min_clearance_m": 0.3826224414691232,
+        "mean_min_sensor_range_m": 1.0131710625,
+        "mean_path_ratio": 1.0321388695865856,
+        "mean_tracking_rms_mps": 0.2348728125,
+        "success_mean_clearance_m": 0.5101397331924586
+      }
+    },
+    "per_flight": [
+      {
+        "actor": "arrival",
+        "arrival_s": 4.1,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.89,
+        "mean_speed_mps": 0.870009756097561,
+        "min_clearance_m": 0.15164605695259642,
+        "min_sensor_range_m": 0.543222,
+        "path_ratio": 1.8418723604361205,
+        "reference_error_m": 5.115676669712122e-06,
+        "slug": "lwt-env000-poles-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.420577
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 3.2,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 3.01,
+        "mean_speed_mps": 0.543890625,
+        "min_clearance_m": 0.537358152238077,
+        "min_sensor_range_m": 1.26874,
+        "path_ratio": 0.8986966083141893,
+        "reference_error_m": 5.115676669712122e-06,
+        "slug": "lwt-env000-poles-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.122026
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 2.95,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.41,
+        "mean_speed_mps": 0.8221932203389829,
+        "min_clearance_m": 0.8192555134930612,
+        "min_sensor_range_m": 1.63953,
+        "path_ratio": 1.466369417554257,
+        "reference_error_m": 1.9367794637782776e-06,
+        "slug": "lwt-env001-doorway-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.340634
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.6,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 2.11,
+        "mean_speed_mps": 0.7392115384615384,
+        "min_clearance_m": 0.8986915134930611,
+        "min_sensor_range_m": 1.71228,
+        "path_ratio": 1.1619557042834603,
+        "reference_error_m": 1.9367794637782776e-06,
+        "slug": "lwt-env001-doorway-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.164014
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 2.9,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 0.82,
+        "mean_speed_mps": 0.8777931034482759,
+        "min_clearance_m": 0.45396104840804213,
+        "min_sensor_range_m": 0.559479,
+        "path_ratio": 2.253933692086052,
+        "reference_error_m": 3.6187283598285285e-06,
+        "slug": "lwt-env002-table-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.382013
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.55,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 2.37,
+        "mean_speed_mps": 0.6339490196078432,
+        "min_clearance_m": 0.34262366082508205,
+        "min_sensor_range_m": 0.471725,
+        "path_ratio": 1.4313488327370951,
+        "reference_error_m": 3.6187283598285285e-06,
+        "slug": "lwt-env002-table-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.264355
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 2.8,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 2.1,
+        "mean_speed_mps": 0.829375,
+        "min_clearance_m": 0.5904639675136567,
+        "min_sensor_range_m": 1.25926,
+        "path_ratio": 1.1174213789261436,
+        "reference_error_m": 7.934131296338504e-07,
+        "slug": "lwt-env003-bent_hallway-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.172213
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.6,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 2.13,
+        "mean_speed_mps": 0.8790307692307693,
+        "min_clearance_m": 0.6344844475136566,
+        "min_sensor_range_m": 1.25926,
+        "path_ratio": 1.0997283725301423,
+        "reference_error_m": 7.934131296338504e-07,
+        "slug": "lwt-env003-bent_hallway-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.13847
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 3.85,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.73,
+        "mean_speed_mps": 0.6517324675324675,
+        "min_clearance_m": 0.20321312172746658,
+        "min_sensor_range_m": 1.13046,
+        "path_ratio": 2.0183472737792796,
+        "reference_error_m": 3.0730162969905617e-06,
+        "slug": "lwt-env004-connected_rooms-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.308104
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.05,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.71,
+        "mean_speed_mps": 0.6711170731707318,
+        "min_clearance_m": 0.3683264217274666,
+        "min_sensor_range_m": 1.12626,
+        "path_ratio": 1.1066695344647015,
+        "reference_error_m": 3.0730162969905617e-06,
+        "slug": "lwt-env004-connected_rooms-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.274929
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 3.2,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 3.05,
+        "mean_speed_mps": 0.5370437499999999,
+        "min_clearance_m": 0.2516576925342303,
+        "min_sensor_range_m": 1.06192,
+        "path_ratio": 0.944431000156246,
+        "reference_error_m": 7.718528029684694e-07,
+        "slug": "lwt-env005-vertical_choices-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.119639
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 5.7,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 5.51,
+        "mean_speed_mps": 0.3326157894736842,
+        "min_clearance_m": 0.4082836975301312,
+        "min_sensor_range_m": 0.866707,
+        "path_ratio": 1.0419054415412086,
+        "reference_error_m": 7.718528029684694e-07,
+        "slug": "lwt-env005-vertical_choices-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.123094
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": "",
+        "collision": 1,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.7862518518518518,
+        "min_clearance_m": -6.401807974787399e-06,
+        "min_sensor_range_m": 1.22142,
+        "path_ratio": 0.4588287482009376,
+        "reference_error_m": 2.674496599551684e-06,
+        "slug": "lwt-env006-poles-arrival",
+        "success": 0,
+        "tracking_rms_mps": 0.387068
+      },
+      {
+        "actor": "fast",
+        "arrival_s": "",
+        "collision": 1,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.7650666666666666,
+        "min_clearance_m": -1.4607829982471454e-05,
+        "min_sensor_range_m": 2.02478,
+        "path_ratio": 0.4464658240615168,
+        "reference_error_m": 2.674496599551684e-06,
+        "slug": "lwt-env006-poles-fast",
+        "success": 0,
+        "tracking_rms_mps": 0.331767
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": "",
+        "collision": 1,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.8771727272727272,
+        "min_clearance_m": -1.0266406536063588e-05,
+        "min_sensor_range_m": 1.2742,
+        "path_ratio": 0.6563360072317844,
+        "reference_error_m": 4.5623196431268395e-06,
+        "slug": "lwt-env007-doorway-arrival",
+        "success": 0,
+        "tracking_rms_mps": 0.345767
+      },
+      {
+        "actor": "fast",
+        "arrival_s": "",
+        "collision": 1,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.7362085106382978,
+        "min_clearance_m": -6.0266406536169104e-05,
+        "min_sensor_range_m": 0.697559,
+        "path_ratio": 0.5884195932964575,
+        "reference_error_m": 4.5623196431268395e-06,
+        "slug": "lwt-env007-doorway-fast",
+        "success": 0,
+        "tracking_rms_mps": 0.275231
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": "",
+        "collision": 1,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.6221933333333333,
+        "min_clearance_m": -7.845665454869755e-05,
+        "min_sensor_range_m": 0.479137,
+        "path_ratio": 0.22858840494417745,
+        "reference_error_m": 4.431604473317573e-06,
+        "slug": "lwt-env008-table-arrival",
+        "success": 0,
+        "tracking_rms_mps": 0.284259
+      },
+      {
+        "actor": "fast",
+        "arrival_s": "",
+        "collision": 1,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.5332950000000001,
+        "min_clearance_m": -8.273909012479486e-06,
+        "min_sensor_range_m": 0.396729,
+        "path_ratio": 0.22391763714179508,
+        "reference_error_m": 4.431604473317573e-06,
+        "slug": "lwt-env008-table-fast",
+        "success": 0,
+        "tracking_rms_mps": 0.249474
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 2.05,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.55,
+        "mean_speed_mps": 0.7861707317073171,
+        "min_clearance_m": 0.3645976408863067,
+        "min_sensor_range_m": 0.495275,
+        "path_ratio": 1.177996245189816,
+        "reference_error_m": 6.049317819071054e-07,
+        "slug": "lwt-env009-bent_hallway-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.259681
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.05,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.9,
+        "mean_speed_mps": 0.5644,
+        "min_clearance_m": 0.6484869408863068,
+        "min_sensor_range_m": 0.777001,
+        "path_ratio": 0.8456955391117928,
+        "reference_error_m": 6.049317819071054e-07,
+        "slug": "lwt-env009-bent_hallway-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.174731
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": "",
+        "collision": 0,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.2974645,
+        "min_clearance_m": 0.020864413341999066,
+        "min_sensor_range_m": 0.138595,
+        "path_ratio": 2.221163927603948,
+        "reference_error_m": 1.2237245439263246e-06,
+        "slug": "lwt-env010-connected_rooms-arrival",
+        "success": 0,
+        "tracking_rms_mps": 0.167769
+      },
+      {
+        "actor": "fast",
+        "arrival_s": "",
+        "collision": 0,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 0.290364,
+        "min_clearance_m": 0.0003654133419990768,
+        "min_sensor_range_m": 0.11499,
+        "path_ratio": 2.1681445775035098,
+        "reference_error_m": 1.2237245439263246e-06,
+        "slug": "lwt-env010-connected_rooms-fast",
+        "success": 0,
+        "tracking_rms_mps": 0.164887
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": "",
+        "collision": 1,
+        "first_entry_count": 0,
+        "first_entry_s": -1.0,
+        "mean_speed_mps": 1.4343836734693876,
+        "min_clearance_m": -0.0005494811358451868,
+        "min_sensor_range_m": 0.159463,
+        "path_ratio": 1.2458223062797011,
+        "reference_error_m": 3.826841747248157e-06,
+        "slug": "lwt-env011-vertical_choices-arrival",
+        "success": 0,
+        "tracking_rms_mps": 0.926886
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 3.95,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 3.8,
+        "mean_speed_mps": 0.8318050632911391,
+        "min_clearance_m": 0.15902178228650793,
+        "min_sensor_range_m": 0.612896,
+        "path_ratio": 1.1647784853003138,
+        "reference_error_m": 3.826841747248157e-06,
+        "slug": "lwt-env011-vertical_choices-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.324096
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 4.05,
+        "collision": 0,
+        "first_entry_count": 3,
+        "first_entry_s": 1.02,
+        "mean_speed_mps": 0.8263827160493827,
+        "min_clearance_m": 0.12857376724153174,
+        "min_sensor_range_m": 1.04672,
+        "path_ratio": 1.98505890817355,
+        "reference_error_m": 2.947402572831888e-06,
+        "slug": "lwt-env012-poles-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.359412
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 1.6,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 0.99,
+        "mean_speed_mps": 1.2351062499999999,
+        "min_clearance_m": 0.29170118180921406,
+        "min_sensor_range_m": 1.21341,
+        "path_ratio": 1.1720913284328023,
+        "reference_error_m": 2.947402572831888e-06,
+        "slug": "lwt-env012-poles-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.444035
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 2.45,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 2.04,
+        "mean_speed_mps": 0.8674530612244897,
+        "min_clearance_m": 0.6564000000000001,
+        "min_sensor_range_m": 1.69426,
+        "path_ratio": 1.004549726756201,
+        "reference_error_m": 4.226062136116309e-06,
+        "slug": "lwt-env013-doorway-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.192485
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.55,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 2.4,
+        "mean_speed_mps": 0.8416196078431373,
+        "min_clearance_m": 0.6564000000000001,
+        "min_sensor_range_m": 1.42427,
+        "path_ratio": 1.0144143799268257,
+        "reference_error_m": 4.226062136116309e-06,
+        "slug": "lwt-env013-doorway-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.242392
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 2.25,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.8,
+        "mean_speed_mps": 1.12708,
+        "min_clearance_m": 0.907373,
+        "min_sensor_range_m": 1.01887,
+        "path_ratio": 1.0410692972773832,
+        "reference_error_m": 3.951708334872134e-06,
+        "slug": "lwt-env014-table-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.258299
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.25,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.86,
+        "mean_speed_mps": 1.1836488888888888,
+        "min_clearance_m": 0.9009090000000002,
+        "min_sensor_range_m": 1.01576,
+        "path_ratio": 1.0933212522435949,
+        "reference_error_m": 3.951708334872134e-06,
+        "slug": "lwt-env014-table-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.308434
+      },
+      {
+        "actor": "arrival",
+        "arrival_s": 2.1,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 1.44,
+        "mean_speed_mps": 0.8178714285714286,
+        "min_clearance_m": 0.3100500000000001,
+        "min_sensor_range_m": 0.881839,
+        "path_ratio": 1.1480064067803335,
+        "reference_error_m": 5.084944333187228e-07,
+        "slug": "lwt-env015-bent_hallway-arrival",
+        "success": 1,
+        "tracking_rms_mps": 0.208268
+      },
+      {
+        "actor": "fast",
+        "arrival_s": 2.5,
+        "collision": 0,
+        "first_entry_count": 1,
+        "first_entry_s": 2.12,
+        "mean_speed_mps": 0.632352,
+        "min_clearance_m": 0.27538999999999997,
+        "min_sensor_range_m": 1.22837,
+        "path_ratio": 1.0566688024959645,
+        "reference_error_m": 5.084944333187228e-07,
+        "slug": "lwt-env015-bent_hallway-fast",
+        "success": 1,
+        "tracking_rms_mps": 0.15603
+      }
+    ]
+  },
+  "exclusions_before_flights": [],
+  "kept_tasks": 16,
+  "paired": [
+    {
+      "arrival": {
+        "arrival_s": 4.1,
+        "collision": 0,
+        "final_speed_mps": 0.239634,
+        "mean_speed_mps": 0.870009756097561,
+        "min_clearance_m": 0.15164605695259642,
+        "path_m": 3.56704,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 2,
+      "family_name": "poles",
+      "fast": {
+        "arrival_s": 3.2,
+        "collision": 0,
+        "final_speed_mps": 0.445241,
+        "mean_speed_mps": 0.543890625,
+        "min_clearance_m": 0.537358152238077,
+        "path_m": 1.74045,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 0,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 2.95,
+        "collision": 0,
+        "final_speed_mps": 0.354304,
+        "mean_speed_mps": 0.8221932203389829,
+        "min_clearance_m": 0.8192555134930612,
+        "path_m": 2.42547,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 4,
+      "family_name": "doorway",
+      "fast": {
+        "arrival_s": 2.6,
+        "collision": 0,
+        "final_speed_mps": 0.362917,
+        "mean_speed_mps": 0.7392115384615384,
+        "min_clearance_m": 0.8986915134930611,
+        "path_m": 1.92195,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 1,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 2.9,
+        "collision": 0,
+        "final_speed_mps": 0.45666,
+        "mean_speed_mps": 0.8777931034482759,
+        "min_clearance_m": 0.45396104840804213,
+        "path_m": 2.5456,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 5,
+      "family_name": "table",
+      "fast": {
+        "arrival_s": 2.55,
+        "collision": 0,
+        "final_speed_mps": 0.194195,
+        "mean_speed_mps": 0.6339490196078432,
+        "min_clearance_m": 0.34262366082508205,
+        "path_m": 1.61657,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 2,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 2.8,
+        "collision": 0,
+        "final_speed_mps": 0.36067,
+        "mean_speed_mps": 0.829375,
+        "min_clearance_m": 0.5904639675136567,
+        "path_m": 2.32225,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 14,
+      "family_name": "bent_hallway",
+      "fast": {
+        "arrival_s": 2.6,
+        "collision": 0,
+        "final_speed_mps": 0.171965,
+        "mean_speed_mps": 0.8790307692307693,
+        "min_clearance_m": 0.6344844475136566,
+        "path_m": 2.28548,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 3,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 3.85,
+        "collision": 0,
+        "final_speed_mps": 0.353804,
+        "mean_speed_mps": 0.6517324675324675,
+        "min_clearance_m": 0.20321312172746658,
+        "path_m": 2.50917,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 15,
+      "family_name": "connected_rooms",
+      "fast": {
+        "arrival_s": 2.05,
+        "collision": 0,
+        "final_speed_mps": 0.380792,
+        "mean_speed_mps": 0.6711170731707318,
+        "min_clearance_m": 0.3683264217274666,
+        "path_m": 1.37579,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 4,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 3.2,
+        "collision": 0,
+        "final_speed_mps": 0.367216,
+        "mean_speed_mps": 0.5370437499999999,
+        "min_clearance_m": 0.2516576925342303,
+        "path_m": 1.71854,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 16,
+      "family_name": "vertical_choices",
+      "fast": {
+        "arrival_s": 5.7,
+        "collision": 0,
+        "final_speed_mps": 0.282857,
+        "mean_speed_mps": 0.3326157894736842,
+        "min_clearance_m": 0.4082836975301312,
+        "path_m": 1.89591,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 5,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.65415,
+        "mean_speed_mps": 0.7862518518518518,
+        "min_clearance_m": -6.401807974787399e-06,
+        "path_m": 1.06144,
+        "success": 0,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 2,
+      "family_name": "poles",
+      "fast": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.468957,
+        "mean_speed_mps": 0.7650666666666666,
+        "min_clearance_m": -1.4607829982471454e-05,
+        "path_m": 1.03284,
+        "success": 0,
+        "timeout": 0
+      },
+      "index": 6,
+      "route_class": 1,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.243366,
+        "mean_speed_mps": 0.8771727272727272,
+        "min_clearance_m": -1.0266406536063588e-05,
+        "path_m": 1.92978,
+        "success": 0,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 4,
+      "family_name": "doorway",
+      "fast": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.302309,
+        "mean_speed_mps": 0.7362085106382978,
+        "min_clearance_m": -6.0266406536169104e-05,
+        "path_m": 1.73009,
+        "success": 0,
+        "timeout": 0
+      },
+      "index": 7,
+      "route_class": 1,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.522754,
+        "mean_speed_mps": 0.6221933333333333,
+        "min_clearance_m": -7.845665454869755e-05,
+        "path_m": 0.653303,
+        "success": 0,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 5,
+      "family_name": "table",
+      "fast": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.298295,
+        "mean_speed_mps": 0.5332950000000001,
+        "min_clearance_m": -8.273909012479486e-06,
+        "path_m": 0.639954,
+        "success": 0,
+        "timeout": 0
+      },
+      "index": 8,
+      "route_class": 1,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 2.05,
+        "collision": 0,
+        "final_speed_mps": 0.380669,
+        "mean_speed_mps": 0.7861707317073171,
+        "min_clearance_m": 0.3645976408863067,
+        "path_m": 1.61165,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 14,
+      "family_name": "bent_hallway",
+      "fast": {
+        "arrival_s": 2.05,
+        "collision": 0,
+        "final_speed_mps": 0.376525,
+        "mean_speed_mps": 0.5644,
+        "min_clearance_m": 0.6484869408863068,
+        "path_m": 1.15702,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 9,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": "",
+        "collision": 0,
+        "final_speed_mps": 0.270812,
+        "mean_speed_mps": 0.2974645,
+        "min_clearance_m": 0.020864413341999066,
+        "path_m": 5.94929,
+        "success": 0,
+        "timeout": 1
+      },
+      "collision_difference": 0,
+      "family": 15,
+      "family_name": "connected_rooms",
+      "fast": {
+        "arrival_s": "",
+        "collision": 0,
+        "final_speed_mps": 0.225719,
+        "mean_speed_mps": 0.290364,
+        "min_clearance_m": 0.0003654133419990768,
+        "path_m": 5.80728,
+        "success": 0,
+        "timeout": 1
+      },
+      "index": 10,
+      "route_class": 1,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 1.17096,
+        "mean_speed_mps": 1.4343836734693876,
+        "min_clearance_m": -0.0005494811358451868,
+        "path_m": 3.51424,
+        "success": 0,
+        "timeout": 0
+      },
+      "collision_difference": -1,
+      "family": 16,
+      "family_name": "vertical_choices",
+      "fast": {
+        "arrival_s": 3.95,
+        "collision": 0,
+        "final_speed_mps": 0.155817,
+        "mean_speed_mps": 0.8318050632911391,
+        "min_clearance_m": 0.15902178228650793,
+        "path_m": 3.28563,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 11,
+      "route_class": 1,
+      "success_difference": 1
+    },
+    {
+      "arrival": {
+        "arrival_s": 4.05,
+        "collision": 0,
+        "final_speed_mps": 0.374781,
+        "mean_speed_mps": 0.8263827160493827,
+        "min_clearance_m": 0.12857376724153174,
+        "path_m": 3.34685,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 2,
+      "family_name": "poles",
+      "fast": {
+        "arrival_s": 1.6,
+        "collision": 0,
+        "final_speed_mps": 0.0990485,
+        "mean_speed_mps": 1.2351062499999999,
+        "min_clearance_m": 0.29170118180921406,
+        "path_m": 1.97617,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 12,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 2.45,
+        "collision": 0,
+        "final_speed_mps": 0.326763,
+        "mean_speed_mps": 0.8674530612244897,
+        "min_clearance_m": 0.6564000000000001,
+        "path_m": 2.12526,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 4,
+      "family_name": "doorway",
+      "fast": {
+        "arrival_s": 2.55,
+        "collision": 0,
+        "final_speed_mps": 0.451853,
+        "mean_speed_mps": 0.8416196078431373,
+        "min_clearance_m": 0.6564000000000001,
+        "path_m": 2.14613,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 13,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 2.25,
+        "collision": 0,
+        "final_speed_mps": 0.207912,
+        "mean_speed_mps": 1.12708,
+        "min_clearance_m": 0.907373,
+        "path_m": 2.53593,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 5,
+      "family_name": "table",
+      "fast": {
+        "arrival_s": 2.25,
+        "collision": 0,
+        "final_speed_mps": 0.207833,
+        "mean_speed_mps": 1.1836488888888888,
+        "min_clearance_m": 0.9009090000000002,
+        "path_m": 2.66321,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 14,
+      "route_class": 0,
+      "success_difference": 0
+    },
+    {
+      "arrival": {
+        "arrival_s": 2.1,
+        "collision": 0,
+        "final_speed_mps": 0.342411,
+        "mean_speed_mps": 0.8178714285714286,
+        "min_clearance_m": 0.3100500000000001,
+        "path_m": 1.71753,
+        "success": 1,
+        "timeout": 0
+      },
+      "collision_difference": 0,
+      "family": 14,
+      "family_name": "bent_hallway",
+      "fast": {
+        "arrival_s": 2.5,
+        "collision": 0,
+        "final_speed_mps": 0.230172,
+        "mean_speed_mps": 0.632352,
+        "min_clearance_m": 0.27538999999999997,
+        "path_m": 1.58088,
+        "success": 1,
+        "timeout": 0
+      },
+      "index": 15,
+      "route_class": 0,
+      "success_difference": 0
+    }
+  ],
+  "paired_tasks": 16,
+  "predeclared_tasks": 16,
+  "primary_endpoint": {
+    "denominator_ok": true,
+    "fast_minus_arrival_collision": -1,
+    "fast_minus_arrival_success": 1,
+    "name": "success count difference, fast minus arrival",
+    "source_full_split_difference": 4,
+    "source_same_16_difference": 0,
+    "transfer_observed": true
+  },
+  "schema": "local-waypoint-transfer-results-v1",
+  "source_comparator": {
+    "arrival": {
+      "collision": 3,
+      "mean_arrival_s": 3.325004626666667,
+      "min_clearance_m": -0.00438660383,
+      "success": 12,
+      "tasks": 16,
+      "timeout": 1
+    },
+    "fast": {
+      "collision": 3,
+      "mean_arrival_s": 3.083337694166667,
+      "min_clearance_m": -0.00361478329,
+      "success": 12,
+      "tasks": 16,
+      "timeout": 1
+    }
+  },
+  "source_comparator_files": {
+    "arrival": {
+      "file": "/Users/muadhsambul/.codex/worktrees/calibrated-navigation-sensors/RL/results/omp-local-waypoints/evals/arrival-deva-mode17.csv",
+      "sha256": "b436fd088b0cdff80661cd84df7a0b054740769bb356c51eee8dbf4fbfb89108"
+    },
+    "fast": {
+      "file": "/Users/muadhsambul/.codex/worktrees/calibrated-navigation-sensors/RL/results/omp-local-waypoints/evals/fast-deva-mode17.csv",
+      "sha256": "cbdef1395582670efced41777a0dc6fd769977e6c7e6276270fb4a39518cd551"
+    }
+  },
+  "task_comparison": [
+    {
+      "family": 2,
+      "family_name": "poles",
+      "goal_distance_m": 1.9366379976272583,
+      "index": 0,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 3.14999747,
+        "collision": 0,
+        "final_speed_mps": 0.481357932,
+        "min_clearance_m": 0.261647701,
+        "path_m": 2.83188844,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 3.59999704,
+        "collision": 0,
+        "final_speed_mps": 0.402256787,
+        "min_clearance_m": 0.557638109,
+        "path_m": 1.71486509,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 1.1037964820861816,
+      "webots_arrival": {
+        "arrival_s": 4.1,
+        "collision": 0,
+        "final_speed_mps": 0.239634,
+        "min_clearance_m": 0.15164605695259642,
+        "path_m": 3.56704,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 3.2,
+        "collision": 0,
+        "final_speed_mps": 0.445241,
+        "min_clearance_m": 0.537358152238077,
+        "path_m": 1.74045,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 4,
+      "family_name": "doorway",
+      "goal_distance_m": 1.6540647745132446,
+      "index": 1,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 7.30007219,
+        "collision": 0,
+        "final_speed_mps": 0.403234959,
+        "min_clearance_m": 0.734651029,
+        "path_m": 5.60506582,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 2.54999804,
+        "collision": 0,
+        "final_speed_mps": 0.366946965,
+        "min_clearance_m": 0.900877893,
+        "path_m": 1.93282926,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 1.3253796100616455,
+      "webots_arrival": {
+        "arrival_s": 2.95,
+        "collision": 0,
+        "final_speed_mps": 0.354304,
+        "min_clearance_m": 0.8192555134930612,
+        "path_m": 2.42547,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.6,
+        "collision": 0,
+        "final_speed_mps": 0.362917,
+        "min_clearance_m": 0.8986915134930611,
+        "path_m": 1.92195,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 5,
+      "family_name": "table",
+      "goal_distance_m": 1.1294032335281372,
+      "index": 2,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 2.74999785,
+        "collision": 0,
+        "final_speed_mps": 0.350349158,
+        "min_clearance_m": 0.451709688,
+        "path_m": 2.53169274,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 4.30000353,
+        "collision": 0,
+        "final_speed_mps": 0.0924838632,
+        "min_clearance_m": 0.28735894,
+        "path_m": 1.98830533,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 1.3435869216918945,
+      "webots_arrival": {
+        "arrival_s": 2.9,
+        "collision": 0,
+        "final_speed_mps": 0.45666,
+        "min_clearance_m": 0.45396104840804213,
+        "path_m": 2.5456,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.55,
+        "collision": 0,
+        "final_speed_mps": 0.194195,
+        "min_clearance_m": 0.34262366082508205,
+        "path_m": 1.61657,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 14,
+      "family_name": "bent_hallway",
+      "goal_distance_m": 2.0782222747802734,
+      "index": 3,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 2.89999771,
+        "collision": 0,
+        "final_speed_mps": 0.357541114,
+        "min_clearance_m": 0.590961397,
+        "path_m": 2.3051188,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 2.6999979,
+        "collision": 0,
+        "final_speed_mps": 0.13743411,
+        "min_clearance_m": 0.631906927,
+        "path_m": 2.24815679,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 1.1327238082885742,
+      "webots_arrival": {
+        "arrival_s": 2.8,
+        "collision": 0,
+        "final_speed_mps": 0.36067,
+        "min_clearance_m": 0.5904639675136567,
+        "path_m": 2.32225,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.6,
+        "collision": 0,
+        "final_speed_mps": 0.171965,
+        "min_clearance_m": 0.6344844475136566,
+        "path_m": 2.28548,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 15,
+      "family_name": "connected_rooms",
+      "goal_distance_m": 1.243180513381958,
+      "index": 4,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 3.84999681,
+        "collision": 0,
+        "final_speed_mps": 0.357231945,
+        "min_clearance_m": 0.19617328,
+        "path_m": 2.56303024,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 1.79999864,
+        "collision": 0,
+        "final_speed_mps": 0.431975067,
+        "min_clearance_m": 0.399629176,
+        "path_m": 1.27795124,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.7333765625953674,
+      "webots_arrival": {
+        "arrival_s": 3.85,
+        "collision": 0,
+        "final_speed_mps": 0.353804,
+        "min_clearance_m": 0.20321312172746658,
+        "path_m": 2.50917,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.05,
+        "collision": 0,
+        "final_speed_mps": 0.380792,
+        "min_clearance_m": 0.3683264217274666,
+        "path_m": 1.37579,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 16,
+      "family_name": "vertical_choices",
+      "goal_distance_m": 1.819656491279602,
+      "index": 5,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 3.29999733,
+        "collision": 0,
+        "final_speed_mps": 0.390446991,
+        "min_clearance_m": 0.288542211,
+        "path_m": 1.68907392,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 6.55005503,
+        "collision": 0,
+        "final_speed_mps": 0.287220597,
+        "min_clearance_m": 0.428955555,
+        "path_m": 1.95413721,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.5487440824508667,
+      "webots_arrival": {
+        "arrival_s": 3.2,
+        "collision": 0,
+        "final_speed_mps": 0.367216,
+        "min_clearance_m": 0.2516576925342303,
+        "path_m": 1.71854,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 5.7,
+        "collision": 0,
+        "final_speed_mps": 0.282857,
+        "min_clearance_m": 0.4082836975301312,
+        "path_m": 1.89591,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 2,
+      "family_name": "poles",
+      "goal_distance_m": 2.313368558883667,
+      "index": 6,
+      "route_class": 1,
+      "source_arrival": {
+        "arrival_s": 0.46999982,
+        "collision": 1,
+        "final_speed_mps": 1.51884115,
+        "min_clearance_m": -0.000576615334,
+        "path_m": 0.445502698,
+        "success": 0,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 0.619999707,
+        "collision": 1,
+        "final_speed_mps": 1.11653984,
+        "min_clearance_m": -0.00361478329,
+        "path_m": 0.548509121,
+        "success": 0,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.38078099489212036,
+      "webots_arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.65415,
+        "min_clearance_m": -6.401807974787399e-06,
+        "path_m": 1.06144,
+        "success": 0,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.468957,
+        "min_clearance_m": -1.4607829982471454e-05,
+        "path_m": 1.03284,
+        "success": 0,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 4,
+      "family_name": "doorway",
+      "goal_distance_m": 2.9402318000793457,
+      "index": 7,
+      "route_class": 1,
+      "source_arrival": {
+        "arrival_s": 1.47999895,
+        "collision": 1,
+        "final_speed_mps": 0.890262365,
+        "min_clearance_m": -0.00370126963,
+        "path_m": 1.61910701,
+        "success": 0,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 1.8399986,
+        "collision": 1,
+        "final_speed_mps": 0.460055918,
+        "min_clearance_m": -0.00135678053,
+        "path_m": 1.54262638,
+        "success": 0,
+        "timeout": 0
+      },
+      "start_clearance_m": 1.2189726829528809,
+      "webots_arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.243366,
+        "min_clearance_m": -1.0266406536063588e-05,
+        "path_m": 1.92978,
+        "success": 0,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.302309,
+        "min_clearance_m": -6.0266406536169104e-05,
+        "path_m": 1.73009,
+        "success": 0,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 5,
+      "family_name": "table",
+      "goal_distance_m": 2.8579883575439453,
+      "index": 8,
+      "route_class": 1,
+      "source_arrival": {
+        "arrival_s": 0.539999783,
+        "collision": 1,
+        "final_speed_mps": 1.1198926,
+        "min_clearance_m": -0.00438660383,
+        "path_m": 0.479745597,
+        "success": 0,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 0.749999583,
+        "collision": 1,
+        "final_speed_mps": 0.659593582,
+        "min_clearance_m": -0.000286564231,
+        "path_m": 0.53461957,
+        "success": 0,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.4613555669784546,
+      "webots_arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.522754,
+        "min_clearance_m": -7.845665454869755e-05,
+        "path_m": 0.653303,
+        "success": 0,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 0.298295,
+        "min_clearance_m": -8.273909012479486e-06,
+        "path_m": 0.639954,
+        "success": 0,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 14,
+      "family_name": "bent_hallway",
+      "goal_distance_m": 1.3681282997131348,
+      "index": 9,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 1.99999845,
+        "collision": 0,
+        "final_speed_mps": 0.31569469,
+        "min_clearance_m": 0.369295895,
+        "path_m": 1.53298616,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 2.14999843,
+        "collision": 0,
+        "final_speed_mps": 0.335990936,
+        "min_clearance_m": 0.625652969,
+        "path_m": 1.13498688,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.810829222202301,
+      "webots_arrival": {
+        "arrival_s": 2.05,
+        "collision": 0,
+        "final_speed_mps": 0.380669,
+        "min_clearance_m": 0.3645976408863067,
+        "path_m": 1.61165,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.05,
+        "collision": 0,
+        "final_speed_mps": 0.376525,
+        "min_clearance_m": 0.6484869408863068,
+        "path_m": 1.15702,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 15,
+      "family_name": "connected_rooms",
+      "goal_distance_m": 2.6784560680389404,
+      "index": 10,
+      "route_class": 1,
+      "source_arrival": {
+        "arrival_s": 20.0003624,
+        "collision": 0,
+        "final_speed_mps": 0.262972057,
+        "min_clearance_m": 0.0521348417,
+        "path_m": 6.12095261,
+        "success": 0,
+        "timeout": 1
+      },
+      "source_fast": {
+        "arrival_s": 20.0003624,
+        "collision": 0,
+        "final_speed_mps": 0.214720324,
+        "min_clearance_m": 0.0563462377,
+        "path_m": 5.70039225,
+        "success": 0,
+        "timeout": 1
+      },
+      "start_clearance_m": 0.9359694123268127,
+      "webots_arrival": {
+        "arrival_s": "",
+        "collision": 0,
+        "final_speed_mps": 0.270812,
+        "min_clearance_m": 0.020864413341999066,
+        "path_m": 5.94929,
+        "success": 0,
+        "timeout": 1
+      },
+      "webots_fast": {
+        "arrival_s": "",
+        "collision": 0,
+        "final_speed_mps": 0.225719,
+        "min_clearance_m": 0.0003654133419990768,
+        "path_m": 5.80728,
+        "success": 0,
+        "timeout": 1
+      }
+    },
+    {
+      "family": 16,
+      "family_name": "vertical_choices",
+      "goal_distance_m": 2.820819616317749,
+      "index": 11,
+      "route_class": 1,
+      "source_arrival": {
+        "arrival_s": 4.30000353,
+        "collision": 0,
+        "final_speed_mps": 0.380033433,
+        "min_clearance_m": 0.306258798,
+        "path_m": 3.29959702,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 4.6000104,
+        "collision": 0,
+        "final_speed_mps": 0.140876144,
+        "min_clearance_m": 0.329689384,
+        "path_m": 3.37527275,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.8503099083900452,
+      "webots_arrival": {
+        "arrival_s": "",
+        "collision": 1,
+        "final_speed_mps": 1.17096,
+        "min_clearance_m": -0.0005494811358451868,
+        "path_m": 3.51424,
+        "success": 0,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 3.95,
+        "collision": 0,
+        "final_speed_mps": 0.155817,
+        "min_clearance_m": 0.15902178228650793,
+        "path_m": 3.28563,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 2,
+      "family_name": "poles",
+      "goal_distance_m": 1.6860204935073853,
+      "index": 12,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 4.09999895,
+        "collision": 0,
+        "final_speed_mps": 0.347455233,
+        "min_clearance_m": 0.222073436,
+        "path_m": 3.69213605,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 1.49999893,
+        "collision": 0,
+        "final_speed_mps": 0.159918785,
+        "min_clearance_m": 0.377314448,
+        "path_m": 1.90928364,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 1.1882052421569824,
+      "webots_arrival": {
+        "arrival_s": 4.05,
+        "collision": 0,
+        "final_speed_mps": 0.374781,
+        "min_clearance_m": 0.12857376724153174,
+        "path_m": 3.34685,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 1.6,
+        "collision": 0,
+        "final_speed_mps": 0.0990485,
+        "min_clearance_m": 0.29170118180921406,
+        "path_m": 1.97617,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 4,
+      "family_name": "doorway",
+      "goal_distance_m": 2.1156344413757324,
+      "index": 13,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 2.44999814,
+        "collision": 0,
+        "final_speed_mps": 0.34119013,
+        "min_clearance_m": 0.656397045,
+        "path_m": 2.10443997,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 2.74999785,
+        "collision": 0,
+        "final_speed_mps": 0.454875767,
+        "min_clearance_m": 0.656397045,
+        "path_m": 2.15895724,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.6553975939750671,
+      "webots_arrival": {
+        "arrival_s": 2.45,
+        "collision": 0,
+        "final_speed_mps": 0.326763,
+        "min_clearance_m": 0.6564000000000001,
+        "path_m": 2.12526,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.55,
+        "collision": 0,
+        "final_speed_mps": 0.451853,
+        "min_clearance_m": 0.6564000000000001,
+        "path_m": 2.14613,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 5,
+      "family_name": "table",
+      "goal_distance_m": 2.435889720916748,
+      "index": 14,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 1.79999864,
+        "collision": 0,
+        "final_speed_mps": 0.171877816,
+        "min_clearance_m": 0.911498725,
+        "path_m": 2.39577389,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 1.9499985,
+        "collision": 0,
+        "final_speed_mps": 0.0979384184,
+        "min_clearance_m": 0.911498725,
+        "path_m": 2.63523483,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.911494791507721,
+      "webots_arrival": {
+        "arrival_s": 2.25,
+        "collision": 0,
+        "final_speed_mps": 0.207912,
+        "min_clearance_m": 0.907373,
+        "path_m": 2.53593,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.25,
+        "collision": 0,
+        "final_speed_mps": 0.207833,
+        "min_clearance_m": 0.9009090000000002,
+        "path_m": 2.66321,
+        "success": 1,
+        "timeout": 0
+      }
+    },
+    {
+      "family": 14,
+      "family_name": "bent_hallway",
+      "goal_distance_m": 1.4960979223251343,
+      "index": 15,
+      "route_class": 0,
+      "source_arrival": {
+        "arrival_s": 1.99999845,
+        "collision": 0,
+        "final_speed_mps": 0.378914207,
+        "min_clearance_m": 0.318790019,
+        "path_m": 1.65301728,
+        "success": 1,
+        "timeout": 0
+      },
+      "source_fast": {
+        "arrival_s": 2.54999804,
+        "collision": 0,
+        "final_speed_mps": 0.223855853,
+        "min_clearance_m": 0.27466768,
+        "path_m": 1.55441737,
+        "success": 1,
+        "timeout": 0
+      },
+      "start_clearance_m": 0.7815678119659424,
+      "webots_arrival": {
+        "arrival_s": 2.1,
+        "collision": 0,
+        "final_speed_mps": 0.342411,
+        "min_clearance_m": 0.3100500000000001,
+        "path_m": 1.71753,
+        "success": 1,
+        "timeout": 0
+      },
+      "webots_fast": {
+        "arrival_s": 2.5,
+        "collision": 0,
+        "final_speed_mps": 0.230172,
+        "min_clearance_m": 0.27538999999999997,
+        "path_m": 1.58088,
+        "success": 1,
+        "timeout": 0
+      }
+    }
+  ],
+  "valid_flights": 32,
+  "webots": {
+    "arrival": {
+      "arrival_successes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        9,
+        12,
+        13,
+        14,
+        15
+      ],
+      "collision": 4,
+      "collision_rate": 0.25,
+      "collisions": [
+        6,
+        7,
+        8,
+        11
+      ],
+      "flights": 16,
+      "invalid": 0,
+      "invalid_reasons": [],
+      "mean_arrival_s": 2.972727272727273,
+      "mean_path_m": 2.4708339375,
+      "mean_speed_mps": 0.8144107075560754,
+      "min_clearance_m": -0.0005494811358451868,
+      "success": 11,
+      "success_rate": 0.6875,
+      "timeout": 1,
+      "timeouts": [
+        10
+      ],
+      "valid": 16
+    },
+    "fast": {
+      "arrival_successes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        9,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "collision": 3,
+      "collision_rate": 0.1875,
+      "collisions": [
+        6,
+        7,
+        8
+      ],
+      "flights": 16,
+      "invalid": 0,
+      "invalid_reasons": [],
+      "mean_arrival_s": 2.8000000000000003,
+      "mean_path_m": 2.053459625,
+      "mean_speed_mps": 0.7133550501420435,
+      "min_clearance_m": -6.0266406536169104e-05,
+      "success": 12,
+      "success_rate": 0.75,
+      "timeout": 1,
+      "timeouts": [
+        10
+      ],
+      "valid": 16
+    }
+  }
+}

@@ -76,6 +76,8 @@ Why hand-written Metal rather than a framework: every dependency in the hot loop
 
 The optional [calibrated camera profile](docs/CALIBRATED_SENSOR_PROFILE.md) now matches measured native projection and mount geometry. Frozen-policy Metal results are 51/90 with that profile versus 54/90 with the default; it is not adopted as a policy gain.
 
+The experimental [local waypoint controller](docs/LOCAL_WAYPOINT_EXPERIMENT.md) reaches 100/128 source DEV tasks. On 16 predeclared matched local tasks, the frozen actor reaches 12/16 in both Metal and Webots; 31/32 verdicts match across both actors. Whole-route reliability remains unresolved.
+
 ## What works today
 
 Each line links to the evidence that supports it. Nothing here is a hardware claim.
