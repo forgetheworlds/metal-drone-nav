@@ -12,6 +12,7 @@ Built on an Apple M3 (10 GPU cores, 16 GB unified memory). Everything reported h
 | Current north star and local navigation contract | [goal.md](goal.md) |
 | Coding standard this repository is written to | [docs/CODE_DIRECTION.md](docs/CODE_DIRECTION.md) |
 | Hypothesis → experiment → result, **including rejected hypotheses** | [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md) |
+| Latest local training comparison, failures and reproducible plots | [docs/LOCAL_TRAINING_REVIEW.md](docs/LOCAL_TRAINING_REVIEW.md) |
 
 ---
 
@@ -39,6 +40,11 @@ trajectory adapter →  frozen RAPTOR motor controller → 4 motor commands
 It must vary its speed with environmental complexity, react to moving collision threats quickly enough to evade them, keep working under disturbance, and generalise to layouts it was not trained on. The contract behind every optimisation in this repository is *maximise validated policy-improvement iterations per unit wall time*.
 
 **The full goal is active and incomplete.** The current milestone — a policy that reaches 25/30 connected-room development levels and three watchable native Webots flights — is real but narrow. Read the limitations section before citing any number on this page.
+
+The latest local tests show why further work is needed: imitation followed by
+10,000 PPO rollouts gave mixed gains, and geodesic reward shaping reduced
+reliability on two training seeds. The next experiment changes the training task
+distribution to match visually grounded local subgoals. [Results and raw evidence](docs/LOCAL_TRAINING_REVIEW.md).
 
 ---
 

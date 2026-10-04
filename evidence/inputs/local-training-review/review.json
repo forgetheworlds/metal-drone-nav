@@ -1,0 +1,503 @@
+{
+  "archive_members_verified": 92,
+  "limitations": [
+    "Observe comparison has one training seed; final 10000 is primary, best is secondary.",
+    "BC dev-c was viewed before PPO; no design change reported. These are development results.",
+    "Shaped seed 1 ran 3700 updates; best selected at 1950 lies within the 2000 selection budget.",
+    "Shaping tables compare selected best policies; no final-2000 shaped seed-1 weights retained.",
+    "Horizontal angle labels do not establish full-frustum visibility or a visible opening.",
+    "Successful-arrival means omit failed flights; retain outcome counts beside them.",
+    "Archived flight rows permit result reproduction, not a new simulator-transfer claim."
+  ],
+  "observe": {
+    "clutter": {
+      "armC": {
+        "collision": 31,
+        "detour_success_n": [
+          25,
+          56
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          16,
+          41
+        ],
+        "n": 128,
+        "success": 97,
+        "successful_arrival_mean_s": 2.694843873402062,
+        "timeout": 0
+      },
+      "armT": {
+        "collision": 28,
+        "detour_success_n": [
+          29,
+          56
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          19,
+          41
+        ],
+        "n": 128,
+        "success": 100,
+        "successful_arrival_mean_s": 2.7649984586,
+        "timeout": 0
+      },
+      "bc": {
+        "collision": 24,
+        "detour_success_n": [
+          32,
+          56
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          24,
+          41
+        ],
+        "n": 128,
+        "success": 104,
+        "successful_arrival_mean_s": 5.548118203557692,
+        "timeout": 0
+      },
+      "fast": {
+        "collision": 30,
+        "detour_success_n": [
+          23,
+          56
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          15,
+          41
+        ],
+        "n": 128,
+        "success": 95,
+        "successful_arrival_mean_s": 3.483695318105263,
+        "timeout": 3
+      },
+      "paired_final_T_vs_C": {
+        "C_only_success": 5,
+        "T_only_success": 8,
+        "net": 3
+      }
+    },
+    "dev-a": {
+      "armC": {
+        "collision": 30,
+        "detour_success_n": [
+          17,
+          47
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          8,
+          34
+        ],
+        "n": 128,
+        "success": 98,
+        "successful_arrival_mean_s": 2.5852032453061224,
+        "timeout": 0
+      },
+      "armT": {
+        "collision": 27,
+        "detour_success_n": [
+          23,
+          47
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          13,
+          34
+        ],
+        "n": 128,
+        "success": 101,
+        "successful_arrival_mean_s": 2.7539619855445543,
+        "timeout": 0
+      },
+      "bc": {
+        "collision": 26,
+        "detour_success_n": [
+          22,
+          47
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          14,
+          34
+        ],
+        "n": 128,
+        "success": 102,
+        "successful_arrival_mean_s": 5.084838112254902,
+        "timeout": 0
+      },
+      "fast": {
+        "collision": 27,
+        "detour_success_n": [
+          19,
+          47
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          7,
+          34
+        ],
+        "n": 128,
+        "success": 100,
+        "successful_arrival_mean_s": 3.6805147951999997,
+        "timeout": 1
+      },
+      "paired_final_T_vs_C": {
+        "C_only_success": 6,
+        "T_only_success": 9,
+        "net": 3
+      }
+    },
+    "dev-b": {
+      "armC": {
+        "collision": 31,
+        "detour_success_n": [
+          13,
+          43
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          9,
+          38
+        ],
+        "n": 128,
+        "success": 97,
+        "successful_arrival_mean_s": 2.7458752393814434,
+        "timeout": 0
+      },
+      "armT": {
+        "collision": 27,
+        "detour_success_n": [
+          18,
+          43
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          14,
+          38
+        ],
+        "n": 128,
+        "success": 101,
+        "successful_arrival_mean_s": 2.778713910693069,
+        "timeout": 0
+      },
+      "bc": {
+        "collision": 23,
+        "detour_success_n": [
+          20,
+          43
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          17,
+          38
+        ],
+        "n": 128,
+        "success": 105,
+        "successful_arrival_mean_s": 5.9357616588571425,
+        "timeout": 0
+      },
+      "fast": {
+        "collision": 26,
+        "detour_success_n": [
+          17,
+          43
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          13,
+          38
+        ],
+        "n": 128,
+        "success": 101,
+        "successful_arrival_mean_s": 3.727240664752475,
+        "timeout": 1
+      },
+      "paired_final_T_vs_C": {
+        "C_only_success": 2,
+        "T_only_success": 6,
+        "net": 4
+      }
+    },
+    "dev-c": {
+      "armC": {
+        "collision": 30,
+        "detour_success_n": [
+          18,
+          48
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          9,
+          37
+        ],
+        "n": 128,
+        "success": 98,
+        "successful_arrival_mean_s": 2.7938780915306123,
+        "timeout": 0
+      },
+      "armT": {
+        "collision": 31,
+        "detour_success_n": [
+          17,
+          48
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          10,
+          37
+        ],
+        "n": 128,
+        "success": 97,
+        "successful_arrival_mean_s": 2.854125838453608,
+        "timeout": 0
+      },
+      "bc": {
+        "collision": 22,
+        "detour_success_n": [
+          26,
+          48
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          19,
+          37
+        ],
+        "n": 128,
+        "success": 106,
+        "successful_arrival_mean_s": 5.42550911,
+        "timeout": 0
+      },
+      "fast": {
+        "collision": 31,
+        "detour_success_n": [
+          14,
+          48
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          8,
+          37
+        ],
+        "n": 128,
+        "success": 93,
+        "successful_arrival_mean_s": 3.4838804429032253,
+        "timeout": 4
+      },
+      "paired_final_T_vs_C": {
+        "C_only_success": 4,
+        "T_only_success": 3,
+        "net": -1
+      }
+    },
+    "open": {
+      "armC": {
+        "collision": 0,
+        "detour_success_n": [
+          0,
+          0
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          0,
+          0
+        ],
+        "n": 128,
+        "success": 128,
+        "successful_arrival_mean_s": 2.560936575703125,
+        "timeout": 0
+      },
+      "armT": {
+        "collision": 0,
+        "detour_success_n": [
+          0,
+          0
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          0,
+          0
+        ],
+        "n": 128,
+        "success": 128,
+        "successful_arrival_mean_s": 2.61132781984375,
+        "timeout": 0
+      },
+      "bc": {
+        "collision": 0,
+        "detour_success_n": [
+          0,
+          0
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          0,
+          0
+        ],
+        "n": 128,
+        "success": 128,
+        "successful_arrival_mean_s": 5.50512086109375,
+        "timeout": 0
+      },
+      "fast": {
+        "collision": 0,
+        "detour_success_n": [
+          0,
+          0
+        ],
+        "horizontal_out_of_view_detour_success_n": [
+          0,
+          0
+        ],
+        "n": 128,
+        "success": 128,
+        "successful_arrival_mean_s": 3.692204332578125,
+        "timeout": 0
+      },
+      "paired_final_T_vs_C": {
+        "C_only_success": 0,
+        "T_only_success": 0,
+        "net": 0
+      }
+    }
+  },
+  "schema": 1,
+  "scope": "exposed development; no FINAL or adoption",
+  "shaping": {
+    "clutter": {
+      "control-s1": {
+        "collision": 30,
+        "n": 128,
+        "success": 98,
+        "timeout": 0
+      },
+      "control-s2": {
+        "collision": 24,
+        "n": 128,
+        "success": 104,
+        "timeout": 0
+      },
+      "shaped-s1": {
+        "collision": 28,
+        "n": 128,
+        "success": 99,
+        "timeout": 1
+      },
+      "shaped-s2": {
+        "collision": 33,
+        "n": 128,
+        "success": 94,
+        "timeout": 1
+      }
+    },
+    "dev-a": {
+      "control-s1": {
+        "collision": 23,
+        "n": 128,
+        "success": 103,
+        "timeout": 2
+      },
+      "control-s2": {
+        "collision": 23,
+        "n": 128,
+        "success": 105,
+        "timeout": 0
+      },
+      "shaped-s1": {
+        "collision": 23,
+        "n": 128,
+        "success": 102,
+        "timeout": 3
+      },
+      "shaped-s2": {
+        "collision": 26,
+        "n": 128,
+        "success": 101,
+        "timeout": 1
+      }
+    },
+    "dev-b": {
+      "control-s1": {
+        "collision": 26,
+        "n": 128,
+        "success": 101,
+        "timeout": 1
+      },
+      "control-s2": {
+        "collision": 25,
+        "n": 128,
+        "success": 103,
+        "timeout": 0
+      },
+      "shaped-s1": {
+        "collision": 23,
+        "n": 128,
+        "success": 104,
+        "timeout": 1
+      },
+      "shaped-s2": {
+        "collision": 27,
+        "n": 128,
+        "success": 100,
+        "timeout": 1
+      }
+    },
+    "dev-c": {
+      "control-s1": {
+        "collision": 26,
+        "n": 128,
+        "success": 99,
+        "timeout": 3
+      },
+      "control-s2": {
+        "collision": 26,
+        "n": 128,
+        "success": 102,
+        "timeout": 0
+      },
+      "shaped-s1": {
+        "collision": 33,
+        "n": 128,
+        "success": 92,
+        "timeout": 3
+      },
+      "shaped-s2": {
+        "collision": 35,
+        "n": 128,
+        "success": 92,
+        "timeout": 1
+      }
+    },
+    "open": {
+      "control-s1": {
+        "collision": 0,
+        "n": 128,
+        "success": 128,
+        "timeout": 0
+      },
+      "control-s2": {
+        "collision": 0,
+        "n": 128,
+        "success": 128,
+        "timeout": 0
+      },
+      "shaped-s1": {
+        "collision": 0,
+        "n": 128,
+        "success": 128,
+        "timeout": 0
+      },
+      "shaped-s2": {
+        "collision": 0,
+        "n": 128,
+        "success": 128,
+        "timeout": 0
+      }
+    }
+  },
+  "source_audit": {
+    "blind": {
+      "collision": 349,
+      "n": 1024,
+      "success": 675,
+      "timeout": 0
+    },
+    "hover": {
+      "collision": 0,
+      "n": 1024,
+      "success": 0,
+      "timeout": 1024
+    },
+    "policy": {
+      "collision": 205,
+      "n": 1024,
+      "success": 796,
+      "timeout": 23
+    }
+  }
+}
