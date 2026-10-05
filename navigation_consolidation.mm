@@ -239,6 +239,8 @@ static int train(const std::string& warm,const std::string& output,uint32_t upda
             history<<step<<','<<loss<<','<<seconds()-started<<'\n';history.flush();
             // A parameter warmstart: PPO optimizer remains fresh; this is not RL resume.
             checkpoint.save_checkpoint(output,0,seed,0);
+            if(step==1000)
+                std::filesystem::copy_file(output,output+".1000.bin",std::filesystem::copy_options::overwrite_existing);
             std::cout<<"student_update="<<step<<" loss="<<loss<<std::endl;
         }
     }}

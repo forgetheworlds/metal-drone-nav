@@ -47,8 +47,8 @@ def opening(x, center_y, width, corridor_width):
     return walls
 
 
-def candidate(rng, kind, difficulty):
-    length = rng.uniform(8.5, 11.5)
+def candidate(rng, kind, difficulty, length_range=(8.5, 11.5)):
+    length = rng.uniform(*length_range)
     z = rng.uniform(1.4, 1.8)
     start, goal = (0, rng.uniform(-.2, .2), z), (length, rng.uniform(-.2, .2), z)
     width = 3.2
@@ -167,7 +167,7 @@ def mover_clearance(checker, obstacles, goal, seed, family):
     return None if minimum == float("inf") else minimum
 
 
-def build(checker, seed, environments, period):
+def build(checker, seed, environments, period, length_range=(8.5, 11.5), mirror_x=False, mirror_z=False):
     rng = random.Random(seed)
     entries, labels = [], []
     for env in range(environments):
@@ -175,7 +175,18 @@ def build(checker, seed, environments, period):
             kind = KINDS[(env + slot) % len(KINDS)]
             difficulty = (env // len(KINDS) + slot) % 2
             for attempt in range(100):
-                start, goal, obstacles, route, gap_width = candidate(rng, kind, difficulty)
+                start, goal, obstacles, route, gap_width = candidate(rng, kind, difficulty, length_range)
+                if mirror_x or mirror_z:
+                    def reflect(point):
+                        return (12 - point[0] if mirror_x else point[0], point[1],
+                                5 - point[2] if mirror_z else point[2])
+                    def reflect_velocity(velocity):
+                        return (-velocity[0] if mirror_x else velocity[0], velocity[1],
+                                -velocity[2] if mirror_z else velocity[2])
+                    start, goal = reflect(start), reflect(goal)
+                    route = [reflect(point) for point in route]
+                    obstacles = [(shape, reflect(center), size, reflect_velocity(velocity))
+                                 for shape, center, size, velocity in obstacles]
                 scene_seed = rng.getrandbits(32)
                 family = 14 if kind == "staggered_gaps" else 16 if kind.startswith("vertical") else 1
                 world = pack_world(obstacles, goal, scene_seed, family)
@@ -230,9 +241,15 @@ def main():
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--period", type=int, default=1)
     parser.add_argument("--rehearsal", type=Path)
+    parser.add_argument("--length-min", type=float, default=8.5)
+    parser.add_argument("--length-max", type=float, default=11.5)
+    parser.add_argument("--mirror-x", action="store_true")
+    parser.add_argument("--mirror-z", action="store_true")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    entries, labels = build(args.checker.resolve(), args.seed, 128, args.period)
+    assert 5.5 <= args.length_min <= args.length_max <= 12.5
+    entries, labels = build(args.checker.resolve(), args.seed, 128, args.period,
+                           (args.length_min, args.length_max), args.mirror_x, args.mirror_z)
     write_bank(args.output / "challenges.bin", args.period, entries)
     if args.rehearsal:
         old_period, old = read_bank(args.rehearsal)
@@ -243,6 +260,8 @@ def main():
             mixed.extend(entries[env * args.period:(env + 1) * args.period])
         write_bank(args.output / "mixed.bin", old_period + args.period, mixed)
     report = {"schema": "compositional-v2-bounded-motion", "seed": args.seed, "period": args.period, "count": len(entries),
+              "length_range_m": [args.length_min, args.length_max],
+              "reflection_x": args.mirror_x, "reflection_z": args.mirror_z,
               "entry_sha256": hashlib.sha256(b"".join(entries)).hexdigest(),
               "checker_sha256": hashlib.sha256(args.checker.read_bytes()).hexdigest(),
               "geometry_source_sha256": hashlib.sha256(Path(__file__).with_name("world.hpp").read_bytes()).hexdigest(),
