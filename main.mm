@@ -90,8 +90,13 @@ static std::string base_source() {
 #else
     const std::string critic_state_define="#define NAV_CRITIC_CONTROL_STATE 0\n";
 #endif
+#ifdef NAV_MEMORY_USE_CAPTURE_AGE
+    const std::string memory_age_define="#define NAV_MEMORY_USE_CAPTURE_AGE "+std::to_string(NAV_MEMORY_USE_CAPTURE_AGE)+"\n";
+#else
+    const std::string memory_age_define="#define NAV_MEMORY_USE_CAPTURE_AGE 0\n";
+#endif
     const std::string sensor_profile_define="#define NAV_SENSOR_PROFILE "+std::to_string(NAV_SENSOR_PROFILE)+"\n";
-    return "#include <metal_stdlib>\nusing namespace metal;\n"+sensor_profile_define+read_text(root+"/world.hpp")+read_text(root+"/sensor_profile.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+critic_obs_define+critic_state_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
+    return "#include <metal_stdlib>\nusing namespace metal;\n"+sensor_profile_define+memory_age_define+read_text(root+"/world.hpp")+read_text(root+"/sensor_profile.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+critic_obs_define+critic_state_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
 }
 static std::vector<float> poses(size_t n) { std::vector<float> p(n*12,0);for(size_t i=0;i<n;i++){p[i*12+2]=1.5f;p[i*12+3]=p[i*12+7]=p[i*12+11]=1;}return p; }
 static void world_tests(Metal& m) {

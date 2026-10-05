@@ -426,3 +426,29 @@ The user's standing rule is now explicit: diagnose the cause, check the fix and
 its effects on other behaviors, then rerun. Do not replace diagnosis with a
 parameter sweep. Full records: `results/root-stress-matrix/`; current results:
 `COMBINED_POLICY_PROGRESS.md`.
+
+## Actual delayed traces and capture-age repair — 2026-10-05
+
+Root added read-only postflight trace capture and replayed six frozen panels.
+All grades match the original matrix exactly. Both delays produce 37 contacts
+on nominal successes: all 37 show some measured depth below 1 m in the final
+0.4 s, and 14 have latest requested speed at least 0.1 m/s below the applied
+queued speed. Combined stress has 57 lost successes, 55 with nearby depth and
+22 with that command gap. Nearby geometry is not contact-object attribution.
+
+The actual memory radius age omitted transport delay of the latest usable
+capture. Root added a shared opt-in age calculation, propagated it through
+CPU, Metal and the native frontend, and preserved default behavior. The
+host/Metal check verifies the 100 ms uncertainty delta of 0.015 m. Six nominal
+panels reproduce every scored row. Ten frozen correction evaluations show
+both-delay success 211→202/256 but combined 191→197, with one new timeout.
+No adoption: the second-order delay losses outweigh treating code correctness
+as capability. The correction remains disabled; no coefficient sweep or
+higher-frequency training was launched. The next decision must distinguish
+command anticipation, sensing coverage and insufficient mixed-stress exposure.
+
+Code, 57 hashed input files and a public standard-library reviewer preserve
+all outcomes: `evidence/inputs/stress-failure/records.tar.gz`,
+`navigation_stress_failure_review.py`, `COMBINED_POLICY_PROGRESS.md`.
+The matrix source snapshot is `c3585ed`; later diagnostic changes do not
+rewrite its freeze record. Only matching baseline/profile data are compared.

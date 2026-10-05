@@ -76,7 +76,10 @@ kernel void nav_memory_build_points(device const RLPhysicsState* states [[buffer
     points[out + 1] = current_rotation[1] * dx + current_rotation[4] * dy + current_rotation[7] * dz;
     points[out + 2] = current_rotation[2] * dx + current_rotation[5] * dy + current_rotation[8] * dz;
     const float age = float(back) * float(cfg.sensor_period) * physics.dt * float(cfg.substeps);
-    points[out + 3] = 0.20f + 0.015f * range + 0.15f * age;
+    // A delayed newest frame is already old before any history lookback.
+    const float capture_age = float(runs[n].steps - latest * cfg.sensor_period) *
+                              physics.dt * float(cfg.substeps);
+    points[out + 3] = nav_memory_point_radius(range, age, capture_age);
 }
 
 kernel void nav_memory_candidate_clearance(device const RLPhysicsState* states [[buffer(0)]],

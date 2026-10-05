@@ -619,7 +619,7 @@ int main(int argc,char** argv) {
             float delta_world[3]={goal[0]-position[0],goal[1]-position[1],goal[2]-position[2]},goal_body[3];rotate_world_to_body(rotation,delta_world,goal_body);
             const float distance=vector_norm3(delta_world),inv_distance=distance>1e-6f?1.0f/distance:0.0f;for(int j=0;j<3;j++)goal_body[j]*=inv_distance;
             float pose[12];for(int i=0;i<3;i++)pose[i]=position[i];for(int i=0;i<9;i++)pose[3+i]=rotation[i];
-            float prior[3]={0,0,0};nav_guidance_memory(pooled,previous_pooled,goal_body,distance,body_velocity,kSensorDt,sensor_tan_v,range_ring,pose_ring,pose,latest_frame,valid_frames,prior);
+            float prior[3]={0,0,0};nav_guidance_memory(pooled,previous_pooled,goal_body,distance,body_velocity,kSensorDt,sensor_tan_v,range_ring,pose_ring,pose,latest_frame,valid_frames,prior,nullptr,float(current_time-range_capture_times[latest_frame%8]));
             float nav_previous_intent[4];for(int j=0;j<4;j++)nav_previous_intent[j]=previous_nav_intent[j];
             float observation[nav_deployment::raw_depth_actor_observation_count]{};
             float context[21]{};

@@ -364,7 +364,7 @@ private:
                 nav_guidance_memory(cur,prev_range,goal,distance,vel,sensor_dt,NAV_SENSOR_ACTIVE_TAN_V,
                     sensors.data()+size_t(n)*sensor_frames*sensor_pixels,
                     poses.data()+size_t(n)*sensor_frames*12,current_pose,
-                    frame,valid_frames,hint);
+                    frame,valid_frames,hint,nullptr,observations[context+17]);
             } else nav_guidance(cur,prev_range,goal,distance,vel,sensor_dt,NAV_SENSOR_ACTIVE_TAN_V,hint);
             for(uint32_t j=0;j<3;j++)observations[row+actor_dim-3+j]=hint[j];
         }

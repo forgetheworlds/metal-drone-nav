@@ -89,6 +89,16 @@ NAV_INLINE void nav_guidance(NAV_THREAD const float* current_range,
     for(uint i=0;i<3;i++)hint[i]=nav_atanh(fraction*direction[i]);
 }
 
+// Preserve frozen policy behavior unless the diagnostic profile opts in.
+#ifndef NAV_MEMORY_USE_CAPTURE_AGE
+#define NAV_MEMORY_USE_CAPTURE_AGE 0
+#endif
+NAV_INLINE float nav_memory_point_radius(float range,float history_age,float latest_capture_age) {
+    const float age=fmax(history_age,0.0f)+
+        (NAV_MEMORY_USE_CAPTURE_AGE?fmax(latest_capture_age,0.0f):0.0f);
+    return 0.20f+0.015f*range+0.15f*age;
+}
+
 // Return the first swept-sphere contact along a body-frame direction using only
 // range hits and recorded ego poses. Pose layout: world xyz, then body-to-world
 // row-major rotation. Pooled rays stand for their 2x2 source pixels; the radius
@@ -97,7 +107,7 @@ NAV_INLINE float nav_memory_clearance(NAV_THREAD const float* direction,
                                       NAV_DEVICE const float* range_ring,
                                       NAV_DEVICE const float* pose_ring,
                                       NAV_THREAD const float* current_pose,
-                                      uint latest_frame,uint valid_frames,float sensor_dt,float tan_v) {
+                                      uint latest_frame,uint valid_frames,float sensor_dt,float tan_v,float latest_capture_age=0.0f) {
     float nearest=3.0f;
     for(uint back=0;back<valid_frames&&back<8;back++) {
         const uint frame=(latest_frame+8u-back)%8u;
@@ -119,7 +129,7 @@ NAV_INLINE float nav_memory_clearance(NAV_THREAD const float* direction,
             const float y=current_pose[4]*dx+current_pose[7]*dy+current_pose[10]*dz;
             const float z=current_pose[5]*dx+current_pose[8]*dy+current_pose[11]*dz;
             const float along=x*direction[0]+y*direction[1]+z*direction[2];
-            const float radius=0.20f+0.015f*range+0.15f*age;
+            const float radius=nav_memory_point_radius(range,age,latest_capture_age);
             if(along<=0.0f||along>3.0f+radius)continue;
             const float lateral2=fmax(x*x+y*y+z*z-along*along,0.0f);
             const float radius2=radius*radius;
@@ -143,7 +153,7 @@ NAV_INLINE void nav_guidance_memory(NAV_THREAD const float* current_range,
                                    NAV_DEVICE const float* pose_ring,
                                    NAV_THREAD const float* current_pose,
                                    uint latest_frame,uint valid_frames,
-                                   NAV_THREAD float* hint,NAV_DEVICE const float* cached_clearance=nullptr) {
+                                   NAV_THREAD float* hint,NAV_DEVICE const float* cached_clearance=nullptr,float latest_capture_age=0.0f) {
     float gnorm=sqrt(goal_body_unit[0]*goal_body_unit[0]+goal_body_unit[1]*goal_body_unit[1]+goal_body_unit[2]*goal_body_unit[2]);
     if(gnorm<1e-6f||goal_distance<0.05f){hint[0]=hint[1]=hint[2]=0;return;}
     float goal[3]={goal_body_unit[0]/gnorm,goal_body_unit[1]/gnorm,goal_body_unit[2]/gnorm};
@@ -158,7 +168,7 @@ NAV_INLINE void nav_guidance_memory(NAV_THREAD const float* current_range,
         if(candidate<80){row=candidate/10;col=candidate%10;nav_ray(row,col,tan_v,d);}
         else if(candidate==80){d[0]=goal[0];d[1]=goal[1];d[2]=goal[2];}else{d[0]=0;d[1]=candidate>=83?(candidate==83?1.0f:-1.0f):0;d[2]=candidate<83?(candidate==81?1.0f:-1.0f):0;}
         float sweep[3]={1.2f*d[0]+0.35f*body_velocity[0],1.2f*d[1]+0.35f*body_velocity[1],1.2f*d[2]+0.35f*body_velocity[2]};float sweep_norm=sqrt(sweep[0]*sweep[0]+sweep[1]*sweep[1]+sweep[2]*sweep[2]);for(uint j=0;j<3;j++)sweep[j]/=fmax(sweep_norm,1e-6f);
-        float free=cached_clearance?cached_clearance[candidate]:nav_memory_clearance(sweep,range_ring,pose_ring,current_pose,latest_frame,valid_frames,sensor_dt,tan_v);
+        float free=cached_clearance?cached_clearance[candidate]:nav_memory_clearance(sweep,range_ring,pose_ring,current_pose,latest_frame,valid_frames,sensor_dt,tan_v,latest_capture_age);
         const float observed=nav_min3x3(current_range,row,col);
         if(candidate<81)free=fmin(free,observed);
         // The exact goal may fall between rays; the 3x3 min is a conservative cone check.

@@ -128,3 +128,41 @@ stress. Ego state is ideal and wind is zero. This diagnostic identifies delay
 and combined-stress failures for further causal analysis; it does not validate
 hardware robustness. All panel/seed records remain in
 `results/root-stress-matrix/`, with summaries in `root-summary.json`.
+
+## Delayed-flight diagnosis and a rejected isolated repair
+
+Six 400-step trace replays reproduced every scored result from the frozen
+matrix. Among nominal successes lost to contact, both delays cause 37 new
+contacts; all have some measured geometry below 1 m within the final 0.4 s.
+In 14 cases the latest requested speed is at least 0.1 m/s below the speed
+still being applied. Combined stress causes 57 new contacts: 55 have nearby
+measured geometry, and 22 show that late-command speed gap. This measures
+command history and nearby depth, not whether the contact object was visible
+or whether sufficient braking room existed.
+
+Source review found a timing omission in geometry memory. Its uncertainty
+radius included history lookback age but not the age of the newest delayed
+capture. The opt-in correction adds that capture age to the existing age term,
+with no new coefficient. At 100 ms it adds 0.015 m to point uncertainty.
+Host/Metal radius parity passed. Six nominal panels remained exactly identical.
+
+Frozen corrected policies then completed ten matched 128-flight evaluations.
+On combined courses, both-delay success changes 211→202/256 (seven wins,
+16 losses); combined-stress success changes 191→197 (14 wins, eight losses).
+Both-delay contacts rise 45→54; combined contacts fall 65→58 with one new
+timeout. This is a real timing defect but its isolated correction is not a
+navigation improvement across conditions. It stays disabled by default.
+
+The [57-input archive](../evidence/inputs/stress-failure/records.tar.gz) includes
+all six replay traces, grades, age-profile evaluations, source and receipts.
+Recompute the paired diagnosis and nominal parity without Metal:
+
+```sh
+python3 navigation_stress_failure_review.py evidence/inputs/stress-failure/records.tar.gz
+```
+
+Trace source/binary hashes and provenance have different roles. The trace
+receipts pin executed binary and data; the archived `age-source` is the later
+age-correction snapshot, not a claim that it compiled the earlier trace binary.
+The shared logic remains experimental. Training/export must bind its enabled
+profile and shader contract explicitly before treating any weights as portable.
