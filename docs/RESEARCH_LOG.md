@@ -482,16 +482,16 @@ outcome is claimed before saved headers and full evaluations. Protocol:
 
 The interrupted tool runtime ended the delay-learning producer and evaluator.
 Root verified that the real prior PIDs were absent, all frozen input hashes
-matched, control seed1 had10000/320000, and treatment seed1 had6850/219200.
-The new persistent parent resumed treatment with3150 incremental rollouts,
+matched, control seed1 had 10,000/320,000, and treatment seed1 had 6,850/219,200.
+The new persistent parent resumed treatment with 3,150 incremental rollouts,
 retained original receipts and logs, then continued seed2. No completed arm
 was repeated. This is execution recovery, not a changed training budget.
 
 Offline terminal-pose attribution uses the exact shared collision SDF and
-bounded-motion source. All135 contacts from the old nominal/both/combined
-matrix reproduce nonpositive terminal clearance. The37 contacts on nominal
-successes under both delays consist of28 boxes,5 cylinders and4 bounded movers.
-Combined stress's57 new contacts consist of31 boxes,11 cylinders,5 movers and
+bounded-motion source. All 126 contacts from the old nominal/both/combined
+matrix reproduce nonpositive terminal clearance. The 37 contacts on nominal
+successes under both delays consist of 28 boxes, 5 cylinders and 4 bounded movers.
+Combined stress's 57 new contacts consist of 31 boxes, 11 cylinders, 5 movers and
 10 room-boundary contacts. Thus a moving-threat-only interpretation would miss
 most of this failure. Nearby depth is still not contact-object warning proof.
 
@@ -500,6 +500,6 @@ with explicit frame count, sensor period/delay and physical navigation period.
 Only actor-available frames are graded; newer undelivered frames are excluded.
 The offline visibility grader distinguishes geometric target rays, valid measured
 rays and selected pooled points, and attributes boundary contacts to their actual
-face. Its dense5120-ray alternative is an offline geometry counterfactual at
+face. Its dense 5,120-ray alternative is an offline geometry counterfactual at
 the same pose/FOV, not measured sensing or a new flight. Sensing replay and
 scored parity must complete before drawing visibility conclusions.

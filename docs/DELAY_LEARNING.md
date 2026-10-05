@@ -59,11 +59,11 @@ by the preflight.
 
 ## Interrupted execution recovery
 
-The original control seed1 completed10,000 rollouts. An interruption ended the
-producer after treatment seed1's saved6,850-rollout checkpoint. Root verified
+The original control seed1 completed 10,000 rollouts. An interruption ended the
+producer after treatment seed1's saved 6,850-rollout checkpoint. Root verified
 that the real prior processes were absent and all frozen inputs matched, then
-resumed exactly3,150 incremental rollouts. The treatment now has10,000 saved
-rollouts and320,000 optimizer steps; seed2 continues. Original segment receipts
+resumed exactly 3,150 incremental rollouts. The treatment now has 10,000 saved
+rollouts and 320,000 optimizer steps; seed2 continues. Original segment receipts
 and resumed receipts remain separate under `provenance/`. Wall times include
 long suspended periods and must not be treated as steady-state throughput.
-The evaluator still requires all four completed headers before its48 panels.
+The evaluator still requires all four completed headers before its 48 panels.
