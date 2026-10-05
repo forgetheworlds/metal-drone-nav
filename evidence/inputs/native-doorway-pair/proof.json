@@ -1,0 +1,53 @@
+{
+  "selection": "DEV-b env127 doorway, selected after the full 256-flight development benchmark. Recording reruns are not additional scored episodes.",
+  "recordings": {
+    "fast": {
+      "run": "/Users/muadhsambul/RL/results/root-native-bc-fast-v1/recordings-fixed/rootvideo-fixed-env127-doorway-fast",
+      "video": "/Users/muadhsambul/RL/artifacts/videos/native-doorway-baseline-contact.mp4",
+      "sha256": "b6c4388590d39f50fea733bba5b96e39072276cc4ded72f4a6b61be1895503da",
+      "success": false,
+      "collision": true,
+      "time_s": 2.75,
+      "scored_outcome_reproduced": true,
+      "video_metadata": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "2.720000"
+        }
+      }
+    },
+    "bc": {
+      "run": "/Users/muadhsambul/RL/results/root-native-bc-fast-v1/recordings-fixed/rootvideo-fixed-env127-doorway-bc",
+      "video": "/Users/muadhsambul/RL/artifacts/videos/native-doorway-learned-success.mp4",
+      "sha256": "aaa3b0c66bd7cd79736e417117feae1079113020c497a946ec32c96a5b868cc0",
+      "success": true,
+      "collision": false,
+      "time_s": 9.1,
+      "scored_outcome_reproduced": true,
+      "video_metadata": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "9.080000"
+        }
+      }
+    }
+  },
+  "observer": "Spectator pans toward the drone from x=-1.6 before passage, then x=5.0 when drone x>2.10. Camera is separate from policy RangeFinder, state, dynamics and grader.",
+  "view_limit": "Actual native scene recordings, with an observer-camera cut after passage. No trajectory reconstruction or interpolated flight."
+}

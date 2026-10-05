@@ -78,3 +78,35 @@ controller source snapshots. The script checks every archived hash, task
 identity, loaded policy/controller, process exit, grader and stable arrival
 before it computes the table. This reproduces result analysis; rerunning the
 simulator requires Webots and the documented controller dependencies.
+
+## Actual paired doorway recordings
+
+The following are native Webots scene movies of the same DEV-b env127
+start, goal and world used in the full benchmark. The fast policy contacts
+the doorway at 2.75 s. The imitation policy passes through and reaches
+the stable-arrival criterion at 9.1 s. Both recorded reruns reproduce their
+original scored outcomes with the same frozen NAV weights.
+
+- [Baseline contact — actual scene video](../artifacts/videos/native-doorway-baseline-contact.mp4)
+- [Learned successful passage — actual scene video](../artifacts/videos/native-doorway-learned-success.mp4)
+- [Recording proof and video hashes](../evidence/inputs/native-doorway-pair/proof.json)
+- [Worlds, controller, logs, trajectories and receipts](../evidence/inputs/native-doorway-pair/records.tar.gz)
+
+This case was selected after the complete development benchmark to show a
+paired failure and rescue. It is not a random sample, a new scored episode,
+or a training-progression sequence. The imitation checkpoint is a different
+policy; these videos do not show PPO gradually solving this one case.
+
+The observer pans toward the drone. It moves from the near room to the far
+room after the drone passes the wall (x > 2.10 m), so the wall does not hide
+the rest of the flight. The separate recording controller changes only that
+spectator camera. Vehicle sensing, control, physics, world collision geometry
+and scoring are unchanged. Frames come from Webots movie recording, not
+trajectory reconstruction. Failed camera attempts remain in local results.
+
+The recording archive includes the actual worlds and the recording-only
+controller source/Makefile, plus the two process and episode receipts. The
+parent benchmark archive above contains the source task bank, frozen NAV
+assets and generator needed to rerun this selected case. Webots R2025a is
+required; normal benchmark runs remain batch/minimized. Visible recording
+is a presentation exception, not a different evaluation protocol.
