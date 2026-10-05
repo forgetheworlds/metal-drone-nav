@@ -14,6 +14,7 @@ Built on an Apple M3 (10 GPU cores, 16 GB unified memory). Everything reported h
 | Hypothesis → experiment → result, **including rejected hypotheses** | [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md) |
 | Latest local training comparison, failures and reproducible plots | [docs/LOCAL_TRAINING_REVIEW.md](docs/LOCAL_TRAINING_REVIEW.md) |
 | Frozen imitation policy vs fast policy in 256 native Webots flights | [docs/NATIVE_BC_TRANSFER.md](docs/NATIVE_BC_TRANSFER.md) |
+| Task-mixture, collision-reward and moving-threat training outcomes | [docs/TRAINING_STRATEGY_RESULTS.md](docs/TRAINING_STRATEGY_RESULTS.md) |
 
 ---
 

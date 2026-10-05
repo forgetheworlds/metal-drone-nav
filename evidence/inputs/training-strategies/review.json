@@ -1,0 +1,285 @@
+{
+  "scope": "source development evidence; no adoption or FINAL",
+  "mixture": {
+    "dev-g1": {
+      "C": {
+        "n": 256,
+        "success": 235,
+        "collision": 21,
+        "timeout": 0,
+        "blocked_n": 60,
+        "blocked_success": 39
+      },
+      "T": {
+        "n": 256,
+        "success": 242,
+        "collision": 14,
+        "timeout": 0,
+        "blocked_n": 60,
+        "blocked_success": 46
+      }
+    },
+    "dev-g2": {
+      "C": {
+        "n": 256,
+        "success": 227,
+        "collision": 29,
+        "timeout": 0,
+        "blocked_n": 68,
+        "blocked_success": 40
+      },
+      "T": {
+        "n": 256,
+        "success": 232,
+        "collision": 24,
+        "timeout": 0,
+        "blocked_n": 68,
+        "blocked_success": 45
+      }
+    },
+    "dev-a": {
+      "C": {
+        "n": 256,
+        "success": 193,
+        "collision": 63,
+        "timeout": 0,
+        "blocked_n": 94,
+        "blocked_success": 32
+      },
+      "T": {
+        "n": 256,
+        "success": 196,
+        "collision": 59,
+        "timeout": 1,
+        "blocked_n": 94,
+        "blocked_success": 36
+      }
+    },
+    "dev-b": {
+      "C": {
+        "n": 256,
+        "success": 198,
+        "collision": 58,
+        "timeout": 0,
+        "blocked_n": 86,
+        "blocked_success": 29
+      },
+      "T": {
+        "n": 256,
+        "success": 198,
+        "collision": 58,
+        "timeout": 0,
+        "blocked_n": 86,
+        "blocked_success": 28
+      }
+    },
+    "dev-c": {
+      "C": {
+        "n": 256,
+        "success": 196,
+        "collision": 60,
+        "timeout": 0,
+        "blocked_n": 96,
+        "blocked_success": 37
+      },
+      "T": {
+        "n": 256,
+        "success": 184,
+        "collision": 69,
+        "timeout": 3,
+        "blocked_n": 96,
+        "blocked_success": 25
+      }
+    },
+    "open": {
+      "C": {
+        "n": 256,
+        "success": 256,
+        "collision": 0,
+        "timeout": 0,
+        "blocked_n": 0,
+        "blocked_success": 0
+      },
+      "T": {
+        "n": 256,
+        "success": 256,
+        "collision": 0,
+        "timeout": 0,
+        "blocked_n": 0,
+        "blocked_success": 0
+      }
+    },
+    "clutter": {
+      "C": {
+        "n": 256,
+        "success": 189,
+        "collision": 67,
+        "timeout": 0,
+        "blocked_n": 112,
+        "blocked_success": 46
+      },
+      "T": {
+        "n": 256,
+        "success": 186,
+        "collision": 70,
+        "timeout": 0,
+        "blocked_n": 112,
+        "blocked_success": 42
+      }
+    }
+  },
+  "penalty": {
+    "dev-r1": {
+      "10": {
+        "n": 256,
+        "success": 195,
+        "collision": 61,
+        "timeout": 0,
+        "successful_arrival_mean_s": 2.875643935589744
+      },
+      "50": {
+        "n": 256,
+        "success": 220,
+        "collision": 18,
+        "timeout": 18,
+        "successful_arrival_mean_s": 5.585049744681818
+      }
+    },
+    "dev-r2": {
+      "10": {
+        "n": 256,
+        "success": 201,
+        "collision": 55,
+        "timeout": 0,
+        "successful_arrival_mean_s": 3.0315979660199006
+      },
+      "50": {
+        "n": 256,
+        "success": 214,
+        "collision": 17,
+        "timeout": 25,
+        "successful_arrival_mean_s": 5.06756129364486
+      }
+    },
+    "dev-a": {
+      "10": {
+        "n": 256,
+        "success": 196,
+        "collision": 58,
+        "timeout": 2,
+        "successful_arrival_mean_s": 3.1176093650000003
+      },
+      "50": {
+        "n": 256,
+        "success": 207,
+        "collision": 32,
+        "timeout": 17,
+        "successful_arrival_mean_s": 5.168397482898551
+      }
+    },
+    "dev-b": {
+      "10": {
+        "n": 256,
+        "success": 199,
+        "collision": 57,
+        "timeout": 0,
+        "successful_arrival_mean_s": 3.2025200121105524
+      },
+      "50": {
+        "n": 256,
+        "success": 223,
+        "collision": 18,
+        "timeout": 15,
+        "successful_arrival_mean_s": 5.8691117867264575
+      }
+    },
+    "dev-c": {
+      "10": {
+        "n": 256,
+        "success": 191,
+        "collision": 62,
+        "timeout": 3,
+        "successful_arrival_mean_s": 3.0662345725654454
+      },
+      "50": {
+        "n": 256,
+        "success": 221,
+        "collision": 20,
+        "timeout": 15,
+        "successful_arrival_mean_s": 5.473347295972851
+      }
+    },
+    "open": {
+      "10": {
+        "n": 256,
+        "success": 256,
+        "collision": 0,
+        "timeout": 0,
+        "successful_arrival_mean_s": 3.0035198645703125
+      },
+      "50": {
+        "n": 256,
+        "success": 242,
+        "collision": 0,
+        "timeout": 14,
+        "successful_arrival_mean_s": 4.548377483719008
+      }
+    },
+    "clutter": {
+      "10": {
+        "n": 256,
+        "success": 191,
+        "collision": 64,
+        "timeout": 1,
+        "successful_arrival_mean_s": 3.189011524712042
+      },
+      "50": {
+        "n": 256,
+        "success": 212,
+        "collision": 21,
+        "timeout": 23,
+        "successful_arrival_mean_s": 5.10593305745283
+      }
+    }
+  },
+  "dynamic": {
+    "warmstart": {
+      "n": 128,
+      "success": 27,
+      "collision": 101,
+      "timeout": 0
+    },
+    "full-s1": {
+      "n": 128,
+      "success": 112,
+      "collision": 15,
+      "timeout": 1
+    },
+    "ablate-s1": {
+      "n": 128,
+      "success": 104,
+      "collision": 24,
+      "timeout": 0
+    },
+    "full-s2": {
+      "n": 128,
+      "success": 109,
+      "collision": 19,
+      "timeout": 0
+    },
+    "ablate-s2": {
+      "n": 128,
+      "success": 108,
+      "collision": 20,
+      "timeout": 0
+    }
+  },
+  "limitations": [
+    "Dynamic results use selected checkpoints on the development selector, not a blind test.",
+    "Original dynamic ablation removed direct previous depth while cached geometry history remained.",
+    "Mixture improves new blocked tasks but fails the old DEV-c retention gate.",
+    "Penalty50 reduces contacts but increases timeouts and successful arrival time.",
+    "Successful-arrival means exclude failures; outcome denominators remain visible.",
+    "Archive supports result analysis, not complete training or hardware reproduction."
+  ]
+}
