@@ -43,10 +43,16 @@ It must vary its speed with environmental complexity, react to moving collision 
 
 **The full goal is active and incomplete.** The current milestone — a policy that reaches 25/30 connected-room development levels and three watchable native Webots flights — is real but narrow. Read the limitations section before citing any number on this page.
 
-The latest local tests show why further work is needed: imitation followed by
-10,000 PPO rollouts gave mixed gains, and geodesic reward shaping reduced
-reliability on two training seeds. The next experiment changes the training task
-distribution to match visually grounded local subgoals. [Results and raw evidence](docs/LOCAL_TRAINING_REVIEW.md).
+The strongest paired local Webots test reached **113/128 goals** with the
+imitation policy versus **105/128** with the faster baseline. Contacts fell
+from 23 to 14, but mean successful arrival took 6.17 s rather than 3.61 s.
+[Independent benchmark and evidence](docs/NATIVE_BC_TRANSFER.md).
+
+Training changes have exposed limits: harder local tasks improved blocked
+routes but lost old skills; stronger collision penalties caused more timeouts;
+four matched runs found that more fixed rehearsal did not solve the loss.
+[Training comparisons](docs/TRAINING_STRATEGY_RESULTS.md),
+[latest rehearsal result](docs/REHEARSAL_RESULTS.md).
 
 ---
 

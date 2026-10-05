@@ -1,0 +1,438 @@
+{
+  "input_files": 127,
+  "splits": {
+    "final10000": {
+      "dev-h": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 235,
+            "contacts": 21,
+            "timeouts": 0,
+            "blocked_episodes": 66,
+            "blocked_successes": 45,
+            "successful_arrival_mean_s": 2.4108499154723404,
+            "episode_mean_s": 2.327537928484375
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 226,
+            "contacts": 30,
+            "timeouts": 0,
+            "blocked_episodes": 66,
+            "blocked_successes": 36,
+            "successful_arrival_mean_s": 2.322786597017699,
+            "episode_mean_s": 2.2034755626484377
+          }
+        },
+        "paired_wins": 4,
+        "paired_losses": 13
+      },
+      "dev-g1": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 238,
+            "contacts": 18,
+            "timeouts": 0,
+            "blocked_episodes": 60,
+            "blocked_successes": 42,
+            "successful_arrival_mean_s": 2.2842423589915968,
+            "episode_mean_s": 2.2317566857226563
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 240,
+            "contacts": 16,
+            "timeouts": 0,
+            "blocked_episodes": 60,
+            "blocked_successes": 44,
+            "successful_arrival_mean_s": 2.2654153325833333,
+            "episode_mean_s": 2.2315612040273436
+          }
+        },
+        "paired_wins": 5,
+        "paired_losses": 3
+      },
+      "dev-g2": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 238,
+            "contacts": 18,
+            "timeouts": 0,
+            "blocked_episodes": 68,
+            "blocked_successes": 50,
+            "successful_arrival_mean_s": 2.3926455995378153,
+            "episode_mean_s": 2.3269907584179688
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 237,
+            "contacts": 19,
+            "timeouts": 0,
+            "blocked_episodes": 68,
+            "blocked_successes": 49,
+            "successful_arrival_mean_s": 2.4270050814345994,
+            "episode_mean_s": 2.343985107449219
+          }
+        },
+        "paired_wins": 6,
+        "paired_losses": 7
+      },
+      "dev-a": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 197,
+            "contacts": 59,
+            "timeouts": 0,
+            "blocked_episodes": 94,
+            "blocked_successes": 38,
+            "successful_arrival_mean_s": 2.8652312539086293,
+            "episode_mean_s": 2.5027363450625
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 200,
+            "contacts": 55,
+            "timeouts": 1,
+            "blocked_episodes": 94,
+            "blocked_successes": 40,
+            "successful_arrival_mean_s": 2.92425465605,
+            "episode_mean_s": 2.617583067609375
+          }
+        },
+        "paired_wins": 8,
+        "paired_losses": 5
+      },
+      "dev-b": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 201,
+            "contacts": 55,
+            "timeouts": 0,
+            "blocked_episodes": 86,
+            "blocked_successes": 33,
+            "successful_arrival_mean_s": 3.019157544925373,
+            "episode_mean_s": 2.600510267765625
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 196,
+            "contacts": 59,
+            "timeouts": 1,
+            "blocked_episodes": 86,
+            "blocked_successes": 27,
+            "successful_arrival_mean_s": 3.1178632495408163,
+            "episode_mean_s": 2.726646693832031
+          }
+        },
+        "paired_wins": 2,
+        "paired_losses": 7
+      },
+      "dev-c": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 191,
+            "contacts": 65,
+            "timeouts": 0,
+            "blocked_episodes": 96,
+            "blocked_successes": 31,
+            "successful_arrival_mean_s": 3.1908455663874347,
+            "episode_mean_s": 2.73406857409375
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 190,
+            "contacts": 65,
+            "timeouts": 1,
+            "blocked_episodes": 96,
+            "blocked_successes": 30,
+            "successful_arrival_mean_s": 3.082900734421053,
+            "episode_mean_s": 2.6441463119492186
+          }
+        },
+        "paired_wins": 6,
+        "paired_losses": 7
+      },
+      "open": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 256,
+            "contacts": 0,
+            "timeouts": 0,
+            "blocked_episodes": 0,
+            "blocked_successes": 0,
+            "successful_arrival_mean_s": 2.7812505446875,
+            "episode_mean_s": 2.7812505446875
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 250,
+            "contacts": 0,
+            "timeouts": 6,
+            "blocked_episodes": 0,
+            "blocked_successes": 0,
+            "successful_arrival_mean_s": 2.90400510416,
+            "episode_mean_s": 3.30470097828125
+          }
+        },
+        "paired_wins": 0,
+        "paired_losses": 6
+      },
+      "clutter": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 193,
+            "contacts": 63,
+            "timeouts": 0,
+            "blocked_episodes": 112,
+            "blocked_successes": 50,
+            "successful_arrival_mean_s": 2.9691720046632124,
+            "episode_mean_s": 2.497617790769531
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 185,
+            "contacts": 70,
+            "timeouts": 1,
+            "blocked_episodes": 112,
+            "blocked_successes": 41,
+            "successful_arrival_mean_s": 2.8678376198378377,
+            "episode_mean_s": 2.462775215484375
+          }
+        },
+        "paired_wins": 7,
+        "paired_losses": 15
+      }
+    },
+    "selected_best": {
+      "dev-h": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 236,
+            "contacts": 20,
+            "timeouts": 0,
+            "blocked_episodes": 66,
+            "blocked_successes": 46,
+            "successful_arrival_mean_s": 2.45042215379661,
+            "episode_mean_s": 2.3451156794921877
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 233,
+            "contacts": 23,
+            "timeouts": 0,
+            "blocked_episodes": 66,
+            "blocked_successes": 44,
+            "successful_arrival_mean_s": 2.2403418397424892,
+            "episode_mean_s": 2.1853113908710937
+          }
+        },
+        "paired_wins": 7,
+        "paired_losses": 10
+      },
+      "dev-g1": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 247,
+            "contacts": 9,
+            "timeouts": 0,
+            "blocked_episodes": 60,
+            "blocked_successes": 51,
+            "successful_arrival_mean_s": 2.363156727854251,
+            "episode_mean_s": 2.3345300856640625
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 247,
+            "contacts": 9,
+            "timeouts": 0,
+            "blocked_episodes": 60,
+            "blocked_successes": 51,
+            "successful_arrival_mean_s": 2.2329944620242914,
+            "episode_mean_s": 2.24699085196875
+          }
+        },
+        "paired_wins": 3,
+        "paired_losses": 3
+      },
+      "dev-g2": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 238,
+            "contacts": 18,
+            "timeouts": 0,
+            "blocked_episodes": 68,
+            "blocked_successes": 50,
+            "successful_arrival_mean_s": 2.3951665524789916,
+            "episode_mean_s": 2.3189438414960937
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 238,
+            "contacts": 18,
+            "timeouts": 0,
+            "blocked_episodes": 68,
+            "blocked_successes": 50,
+            "successful_arrival_mean_s": 2.318067445210084,
+            "episode_mean_s": 2.257226693207031
+          }
+        },
+        "paired_wins": 3,
+        "paired_losses": 3
+      },
+      "dev-a": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 199,
+            "contacts": 56,
+            "timeouts": 1,
+            "blocked_episodes": 94,
+            "blocked_successes": 40,
+            "successful_arrival_mean_s": 2.8030152736180907,
+            "episode_mean_s": 2.5267201459921873
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 201,
+            "contacts": 53,
+            "timeouts": 2,
+            "blocked_episodes": 94,
+            "blocked_successes": 41,
+            "successful_arrival_mean_s": 3.0273688329850748,
+            "episode_mean_s": 2.8278201968476564
+          }
+        },
+        "paired_wins": 12,
+        "paired_losses": 10
+      },
+      "dev-b": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 201,
+            "contacts": 55,
+            "timeouts": 0,
+            "blocked_episodes": 86,
+            "blocked_successes": 34,
+            "successful_arrival_mean_s": 3.066670119154229,
+            "episode_mean_s": 2.674338467792969
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 203,
+            "contacts": 53,
+            "timeouts": 0,
+            "blocked_episodes": 86,
+            "blocked_successes": 33,
+            "successful_arrival_mean_s": 3.07882303729064,
+            "episode_mean_s": 2.6744571781484376
+          }
+        },
+        "paired_wins": 13,
+        "paired_losses": 11
+      },
+      "dev-c": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 197,
+            "contacts": 59,
+            "timeouts": 0,
+            "blocked_episodes": 96,
+            "blocked_successes": 37,
+            "successful_arrival_mean_s": 3.163457071218274,
+            "episode_mean_s": 2.7248476275234377
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 188,
+            "contacts": 67,
+            "timeouts": 1,
+            "blocked_episodes": 96,
+            "blocked_successes": 28,
+            "successful_arrival_mean_s": 3.0441551578723405,
+            "episode_mean_s": 2.788992261234375
+          }
+        },
+        "paired_wins": 9,
+        "paired_losses": 18
+      },
+      "open": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 256,
+            "contacts": 0,
+            "timeouts": 0,
+            "blocked_episodes": 0,
+            "blocked_successes": 0,
+            "successful_arrival_mean_s": 2.91445494,
+            "episode_mean_s": 2.91445494
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 255,
+            "contacts": 1,
+            "timeouts": 0,
+            "blocked_episodes": 0,
+            "blocked_successes": 0,
+            "successful_arrival_mean_s": 2.9409864070588236,
+            "episode_mean_s": 2.942349731015625
+          }
+        },
+        "paired_wins": 0,
+        "paired_losses": 1
+      },
+      "clutter": {
+        "arms": {
+          "0": {
+            "episodes": 256,
+            "successes": 191,
+            "contacts": 64,
+            "timeouts": 1,
+            "blocked_episodes": 112,
+            "blocked_successes": 47,
+            "successful_arrival_mean_s": 2.951570900418848,
+            "episode_mean_s": 2.5797279953828123
+          },
+          "1": {
+            "episodes": 256,
+            "successes": 193,
+            "contacts": 63,
+            "timeouts": 0,
+            "blocked_episodes": 112,
+            "blocked_successes": 51,
+            "successful_arrival_mean_s": 2.944302814507772,
+            "episode_mean_s": 2.555236636722656
+          }
+        },
+        "paired_wins": 15,
+        "paired_losses": 13
+      }
+    }
+  },
+  "matched_gates": {
+    "fresh_blocked_no_loss": false,
+    "old_dev_c_gain_at_least6": false
+  },
+  "absolute_retention_gates": {
+    "dev-a": true,
+    "dev-b": true,
+    "dev-c": false,
+    "open": false,
+    "clutter": false
+  },
+  "verdict": "NOT ADOPTED",
+  "scope": "Two matched source training seeds; exposed development retention and fresh nonselector dev-h. No native or blind FINAL claim. Fixed episode weighting, not adaptive failure replay."
+}
