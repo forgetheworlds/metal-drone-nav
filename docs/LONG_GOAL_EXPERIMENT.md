@@ -52,10 +52,34 @@ feasibility. Actual BC preflights reached all 128 open goals in both the new
 TRAIN and development panels, and 112/128 and 110/128 hallway goals. Failed
 preflights remain in the experiment records.
 
-The matched training runs are active. Defaults and selected policies are
-preserved. These direct-route tasks test distance coverage; complex tight
-routes, robust sensing and frozen independent transfer still need their own
-evidence.
+All four matched runs completed 10,000 rollouts and 320,000 optimizer steps,
+followed by 61 evaluations. Across two independently trained policies on each
+128-task panel, the long-trained arm reached 255/256 open goals and 256/256
+hallway goals; the short-task controls reached 2/256 and 0/256. Mean successful
+arrival was 10.64 s and 10.69 s for the treatment. The long-task safety,
+BC-retention and arrival gates passed.
+
+Static retention failed: development B fell 226→215/256 and clutter fell
+222→216/256. A was 206→205, C213→210, and short open256→253. The long candidate
+is preserved as a useful learned behavior, but it is not promoted as the
+combined navigator. Source-selected best checkpoints also fail retention.
+The next [anchor comparison](ANCHOR_RETENTION_EXPERIMENT.md) tests preserving
+behavior during these updates; [composite challenges](COMPOSITE_CHALLENGES.md)
+expose additional combinations of skills.
+
+The [completed-run archive](../evidence/inputs/distance-learning/records.tar.gz)
+contains 213 hashed inputs: checkpoints, histories, diagnostics, all flights,
+banks, job receipts and original frozen source. The source was recovered from
+commit72f19c5 and checked against the launch hashes before packaging. Recompute
+the [full review](../evidence/inputs/distance-learning/review.json) with:
+
+```sh
+python3 navigation_distance_review.py evidence/inputs/distance-learning/records.tar.gz
+```
+
+Defaults and selected policies are preserved. These direct-route tasks test
+distance coverage. Complex tight routes, robust sensing and frozen independent
+transfer remain separate evidence requirements.
 
 ```sh
 clang++ -std=c++17 -O3 -fobjc-arc -DSOURCE_DIR="\"$(pwd)\"" \

@@ -1,0 +1,306 @@
+{
+  "input_files": 213,
+  "trials_per_arm_per_panel": 256,
+  "unique_task_instances_per_panel": 128,
+  "stages": {
+    "final10000": {
+      "long-open": {
+        "C": {
+          "n": 256,
+          "S": 2,
+          "C": 196,
+          "T": 58,
+          "success_time": 19.72535615
+        },
+        "T": {
+          "n": 256,
+          "S": 255,
+          "C": 1,
+          "T": 0,
+          "success_time": 10.636814752039216
+        },
+        "paired_wins": 253,
+        "paired_losses": 0
+      },
+      "long-hallway": {
+        "C": {
+          "n": 256,
+          "S": 0,
+          "C": 234,
+          "T": 22,
+          "success_time": null
+        },
+        "T": {
+          "n": 256,
+          "S": 256,
+          "C": 0,
+          "T": 0,
+          "success_time": 10.693313439414062
+        },
+        "paired_wins": 256,
+        "paired_losses": 0
+      },
+      "dev-a": {
+        "C": {
+          "n": 256,
+          "S": 206,
+          "C": 43,
+          "T": 7,
+          "success_time": 3.9531743892233013
+        },
+        "T": {
+          "n": 256,
+          "S": 205,
+          "C": 46,
+          "T": 5,
+          "success_time": 4.818569310146342
+        },
+        "paired_wins": 14,
+        "paired_losses": 15
+      },
+      "dev-b": {
+        "C": {
+          "n": 256,
+          "S": 226,
+          "C": 24,
+          "T": 6,
+          "success_time": 4.277678162168141
+        },
+        "T": {
+          "n": 256,
+          "S": 215,
+          "C": 39,
+          "T": 2,
+          "success_time": 4.7758449939069765
+        },
+        "paired_wins": 9,
+        "paired_losses": 20
+      },
+      "dev-c": {
+        "C": {
+          "n": 256,
+          "S": 213,
+          "C": 37,
+          "T": 6,
+          "success_time": 4.288285675258216
+        },
+        "T": {
+          "n": 256,
+          "S": 210,
+          "C": 44,
+          "T": 2,
+          "success_time": 4.9340805142380955
+        },
+        "paired_wins": 14,
+        "paired_losses": 17
+      },
+      "open": {
+        "C": {
+          "n": 256,
+          "S": 256,
+          "C": 0,
+          "T": 0,
+          "success_time": 3.2033280664453123
+        },
+        "T": {
+          "n": 256,
+          "S": 253,
+          "C": 0,
+          "T": 3,
+          "success_time": 4.639159047865613
+        },
+        "paired_wins": 0,
+        "paired_losses": 3
+      },
+      "clutter": {
+        "C": {
+          "n": 256,
+          "S": 222,
+          "C": 28,
+          "T": 6,
+          "success_time": 4.307231247612612
+        },
+        "T": {
+          "n": 256,
+          "S": 216,
+          "C": 37,
+          "T": 3,
+          "success_time": 5.180594186944444
+        },
+        "paired_wins": 11,
+        "paired_losses": 17
+      }
+    },
+    "selected_best": {
+      "long-open": {
+        "C": {
+          "n": 256,
+          "S": 3,
+          "C": 176,
+          "T": 77,
+          "success_time": 19.1336759
+        },
+        "T": {
+          "n": 256,
+          "S": 255,
+          "C": 1,
+          "T": 0,
+          "success_time": 10.63406959
+        },
+        "paired_wins": 252,
+        "paired_losses": 0
+      },
+      "long-hallway": {
+        "C": {
+          "n": 256,
+          "S": 55,
+          "C": 193,
+          "T": 8,
+          "success_time": 15.842085401818181
+        },
+        "T": {
+          "n": 256,
+          "S": 255,
+          "C": 1,
+          "T": 0,
+          "success_time": 10.785053437529411
+        },
+        "paired_wins": 200,
+        "paired_losses": 0
+      },
+      "dev-a": {
+        "C": {
+          "n": 256,
+          "S": 223,
+          "C": 27,
+          "T": 6,
+          "success_time": 4.999140913139014
+        },
+        "T": {
+          "n": 256,
+          "S": 218,
+          "C": 35,
+          "T": 3,
+          "success_time": 4.353233955733945
+        },
+        "paired_wins": 15,
+        "paired_losses": 20
+      },
+      "dev-b": {
+        "C": {
+          "n": 256,
+          "S": 221,
+          "C": 27,
+          "T": 8,
+          "success_time": 5.088726453936651
+        },
+        "T": {
+          "n": 256,
+          "S": 218,
+          "C": 36,
+          "T": 2,
+          "success_time": 4.597734547889908
+        },
+        "paired_wins": 18,
+        "paired_losses": 21
+      },
+      "dev-c": {
+        "C": {
+          "n": 256,
+          "S": 214,
+          "C": 39,
+          "T": 3,
+          "success_time": 4.921996475093458
+        },
+        "T": {
+          "n": 256,
+          "S": 208,
+          "C": 46,
+          "T": 2,
+          "success_time": 4.451224889182692
+        },
+        "paired_wins": 15,
+        "paired_losses": 21
+      },
+      "open": {
+        "C": {
+          "n": 256,
+          "S": 255,
+          "C": 0,
+          "T": 1,
+          "success_time": 3.8982547380784314
+        },
+        "T": {
+          "n": 256,
+          "S": 255,
+          "C": 0,
+          "T": 1,
+          "success_time": 3.9849195855686275
+        },
+        "paired_wins": 1,
+        "paired_losses": 1
+      },
+      "clutter": {
+        "C": {
+          "n": 256,
+          "S": 220,
+          "C": 27,
+          "T": 9,
+          "success_time": 4.816168687727273
+        },
+        "T": {
+          "n": 256,
+          "S": 216,
+          "C": 37,
+          "T": 3,
+          "success_time": 4.6611400075462965
+        },
+        "paired_wins": 14,
+        "paired_losses": 18
+      }
+    }
+  },
+  "long_reference": {
+    "long-open": {
+      "bc_per128": {
+        "n": 128,
+        "S": 128,
+        "C": 0,
+        "T": 0,
+        "success_time": 12.318545952890625
+      },
+      "common_success_arrival_delta_vs_bc_s": -1.6769011269411764
+    },
+    "long-hallway": {
+      "bc_per128": {
+        "n": 128,
+        "S": 110,
+        "C": 10,
+        "T": 8,
+        "success_time": 13.372028872727272
+      },
+      "common_success_arrival_delta_vs_bc_s": -2.8121098216363634
+    }
+  },
+  "seed_long_success": {
+    "1": {
+      "C": 2,
+      "T": 255
+    },
+    "2": {
+      "C": 0,
+      "T": 256
+    }
+  },
+  "gates": {
+    "long_gain": true,
+    "both_seeds_retain_long": true,
+    "long_bc_retention": true,
+    "long_contacts": true,
+    "long_timeouts": true,
+    "static_retention": false,
+    "open_floor": true,
+    "long_arrival": true
+  },
+  "adopted": false
+}
