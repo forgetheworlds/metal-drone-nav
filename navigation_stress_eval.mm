@@ -131,6 +131,25 @@ void write_trace(const std::string& path, const Sim& sim) {
         }
     }
     require(bool(output), "stress trace write failed");
+    // Preserve actual captured images and poses at episode end. Only eight
+    // retained frames are available; never label them as the whole episode.
+    std::ofstream sensing(path + ".sensing.bin", std::ios::binary);
+    require(bool(sensing), "cannot write terminal sensing ring");
+    const char magic[8] = {'N','A','V','R','I','N','G','1'};
+    const uint32_t header[4] = {1, sim.cfg.n, sim.cfg.sensor_period, sim.cfg.sensor_delay};
+    const float navigation_period = sim.cfg.substeps * .01f;
+    sensing.write(magic, sizeof(magic));
+    sensing.write(reinterpret_cast<const char*>(header), sizeof(header));
+    sensing.write(reinterpret_cast<const char*>(&navigation_period), sizeof(navigation_period));
+    const auto* ranges = static_cast<const float*>(sim.sensors.contents);
+    const auto* poses = static_cast<const float*>(sim.poses.contents);
+    for (uint env = 0; env < sim.cfg.n; ++env) {
+        sensing.write(reinterpret_cast<const char*>(&results[env].steps), sizeof(uint32_t));
+        sensing.write(reinterpret_cast<const char*>(ranges + env * 8 * 320), 8 * 320 * sizeof(float));
+        sensing.write(reinterpret_cast<const char*>(poses + env * 8 * 12), 8 * 12 * sizeof(float));
+    }
+    require(bool(sensing), "terminal sensing write failed");
+
 }
 
 } // namespace stress_evaluation

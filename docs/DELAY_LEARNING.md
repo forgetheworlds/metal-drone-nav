@@ -56,3 +56,14 @@ checkpoints are in `results/root-delay-learning/`. Run counts on resume are
 incremental; inspect the saved header. Training is active until all four headers
 and the full evaluation receipts exist. No completed learning result is claimed
 by the preflight.
+
+## Interrupted execution recovery
+
+The original control seed1 completed10,000 rollouts. An interruption ended the
+producer after treatment seed1's saved6,850-rollout checkpoint. Root verified
+that the real prior processes were absent and all frozen inputs matched, then
+resumed exactly3,150 incremental rollouts. The treatment now has10,000 saved
+rollouts and320,000 optimizer steps; seed2 continues. Original segment receipts
+and resumed receipts remain separate under `provenance/`. Wall times include
+long suspended periods and must not be treated as steady-state throughput.
+The evaluator still requires all four completed headers before its48 panels.
