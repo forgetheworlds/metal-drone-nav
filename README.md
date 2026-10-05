@@ -58,6 +58,20 @@ The useful imitation baseline was initialized from a trained PPO policy, then fi
 
 Most policy studies use 128 simultaneous environments. A separate throughput ladder reaches 8,192. An optimized perception query workload became **8.61× faster**, with matched full-checkpoint byte parity. [Measured performance and correctness](docs/BENCHMARKS.md).
 
+## Learning to handle delay
+
+Matched training with clean rehearsal and both 100 ms delays improves course
+success from **203 to 231/256** under both delays, and **198 to 226/256** under
+combined noise, delays and plant variation. Nominal courses reach **246/256**;
+long open and hallway tasks reach **256/256**. Static and short-arrival retention
+still fail, so this candidate is being evaluated rather than promoted.
+
+![Complete delay-learning comparison](artifacts/plots/delay-learning.png)
+
+*Two seeds on the same 128 development tasks. [Protocol, failures and 214 hashed inputs](docs/DELAY_LEARNING.md).*
+
+For current ownership and exact continuation steps, read [HANDOFF.md](HANDOFF.md).
+
 ## What still limits the policy
 
 Learning a new skill can weaken an earlier one. More collision punishment reduced contacts but introduced waiting and timeouts. Parameter anchoring reduced weight drift but did not meet every speed and retention requirement. Behavior consolidation followed by PPO reaches 240/256 combined courses and 255/256 long-open goals, but still loses some static and short-arrival skill. A corrected perception-support experiment did not improve navigation and was rejected.

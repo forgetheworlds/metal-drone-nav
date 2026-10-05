@@ -1,0 +1,10 @@
+{
+  "scope": "Partial benchmark retained for handoff; not a final result",
+  "completed_valid_flights": 112,
+  "planned_flights": 192,
+  "remaining": 80,
+  "hash_bound_files": 799,
+  "archive_sha256": "c8698f7f94c74565157c9dc4f4411c17eefd05506710b8f0210053077c978830",
+  "interrupted_run_not_counted": true,
+  "background_duplicate_not_counted": true
+}

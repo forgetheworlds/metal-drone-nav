@@ -523,3 +523,30 @@ four real saved10,000/320,000 headers and all48 evaluated panels, checks paired
 plant bytes and stable arrivals, and separates absolute floors from delay gains.
 Interrupted exposure journals retain abandoned rows; last occurrence per saved
 rollout belongs to the resumed continuation and avoids double-counted budgets.
+
+## Complete delay learning and background handoff — 2026-10-05
+
+Four final10,000/320,000 headers and48 evaluated panels complete. Both-delay
+success203→231/256, contacts53→25, shared-success time−0.602s. Combined stress
+198→226, contacts58→30. Nominal course240→246, longopen241→256, hall255→256.
+StaticC214→201 and shortopen237→233 fail retention; absolute floors also fail.
+No promotion. The214-input archive includes banks, warmstarts, source and raw
+flights; `navigation_delay_review.py` recomputes every gate.
+
+Full retained sensing review: contactobject measured in raw and pooled depth
+for28/37 newbothdelay contacts and48/57 combined contacts. Dense5120 samepose/FOV
+geometry rays rescue2/9 bothdelay misses and0/9 combined misses. This is a retained
+window and offline counterfactual, not a wholeepisode visibility or safety proof.
+
+Fresh native evaluation froze four final actors and48 new nominal courses,
+including reflected travel/height geometry. The user reported recurring macOS
+focus stealing despite batch/minimize/no-rendering. Root stopped only the owned
+parent/child, preserving112/192 valid flights and an unscored interrupted run.
+The nonrecording child environment now disables Qt foreground transformation;
+installed Cocoa plugin support verified. One valid duplicate check kept Chrome
+foreground in20 samples, with original9.4s arrival/minrange/hold unchanged.
+This is background Cocoa/OpenGL, not trueheadless. Official Webots headless
+setup uses Linux/Xvfb or Docker: https://cyberbotics.com/doc/guide/installation-procedure .
+Future resumes must record launcher-only supplemental provenance and preserve
+actors/selection/raw receipts. No remaining80 flights were launched for this
+handoff. `HANDOFF.md` records exact state and the next evidence-producing steps.

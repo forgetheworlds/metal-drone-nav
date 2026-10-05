@@ -6,6 +6,8 @@ import hashlib
 import json
 import math
 import struct
+import tarfile
+import tempfile
 
 PANELS = ('long-open', 'long-hallway', 'dev-a', 'dev-b', 'dev-c', 'open', 'clutter', 'composite')
 PROFILES = ('nominal', 'sensor-delay', 'command-delay', 'both-delay', 'combined')
@@ -122,8 +124,28 @@ def review(folder):
             'scope': 'Exposed source development; passing these gates does not prove full goal or independent transfer.'}
 
 
+
+def review_archive(path):
+    with tempfile.TemporaryDirectory(prefix="navigation-delay-review-") as temporary:
+        folder = Path(temporary)
+        with tarfile.open(path) as package:
+            hashes = json.load(package.extractfile('SHA256.json'))
+            for name, digest in hashes.items():
+                relative = Path(name)
+                if relative.is_absolute() or '..' in relative.parts:
+                    raise ValueError('Invalid archive path')
+                data = package.extractfile(name).read()
+                if hashlib.sha256(data).hexdigest() != digest:
+                    raise ValueError(f'Archive hash mismatch: {name}')
+                destination = folder / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(data)
+        result = review(folder)
+        result['hashed_inputs'] = len(hashes)
+        return result
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('folder', type=Path)
     args = parser.parse_args()
-    print(json.dumps(review(args.folder), indent=2))
+    print(json.dumps(review_archive(args.folder) if args.folder.is_file() else review(args.folder), indent=2))

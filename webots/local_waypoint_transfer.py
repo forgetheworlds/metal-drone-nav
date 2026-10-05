@@ -583,37 +583,50 @@ def run_flight(world: pathlib.Path, flight_dir: pathlib.Path, record_movie: bool
     status = {"invalid": False, "reason": ""}
     command = webots_command(world, record_movie)
     with log_path.open("w") as log:
+        environment = os.environ.copy()
+        if sys.platform == "darwin" and not record_movie:
+            # Batch/minimize still lets Qt promote each new macOS instance.
+            # Keep its Cocoa/OpenGL backend but disable foreground promotion.
+            environment["QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM"] = "1"
         process = subprocess.Popen(command, cwd=str(WEBOTS_DIR), stdout=log,
-                                   stderr=subprocess.STDOUT, start_new_session=True, close_fds=True)
-        deadline = time.monotonic() + MAX_STEPS_RUNTIME
-        while True:
-            if process.poll() is not None:
-                break
-            if time.monotonic() > deadline:
-                status.update(invalid=True, reason="wall-clock timeout")
-                break
-            try:
-                seen = log_path.read_text(errors="replace")
-            except OSError:
-                seen = ""
-            marker = next((item for item in INVALID_MARKERS if item in seen), None)
-            if marker:
-                status.update(invalid=True, reason=f"log marker: {marker}")
-                break
-            time.sleep(0.25)
-        if process.poll() is None:
-            try:
-                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-            try:
-                process.wait(timeout=15)
-            except subprocess.TimeoutExpired:
+                                   stderr=subprocess.STDOUT, start_new_session=True,
+                                   close_fds=True, env=environment)
+        write_json(flight_dir / "process.json", {"pid": process.pid,
+                   "argv": command, "cwd": str(WEBOTS_DIR), "state": "running"})
+        try:
+            deadline = time.monotonic() + MAX_STEPS_RUNTIME
+            while True:
+                if process.poll() is not None:
+                    break
+                if time.monotonic() > deadline:
+                    status.update(invalid=True, reason="wall-clock timeout")
+                    break
                 try:
-                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                    seen = log_path.read_text(errors="replace")
+                except OSError:
+                    seen = ""
+                marker = next((item for item in INVALID_MARKERS if item in seen), None)
+                if marker:
+                    status.update(invalid=True, reason=f"log marker: {marker}")
+                    break
+                time.sleep(0.25)
+        finally:
+            if process.poll() is None:
+                try:
+                    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
                 except ProcessLookupError:
                     pass
-                process.wait(timeout=15)
+                try:
+                    process.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait(timeout=15)
+            write_json(flight_dir / "process.json", {"pid": process.pid,
+                       "argv": command, "cwd": str(WEBOTS_DIR),
+                       "state": "exited", "exit_code": process.returncode})
     returncode = process.returncode
     log_text = log_path.read_text(errors="replace")
     if not status["invalid"]:

@@ -53,9 +53,9 @@ to adoption. A mechanism gain cannot excuse losing another navigation skill.
 
 The fixed decision, preflight proof, real process receipts, source freeze and
 checkpoints are in `results/root-delay-learning/`. Run counts on resume are
-incremental; inspect the saved header. Training is active until all four headers
-and the full evaluation receipts exist. No completed learning result is claimed
-by the preflight.
+incremental; inspect the saved header. All four headers and all 48 evaluation receipts are now complete. The delay
+gain is real, but retention and absolute floors fail; the policy is not promoted.
+See [the handoff](../HANDOFF.md) for the full table and next execution state.
 
 ## Interrupted execution recovery
 
@@ -67,3 +67,18 @@ rollouts and 320,000 optimizer steps; seed2 continues. Original segment receipts
 and resumed receipts remain separate under `provenance/`. Wall times include
 long suspended periods and must not be treated as steady-state throughput.
 The evaluator still requires all four completed headers before its 48 panels.
+
+## Completed results
+
+![Matched delay-learning outcomes](../artifacts/plots/delay-learning.png)
+
+Both-delay course success improves 203→231/256, contacts 53→25; combined stress
+improves 198→226, contacts 58→30. Both-delay common successes are 0.602 s faster.
+Nominal courses improve 240→246, and long open/hallway reach 256/256 each.
+Static C falls 214→201 and short open 237→233. Full adoption gates fail.
+
+The [214-input archive](../evidence/inputs/delay-learning/records.tar.gz) includes
+banks, warmstarts, source, final checkpoints, exposure and all evaluated flights.
+Recompute with `navigation_delay_review.py`; rebuild the figure with
+`navigation_delay_results.py`. Fresh native transfer is incomplete at 112/192
+valid flights and deliberately stopped for the user's background-launch request.

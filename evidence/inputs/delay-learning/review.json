@@ -1,0 +1,584 @@
+{
+  "results": {
+    "long-open/nominal": {
+      "C": {
+        "success": 241,
+        "contacts": 0,
+        "timeouts": 15
+      },
+      "T": {
+        "success": 256,
+        "contacts": 0,
+        "timeouts": 0
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 128,
+            "contacts": 0,
+            "timeouts": 0
+          },
+          {
+            "success": 113,
+            "contacts": 0,
+            "timeouts": 15
+          }
+        ],
+        "T": [
+          {
+            "success": 128,
+            "contacts": 0,
+            "timeouts": 0
+          },
+          {
+            "success": 128,
+            "contacts": 0,
+            "timeouts": 0
+          }
+        ]
+      },
+      "wins": 15,
+      "losses": 0,
+      "common_success_delay_s": -0.5722122696680498
+    },
+    "long-hallway/nominal": {
+      "C": {
+        "success": 255,
+        "contacts": 1,
+        "timeouts": 0
+      },
+      "T": {
+        "success": 256,
+        "contacts": 0,
+        "timeouts": 0
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 127,
+            "contacts": 1,
+            "timeouts": 0
+          },
+          {
+            "success": 128,
+            "contacts": 0,
+            "timeouts": 0
+          }
+        ],
+        "T": [
+          {
+            "success": 128,
+            "contacts": 0,
+            "timeouts": 0
+          },
+          {
+            "success": 128,
+            "contacts": 0,
+            "timeouts": 0
+          }
+        ]
+      },
+      "wins": 1,
+      "losses": 0,
+      "common_success_delay_s": 0.10549261086274507
+    },
+    "dev-a/nominal": {
+      "C": {
+        "success": 205,
+        "contacts": 32,
+        "timeouts": 19
+      },
+      "T": {
+        "success": 206,
+        "contacts": 30,
+        "timeouts": 20
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 104,
+            "contacts": 19,
+            "timeouts": 5
+          },
+          {
+            "success": 101,
+            "contacts": 13,
+            "timeouts": 14
+          }
+        ],
+        "T": [
+          {
+            "success": 99,
+            "contacts": 17,
+            "timeouts": 12
+          },
+          {
+            "success": 107,
+            "contacts": 13,
+            "timeouts": 8
+          }
+        ]
+      },
+      "wins": 23,
+      "losses": 22,
+      "common_success_delay_s": -0.19453970114754102
+    },
+    "dev-b/nominal": {
+      "C": {
+        "success": 216,
+        "contacts": 25,
+        "timeouts": 15
+      },
+      "T": {
+        "success": 219,
+        "contacts": 25,
+        "timeouts": 12
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 115,
+            "contacts": 9,
+            "timeouts": 4
+          },
+          {
+            "success": 101,
+            "contacts": 16,
+            "timeouts": 11
+          }
+        ],
+        "T": [
+          {
+            "success": 109,
+            "contacts": 9,
+            "timeouts": 10
+          },
+          {
+            "success": 110,
+            "contacts": 16,
+            "timeouts": 2
+          }
+        ]
+      },
+      "wins": 19,
+      "losses": 16,
+      "common_success_delay_s": -0.03799966760000002
+    },
+    "dev-c/nominal": {
+      "C": {
+        "success": 214,
+        "contacts": 32,
+        "timeouts": 10
+      },
+      "T": {
+        "success": 201,
+        "contacts": 36,
+        "timeouts": 19
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 110,
+            "contacts": 14,
+            "timeouts": 4
+          },
+          {
+            "success": 104,
+            "contacts": 18,
+            "timeouts": 6
+          }
+        ],
+        "T": [
+          {
+            "success": 101,
+            "contacts": 17,
+            "timeouts": 10
+          },
+          {
+            "success": 100,
+            "contacts": 19,
+            "timeouts": 9
+          }
+        ]
+      },
+      "wins": 13,
+      "losses": 26,
+      "common_success_delay_s": -0.35585646074468086
+    },
+    "open/nominal": {
+      "C": {
+        "success": 237,
+        "contacts": 0,
+        "timeouts": 19
+      },
+      "T": {
+        "success": 233,
+        "contacts": 0,
+        "timeouts": 23
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 128,
+            "contacts": 0,
+            "timeouts": 0
+          },
+          {
+            "success": 109,
+            "contacts": 0,
+            "timeouts": 19
+          }
+        ],
+        "T": [
+          {
+            "success": 110,
+            "contacts": 0,
+            "timeouts": 18
+          },
+          {
+            "success": 123,
+            "contacts": 0,
+            "timeouts": 5
+          }
+        ]
+      },
+      "wins": 16,
+      "losses": 20,
+      "common_success_delay_s": -0.44954742686635946
+    },
+    "clutter/nominal": {
+      "C": {
+        "success": 210,
+        "contacts": 21,
+        "timeouts": 25
+      },
+      "T": {
+        "success": 209,
+        "contacts": 24,
+        "timeouts": 23
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 112,
+            "contacts": 8,
+            "timeouts": 8
+          },
+          {
+            "success": 98,
+            "contacts": 13,
+            "timeouts": 17
+          }
+        ],
+        "T": [
+          {
+            "success": 102,
+            "contacts": 14,
+            "timeouts": 12
+          },
+          {
+            "success": 107,
+            "contacts": 10,
+            "timeouts": 11
+          }
+        ]
+      },
+      "wins": 18,
+      "losses": 19,
+      "common_success_delay_s": -0.42827980450261777
+    },
+    "composite/nominal": {
+      "C": {
+        "success": 240,
+        "contacts": 16,
+        "timeouts": 0
+      },
+      "T": {
+        "success": 246,
+        "contacts": 10,
+        "timeouts": 0
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 119,
+            "contacts": 9,
+            "timeouts": 0
+          },
+          {
+            "success": 121,
+            "contacts": 7,
+            "timeouts": 0
+          }
+        ],
+        "T": [
+          {
+            "success": 123,
+            "contacts": 5,
+            "timeouts": 0
+          },
+          {
+            "success": 123,
+            "contacts": 5,
+            "timeouts": 0
+          }
+        ]
+      },
+      "wins": 14,
+      "losses": 8,
+      "common_success_delay_s": -0.11724403068965515
+    },
+    "composite/sensor-delay": {
+      "C": {
+        "success": 232,
+        "contacts": 24,
+        "timeouts": 0
+      },
+      "T": {
+        "success": 239,
+        "contacts": 17,
+        "timeouts": 0
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 114,
+            "contacts": 14,
+            "timeouts": 0
+          },
+          {
+            "success": 118,
+            "contacts": 10,
+            "timeouts": 0
+          }
+        ],
+        "T": [
+          {
+            "success": 119,
+            "contacts": 9,
+            "timeouts": 0
+          },
+          {
+            "success": 120,
+            "contacts": 8,
+            "timeouts": 0
+          }
+        ]
+      },
+      "wins": 15,
+      "losses": 8,
+      "common_success_delay_s": -0.2765687897321429
+    },
+    "composite/command-delay": {
+      "C": {
+        "success": 226,
+        "contacts": 30,
+        "timeouts": 0
+      },
+      "T": {
+        "success": 242,
+        "contacts": 14,
+        "timeouts": 0
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 108,
+            "contacts": 20,
+            "timeouts": 0
+          },
+          {
+            "success": 118,
+            "contacts": 10,
+            "timeouts": 0
+          }
+        ],
+        "T": [
+          {
+            "success": 122,
+            "contacts": 6,
+            "timeouts": 0
+          },
+          {
+            "success": 120,
+            "contacts": 8,
+            "timeouts": 0
+          }
+        ]
+      },
+      "wins": 24,
+      "losses": 8,
+      "common_success_delay_s": -0.41101856077981647
+    },
+    "composite/both-delay": {
+      "C": {
+        "success": 203,
+        "contacts": 53,
+        "timeouts": 0
+      },
+      "T": {
+        "success": 231,
+        "contacts": 25,
+        "timeouts": 0
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 93,
+            "contacts": 35,
+            "timeouts": 0
+          },
+          {
+            "success": 110,
+            "contacts": 18,
+            "timeouts": 0
+          }
+        ],
+        "T": [
+          {
+            "success": 114,
+            "contacts": 14,
+            "timeouts": 0
+          },
+          {
+            "success": 117,
+            "contacts": 11,
+            "timeouts": 0
+          }
+        ]
+      },
+      "wins": 38,
+      "losses": 10,
+      "common_success_delay_s": -0.6018272364248706
+    },
+    "composite/combined": {
+      "C": {
+        "success": 198,
+        "contacts": 58,
+        "timeouts": 0
+      },
+      "T": {
+        "success": 226,
+        "contacts": 30,
+        "timeouts": 0
+      },
+      "individual_seeds": {
+        "C": [
+          {
+            "success": 90,
+            "contacts": 38,
+            "timeouts": 0
+          },
+          {
+            "success": 108,
+            "contacts": 20,
+            "timeouts": 0
+          }
+        ],
+        "T": [
+          {
+            "success": 115,
+            "contacts": 13,
+            "timeouts": 0
+          },
+          {
+            "success": 111,
+            "contacts": 17,
+            "timeouts": 0
+          }
+        ]
+      },
+      "wins": 39,
+      "losses": 11,
+      "common_success_delay_s": -0.42006307935828885
+    }
+  },
+  "exposure": {
+    "delay-C-s1": {
+      "unique_rollouts": 10000,
+      "raw_rows": 10000,
+      "positive_age_rows": 0,
+      "assigned_rows_per_stratum": 20480000
+    },
+    "delay-T-s1": {
+      "unique_rollouts": 10000,
+      "raw_rows": 10013,
+      "positive_age_rows": 20333928,
+      "assigned_rows_per_stratum": 20480000
+    },
+    "delay-C-s2": {
+      "unique_rollouts": 10000,
+      "raw_rows": 10000,
+      "positive_age_rows": 0,
+      "assigned_rows_per_stratum": 20480000
+    },
+    "delay-T-s2": {
+      "unique_rollouts": 10000,
+      "raw_rows": 10000,
+      "positive_age_rows": 20332859,
+      "assigned_rows_per_stratum": 20480000
+    }
+  },
+  "gates": {
+    "delay_success_gain": true,
+    "delay_contact_reduction": true,
+    "delay_each_seed_success_gain": true,
+    "long-open/nominal:success_retention": true,
+    "long-open/nominal:contacts": true,
+    "long-open/nominal:timeouts": true,
+    "long-open/nominal:speed": true,
+    "long-hallway/nominal:success_retention": true,
+    "long-hallway/nominal:contacts": true,
+    "long-hallway/nominal:timeouts": true,
+    "long-hallway/nominal:speed": true,
+    "dev-a/nominal:success_retention": true,
+    "dev-a/nominal:contacts": true,
+    "dev-a/nominal:timeouts": true,
+    "dev-a/nominal:speed": true,
+    "dev-b/nominal:success_retention": true,
+    "dev-b/nominal:contacts": true,
+    "dev-b/nominal:timeouts": true,
+    "dev-b/nominal:speed": true,
+    "dev-c/nominal:success_retention": false,
+    "dev-c/nominal:contacts": false,
+    "dev-c/nominal:timeouts": false,
+    "dev-c/nominal:speed": true,
+    "open/nominal:success_retention": false,
+    "open/nominal:contacts": true,
+    "open/nominal:timeouts": false,
+    "open/nominal:speed": true,
+    "clutter/nominal:success_retention": true,
+    "clutter/nominal:contacts": true,
+    "clutter/nominal:timeouts": true,
+    "clutter/nominal:speed": true,
+    "composite/nominal:success_retention": true,
+    "composite/nominal:contacts": true,
+    "composite/nominal:timeouts": true,
+    "composite/nominal:speed": true,
+    "composite/sensor-delay:speed": true,
+    "composite/command-delay:speed": true,
+    "composite/both-delay:speed": true,
+    "composite/combined:speed": true,
+    "combined_success_retention": true,
+    "combined_contacts": true,
+    "combined_timeouts": true,
+    "open:absolute_floor": false,
+    "long-open:absolute_floor": true,
+    "long-hallway:absolute_floor": true,
+    "dev-b:absolute_floor": false,
+    "clutter:absolute_floor": false
+  },
+  "failed_gates": [
+    "dev-c/nominal:success_retention",
+    "dev-c/nominal:contacts",
+    "dev-c/nominal:timeouts",
+    "open/nominal:success_retention",
+    "open/nominal:timeouts",
+    "open:absolute_floor",
+    "dev-b:absolute_floor",
+    "clutter:absolute_floor"
+  ],
+  "decision": "not adopted",
+  "scope": "Exposed source development; passing these gates does not prove full goal or independent transfer.",
+  "hashed_inputs": 214
+}
