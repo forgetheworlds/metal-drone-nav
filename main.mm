@@ -84,8 +84,14 @@ kernel void physics_fixture(device const RLPhysicsState* states [[buffer(0)]],de
 static std::string base_source() {
     std::string root=SOURCE_DIR;
     const std::string actor_obs_define="#define FIXED_PPO_ACTOR_OBS_DIM "+std::to_string(fixed_ppo::actor_obs_dim)+"\n";
+    const std::string critic_obs_define="#define FIXED_PPO_CRITIC_OBS_DIM "+std::to_string(fixed_ppo::critic_obs_dim)+"\n";
+#ifdef NAV_CRITIC_CONTROL_STATE
+    const std::string critic_state_define="#define NAV_CRITIC_CONTROL_STATE "+std::to_string(NAV_CRITIC_CONTROL_STATE)+"\n";
+#else
+    const std::string critic_state_define="#define NAV_CRITIC_CONTROL_STATE 0\n";
+#endif
     const std::string sensor_profile_define="#define NAV_SENSOR_PROFILE "+std::to_string(NAV_SENSOR_PROFILE)+"\n";
-    return "#include <metal_stdlib>\nusing namespace metal;\n"+sensor_profile_define+read_text(root+"/world.hpp")+read_text(root+"/sensor_profile.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
+    return "#include <metal_stdlib>\nusing namespace metal;\n"+sensor_profile_define+read_text(root+"/world.hpp")+read_text(root+"/sensor_profile.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+critic_obs_define+critic_state_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
 }
 static std::vector<float> poses(size_t n) { std::vector<float> p(n*12,0);for(size_t i=0;i<n;i++){p[i*12+2]=1.5f;p[i*12+3]=p[i*12+7]=p[i*12+11]=1;}return p; }
 static void world_tests(Metal& m) {
@@ -536,7 +542,7 @@ struct Sim {
         for(size_t i=0;i<4;i++)a.values[fixed_ppo::actor_log_std_offset+i]=-1.0f;
         for(size_t i=0;i<fixed_ppo::critic_b1_offset;i++)c.values[i]=normal()*0.15f;
         for(size_t i=fixed_ppo::critic_w2_offset;i<fixed_ppo::critic_b2_offset;i++)c.values[i]=normal()*0.1f;
-        actor=m.buffer(sizeof(a),&a);critic=m.buffer(sizeof(c),&c);obs=m.buffer(rows*fixed_ppo::actor_obs_dim*4);co=m.buffer(rows*32*4);actions=m.buffer(rows*4*4);logp=m.buffer(rows*4);values=m.buffer(rows*4);rewards=m.buffer(rows*4);next_values=m.buffer(rows*4);terminated=m.buffer(rows);truncated=m.buffer(rows);advantages=m.buffer(rows*4);returns=m.buffer(rows*4);
+        actor=m.buffer(sizeof(a),&a);critic=m.buffer(sizeof(c),&c);obs=m.buffer(rows*fixed_ppo::actor_obs_dim*4);co=m.buffer(rows*fixed_ppo::critic_obs_dim*4);actions=m.buffer(rows*4*4);logp=m.buffer(rows*4);values=m.buffer(rows*4);rewards=m.buffer(rows*4);next_values=m.buffer(rows*4);terminated=m.buffer(rows);truncated=m.buffer(rows);advantages=m.buffer(rows*4);returns=m.buffer(rows*4);
         for(uint t=0;t<horizon;t++){cfg.tick=t;configs.push_back(m.buffer(sizeof(cfg),&cfg));}cfg.tick=0;
         simd_actor=!(std::getenv("METAL_NAV_SCALAR_ACTOR") && std::string(std::getenv("METAL_NAV_SCALAR_ACTOR"))=="1");
         actor_p=m.pipeline(simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward");
@@ -944,6 +950,17 @@ kernel void ppo_metrics_mean(device const float* metrics [[buffer(0)]],
         for (uint k = 0; k < 4; ++k) mean[k] += metrics[n * 4 + k];
     for (uint k = 0; k < 4; ++k) mean[k] /= float(update_count);
 }
+kernel void ppo_grad_norm(device const float* grad [[buffer(0)]],
+                          device float* out [[buffer(1)]],
+                          constant uint& count [[buffer(2)]],
+                          uint tid [[thread_index_in_threadgroup]], uint lane [[thread_index_in_simdgroup]], uint sg [[simdgroup_index_in_threadgroup]], uint width [[threads_per_simdgroup]], uint3 group_size [[threads_per_threadgroup]]) {
+    threadgroup float partials[32];
+    float sum = 0.0f;
+    for(uint i=tid;i<count;i+=group_size.x)sum+=grad[i]*grad[i];
+    float group_sum=simd_sum(sum);if(lane==0)partials[sg]=group_sum;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if(sg==0){float total=simd_sum(lane<group_size.x/width?partials[lane]:0.0f);if(lane==0)out[0]=sqrt(total+1e-20f);}
+}
 )MSL";
 
 struct PpoAdamHostConfig { float learning_rate, beta1, beta2, epsilon, weight_decay; uint32_t step; };
@@ -1081,6 +1098,8 @@ static void evaluate_navigation_policy(Metal& m,const std::string& path,uint32_t
 }
 
 struct PPOTrainer {
+    id<MTLBuffer> grad_norm_rows;
+    id<MTLComputePipelineState> grad_norm_p;
     Sim& sim;
     Metal& metal;
     uint32_t minibatch = 256;
@@ -1155,6 +1174,8 @@ struct PPOTrainer {
         actor_m=metal.buffer(fixed_ppo::actor_param_count*4); actor_v=metal.buffer(fixed_ppo::actor_param_count*4);
         critic_m=metal.buffer(fixed_ppo::critic_param_count*4); critic_v=metal.buffer(fixed_ppo::critic_param_count*4);
         actor_scale=metal.buffer(4); critic_scale=metal.buffer(4);
+        grad_norm_rows=metal.buffer(size_t(updates_per_rollout)*2*4);
+        grad_norm_p=metal.pipeline("ppo_grad_norm");
         metric_rows=metal.buffer(size_t(updates_per_rollout)*4*4); metric_mean=metal.buffer(4*4);
         adv_clip_b=scalar(metal,std::numeric_limits<float>::max());
         anchor_lambda_b=scalar(metal,0.0f);
@@ -1328,8 +1349,10 @@ struct PPOTrainer {
                 const uint32_t step=uint32_t(++optimizer_step);
                 PpoAdamHostConfig ac{sim.cfg.learning_rate,.9f,.999f,1.0e-8f,0.0f,step};
                 std::memcpy(adam_configs[update].contents,&ac,sizeof(ac));
+                dispatch(cb,grad_norm_p,256,{{actor_grad,0},{grad_norm_rows,size_t(update)*2*4},{actor_count_b,0}},256);
                 dispatch(cb,norm_factor_p,256,{{actor_grad,0},{actor_scale,0},{actor_count_b,0},{actor_max_norm_b,0}},256);
                 dispatch(cb,scale_grad_p,fixed_ppo::actor_param_count,{{actor_grad,0},{actor_scale,0},{actor_count_b,0}},128);
+                dispatch(cb,grad_norm_p,256,{{critic_grad,0},{grad_norm_rows,(size_t(update)*2+1)*4},{critic_count_b,0}},256);
                 dispatch(cb,norm_factor_p,256,{{critic_grad,0},{critic_scale,0},{critic_count_b,0},{critic_max_norm_b,0}},256);
                 dispatch(cb,scale_grad_p,fixed_ppo::critic_param_count,{{critic_grad,0},{critic_scale,0},{critic_count_b,0}},128);
                 dispatch(cb,adam_p,fixed_ppo::actor_param_count,{{sim.actor,0},{actor_grad,0},{actor_m,0},{actor_v,0},{actor_count_b,0},{adam_configs[update],0}},128);
@@ -1378,6 +1401,33 @@ struct PPOTrainer {
         std::memcpy(anchor_lambda_b.contents,&effective,sizeof(float));
     }
     float current_anchor_pull()const{return anchor_pull;}
+    struct GradNormSummary {
+        float actor_mean=0.0f,actor_max=0.0f,actor_clip_frac=0.0f;
+        float critic_mean=0.0f,critic_max=0.0f,critic_clip_frac=0.0f;
+    };
+    GradNormSummary grad_norm_summary()const {
+        GradNormSummary summary;
+        const float* rows=static_cast<const float*>(grad_norm_rows.contents);
+        const float actor_limit=static_cast<const float*>(actor_max_norm_b.contents)[0];
+        const float critic_limit=static_cast<const float*>(critic_max_norm_b.contents)[0];
+        double actor_sum=0.0,critic_sum=0.0;uint32_t actor_clipped=0,critic_clipped=0;
+        for(uint32_t update=0;update<updates_per_rollout;update++) {
+            const float actor_norm=rows[update*2],critic_norm=rows[update*2+1];
+            require(std::isfinite(actor_norm)&&std::isfinite(critic_norm),"non-finite pre-clip gradient norm");
+            actor_sum+=actor_norm;critic_sum+=critic_norm;
+            actor_clipped+=actor_norm>actor_limit?1u:0u;
+            critic_clipped+=critic_norm>critic_limit?1u:0u;
+            summary.actor_max=std::max(summary.actor_max,actor_norm);
+            summary.critic_max=std::max(summary.critic_max,critic_norm);
+        }
+        if(updates_per_rollout>0) {
+            summary.actor_mean=float(actor_sum/double(updates_per_rollout));
+            summary.critic_mean=float(critic_sum/double(updates_per_rollout));
+            summary.actor_clip_frac=float(actor_clipped)/float(updates_per_rollout);
+            summary.critic_clip_frac=float(critic_clipped)/float(updates_per_rollout);
+        }
+        return summary;
+    }
     double actor_drift_l2()const {
         const float* actor=static_cast<const float*>(sim.actor.contents);
         const float* reference=static_cast<const float*>(anchor_ref_b.contents);

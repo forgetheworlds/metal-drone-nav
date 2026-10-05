@@ -39,8 +39,24 @@ inline void load_actor(Sim& sim,const std::string& path,bool critic=false) {
     require(header.actor_count==fixed_ppo::actor_param_count,"task actor dimensions");
     file.read((char*)sim.actor.contents,sim.actor.length);
     if(critic) {
-        require(header.critic_count==fixed_ppo::critic_param_count,"task critic dimensions");
-        file.read((char*)sim.critic.contents,sim.critic.length);
+        if(header.critic_count==fixed_ppo::critic_param_count) {
+            file.read((char*)sim.critic.contents,sim.critic.length);
+        } else if(fixed_ppo::critic_obs_dim==64 && header.critic_count==2177) {
+            // Explicit warmstart migration, not resume: keep the old32-input
+            // value function and zero the additional input weights in both arms.
+            std::vector<float> old(header.critic_count);
+            file.read((char*)old.data(),old.size()*sizeof(float));
+            float* target=(float*)sim.critic.contents;
+            std::fill(target,target+fixed_ppo::critic_param_count,0.0f);
+            for(size_t h=0;h<64;h++) {
+                std::copy_n(old.data()+h*32,32,target+h*64);
+                target[fixed_ppo::critic_b1_offset+h]=old[2048+h];
+                target[fixed_ppo::critic_w2_offset+h]=old[2112+h];
+            }
+            target[fixed_ppo::critic_b2_offset]=old[2176];
+        } else {
+            throw std::runtime_error("task critic dimensions: incompatible warmstart");
+        }
     }
     require(bool(file),"task parameter load failed");
 }
