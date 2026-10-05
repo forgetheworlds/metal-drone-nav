@@ -1,187 +1,132 @@
 # Metal Drone Navigation
 
-**A from-scratch reinforcement-learning training engine that runs entirely in raw Metal on Apple Silicon — no PyTorch, no TensorFlow, no Python in the training loop — that trains a drone navigation policy to fly through cluttered environments above a real learned flight controller.**
+I want to build a drone that can take an instruction, look around an unfamiliar place, and carry out the task without someone piloting it.
 
-Built on an Apple M3 (10 GPU cores, 16 GB unified memory). Everything reported here is simulation evidence. Numerical parity against the upstream references is checked; reliable transfer to hardware is **not** established.
+![Native Webots doorway recording](artifacts/videos/native-doorway-preview.jpg)
 
-| Start here | |
-|---|---|
-| Every graph, training record and video, with its source data | [docs/RESULTS_GALLERY.md](docs/RESULTS_GALLERY.md) |
-| What "done" means and why each choice was made | [goal.md](goal.md) |
-| Every measured number, its machine, commit and exact command | [docs/BENCHMARKS.md](docs/BENCHMARKS.md) |
-| Current north star and local navigation contract | [goal.md](goal.md) |
-| Coding standard this repository is written to | [docs/CODE_DIRECTION.md](docs/CODE_DIRECTION.md) |
-| Hypothesis → experiment → result, **including rejected hypotheses** | [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md) |
-| Latest local training comparison, failures and reproducible plots | [docs/LOCAL_TRAINING_REVIEW.md](docs/LOCAL_TRAINING_REVIEW.md) |
-| Frozen imitation policy vs fast policy in 256 native Webots flights | [docs/NATIVE_BC_TRANSFER.md](docs/NATIVE_BC_TRANSFER.md) |
-| Task-mixture, collision-reward and moving-threat training outcomes | [docs/TRAINING_STRATEGY_RESULTS.md](docs/TRAINING_STRATEGY_RESULTS.md) |
+*Offset doorway, arrival policy, 6.91 s stable hold with no contact. [Watch the native flight and see its recording limits](docs/RESULTS_GALLERY.md#native-webots-recordings).*
 
----
+This repository works on the part between choosing a destination and reaching it. A slower cloud reasoning system can decide that the drone should go to the stairs, a doorway, or a point down a platform. Metal-nav takes the supplied 3-D destination, depth observations, and the drone's motion, then chooses how to move through the geometry in between.
 
-## What this is, in plain terms
+Metal-nav does not control the motors. It sends desired body velocity and yaw-rate commands to RAPTOR, a separate learned flight controller. RAPTOR stabilizes the aircraft and produces four motor commands. The results here come from simulation.
 
-A drone needs two control layers:
+I train the navigation policy with a raw Metal training loop on Apple Silicon.
 
-1. **A low-level controller** that keeps the aircraft stable and tracks motion commands. This project integrates the frozen [RAPTOR](https://github.com/rl-tools/raptor) policy (Science Robotics 2026) unchanged and validates its software behaviour against upstream fixtures and simulator trajectories. It does not establish real flight control.
-2. **A navigation policy** that looks through an onboard depth sensor and decides *how to move* — climb over the counter, drop under the beam, slow down in the doorway, swerve from the moving sphere.
-
-This repository builds the second layer and, more importantly, **the entire training system for it**, specialised for one machine.
-
-### The intended goal
-
-[goal.md](goal.md) specifies the outcome: a quadrotor that moves quickly through previously unseen, cluttered 3-D environments using onboard local perception.
+## The idea
 
 ```text
-depth sensor + ego state + relative goal
+Person's instruction
         ↓
-navigation policy  →  [vx, vy, vz, yaw_rate]
+Cloud reasoning: what matters, and where to go next?
         ↓
-trajectory adapter →  frozen RAPTOR motor controller → 4 motor commands
+Chosen 3-D destination
+        ↓
+Metal-nav: move there through local geometry
+        ↓  desired body velocity + yaw rate
+RAPTOR: stabilize and control the aircraft
+        ↓
+4 motors
 ```
 
-It must vary its speed with environmental complexity, react to moving collision threats quickly enough to evade them, keep working under disturbance, and generalise to layouts it was not trained on. The contract behind every optimisation in this repository is *maximise validated policy-improvement iterations per unit wall time*.
+If another system has chosen the destination, moving through the geometry is navigation. That destination might be a doorway two metres away or the end of a visible hallway fifteen metres away. A blind corner that requires choosing which room or staircase matters next calls for another high-level decision.
 
-**The full goal is active and incomplete.** The current milestone — a policy that reaches 25/30 connected-room development levels and three watchable native Webots flights — is real but narrow. Read the limitations section before citing any number on this page.
+Some experiments use short goals to isolate this navigation layer. That choice does not set a distance limit for the design. The published native static-transfer benchmark uses exposed development tasks with 1–3 m goals. It is one test of the navigation layer, not a full semantic mission. [Benchmark scope](docs/NATIVE_BC_TRANSFER.md#scope-and-limits).
 
-The strongest paired local Webots test reached **113/128 goals** with the
-imitation policy versus **105/128** with the faster baseline. Contacts fell
-from 23 to 14, but mean successful arrival took 6.17 s rather than 3.61 s.
-[Independent benchmark and evidence](docs/NATIVE_BC_TRANSFER.md).
+## What the policy does
 
-Training changes have exposed limits: harder local tasks improved blocked
-routes but lost old skills; stronger collision penalties caused more timeouts;
-four matched runs found that more fixed rehearsal did not solve the loss.
-[Training comparisons](docs/TRAINING_STRATEGY_RESULTS.md),
-[latest rehearsal result](docs/REHEARSAL_RESULTS.md).
+The policy gets a compact depth view, information about its motion, and the supplied goal. It runs at 20 Hz and produces three body-velocity commands and one yaw-rate command. A trajectory adapter carries those commands to RAPTOR, which runs at 100 Hz. The policy does not receive a map of obstacles or a generator's route witness.
 
----
-
-## How it works
+The selected guided actor has 184 inputs, one 64-unit hidden layer, and four outputs: about 12,000 learned parameters. Its observation includes current and previous pooled depth, motion and goal context, and three geometry-prior values. The exact packing and export contract are in [deployment.hpp](deployment.hpp) and [goal.md](goal.md). The critic used during training can receive simulator information that the deployed actor does not receive.
 
 ```text
-   depth sensor (16×20 rays, 20 Hz) + ego state + relative goal
-                          ↓
-        ┌─────────────────────────────────────────────┐
-        │  Deployable actor (184 floats, ~12k params) │
-        └─────────────────────────────────────────────┘
-                          ↓  body velocity + yaw rate
-        ┌─────────────────────────────────────────────┐
-        │  Trajectory adapter (persistent reference)  │
-        └─────────────────────────────────────────────┘
-                          ↓  100 Hz
-        ┌─────────────────────────────────────────────┐
-        │  RAPTOR learned motor controller (frozen)   │
-        └─────────────────────────────────────────────┘
-                          ↓  4 motor commands
-        ┌─────────────────────────────────────────────┐
-        │  L2F RK4 quadrotor dynamics (100 Hz)        │
-        └─────────────────────────────────────────────┘
-                          ↓ rewards / termination
-          rollout storage → GAE → PPO → Adam  (all Metal)
+Depth + motion + supplied goal
+                 ↓
+       184 → 64 → 4 policy
+                 ↓
+      body vx, vy, vz + yaw rate
+                 ↓
+      trajectory adapter → RAPTOR → motors
 ```
 
-- **No ML framework in the hot path.** Simulation, synthetic depth, policy forward, rollouts, GAE, PPO backward and Adam are fixed-shape Metal kernels with buffers allocated once. Python appears only in the cold path (export, evaluation orchestration, plotting).
-- **The deployed actor receives depth, ego state and the goal.** It receives no obstacle list or stored witness route. Ego sensing is ideal in the current Webots checks. The training critic may receive additional simulator truth and is discarded at export. Privileged waypoint tests are separate diagnostics.
-- **Three build targets**, sharing one 320-ray sensor: `metal_nav` (661 raw-ray inputs), `metal_nav_pooled` (181), `metal_nav_guided` (184 — **selected**: geometry prior + learned residual). Actor weights do not load across input dimensions.
+## How training works
 
-Why hand-written Metal rather than a framework: every dependency in the hot loop costs memory traffic, kernel-launch overhead and abstraction that do not contribute to that contract. Specialisation is what makes the measured training-speed optimisations possible. The current deployment contract is in [goal.md](goal.md); the coding standard is [docs/CODE_DIRECTION.md](docs/CODE_DIRECTION.md).
+The training engine batches thousands of simulated drones. Most reported policy runs use 128 environments at once; the measured throughput ladder reaches 8,192. Each environment gets a start state, a destination, and a generated scene. The system advances the vehicle, renders depth, runs RAPTOR and the navigation actor, and records experience. PPO updates the actor; development tasks help select checkpoints. The generator can use a route witness to check a scene, while the policy flies from its observations and supplied goal.
 
----
+The simulator, depth sensing, RAPTOR, policy inference, rollout collection, GAE, PPO backward pass, and Adam update run in raw Metal on Apple Silicon. There is no PyTorch, TensorFlow, or Python in the hot training loop. Python handles cold-path work such as experiment orchestration, review, and plots.
 
-The optional [calibrated camera profile](docs/CALIBRATED_SENSOR_PROFILE.md) now matches measured native projection and mount geometry. Frozen-policy Metal results are 51/90 with that profile versus 54/90 with the default; it is not adopted as a policy gain.
+At 8,192 environments, a full rollout took 2.707 seconds on the GPU and 5.016 seconds on a matched CPU reference (1.85×). In another workload, GPU time for a full rollout and PPO update fell from 1.66 seconds to about 0.026 seconds after optimization. The [benchmark report](docs/BENCHMARKS.md#matched-complete-ppo-optimization) gives the setup and command for each test.
 
-The experimental [local waypoint controller](docs/LOCAL_WAYPOINT_EXPERIMENT.md) reaches 100/128 source DEV tasks. On 16 predeclared matched local tasks, the frozen actor reaches 12/16 in both Metal and Webots; 31/32 verdicts match across both actors. Whole-route reliability remains unresolved.
-
-## What works today
-
-Each line links to the evidence that supports it. Nothing here is a hardware claim.
-
-| Milestone | Result | Evidence |
-|---|---|---|
-| Numerical parity gates | RAPTOR oracle 5.96e-7, L2F 9.54e-7, PX4 transform 5.96e-8, integrated control loop 9.09e-6; 40,960 ray/clearance tests exact | [BENCHMARKS · Correctness gates](docs/BENCHMARKS.md#correctness-gates), [ray tests](docs/BENCHMARKS.md#primitive-ray-range-first-measured-ladder) |
-| Training throughput | Full rollout + PPO update 1.66 s → 0.295 s → ~0.026 s; GPU beats the matched CPU reference by 1.85× at 8,192 envs | [BENCHMARKS · Optimizations](docs/BENCHMARKS.md#matched-complete-ppo-optimization), [gallery](docs/RESULTS_GALLERY.md#training-throughput) |
-| Open-room stable arrival | Fresh seed 820001: original **95/128** → candidate **128/128**; mean arrival 8.19 s → 4.39 s under varied dynamics | [arrival evidence manifest](evidence/inputs/arrival-training/manifest.json) |
-| Independent Webots stable arrival (18 static scenes) | Original **0/18 holds** despite entering the goal region in 17/18; arrival candidate **17/18 holds** | [webots-stable-arrival manifest](evidence/inputs/webots-stable-arrival/manifest.json), [figure](docs/RESULTS_GALLERY.md#webots-transfer) |
-| Focused connected-room PPO | **25/30** development rooms at rollout 300 (1.2288 M transitions), no privileged waypoints at deployment | [room-training manifest](evidence/inputs/room-training/manifest.json) |
-| Paired connected-room transfer | Same 30 development rooms: **25/30 Metal → 18/30 Webots**, 12 contacts in hard scenes | [paired proof](evidence/inputs/room-webots-transfer/proof.json), [figure](docs/RESULTS_GALLERY.md#webots-transfer) |
-| Two native Webots recordings | Doorway 6.91 s stable hold, no contact; connected room first entry at 5.23 s, no contact | [native-flight-videos manifest](evidence/inputs/native-flight-videos/manifest.json) |
-
-The final challenge-bank split has **not been policy-evaluated**. Earlier research exposed aggregate FINAL geometry, so it is no longer fully blind. Future final evidence requires a fresh sealed suite after weights and navigation logic are frozen. Development levels are labelled as selection feedback.
-
-### Obstacles encountered, and how we improved
-
-- **Throughput first.** The hot loop was rebuilt around measured bottlenecks: direct batch-reduced gradients removed 43.8 MiB of scratch, and M3 SIMD reductions plus a fused 8×8 `simdgroup_matrix` actor forward took the full rollout+update from 1.66 s to ~0.026 s. [BENCHMARKS](docs/BENCHMARKS.md#matched-complete-ppo-optimization) · [figure](docs/RESULTS_GALLERY.md#training-throughput)
-- **Entering the goal was not the same as arriving.** The original policy entered the goal region in 17/18 Webots scenes but held in **0/18**. Adding an explicit arrival contract (≤0.35 m, speed ≤0.5 m/s for 0.2 s) and training for it produced **17/18** stable holds. [protocol](docs/BENCHMARKS.md#goal-entry-versus-stable-arrival-in-webots) · [figure](docs/RESULTS_GALLERY.md#webots-transfer)
-- **Short obstacle tests did not predict long routes.** A frozen 270-scene bank (bent hallways, connected rooms, vertical over/under) showed the broad policies at **0/30** and **0/30** on hallways and rooms. A focused family-15 PPO run reached **25/30** development rooms. [bank results](docs/BENCHMARKS.md#frozen-challenge-bank-development-failures) · [figure](docs/RESULTS_GALLERY.md#long-route-challenge-bank-capability)
-- **Continued training made it worse.** From the 25/30 peak the run collapsed to **10/30**, and a lower-learning-rate refinement did not help. The selected checkpoint is frozen and preserved; later training is not adopted. [room-training manifest](evidence/inputs/room-training/manifest.json)
-- **Knob search did not beat 25/30.** A delegated 1500-rollout search over risk, learning rate and potential scale never exceeded it (best alternatives 18/30 and 19/30), and an independent exact-recipe seed-54 replication peaked at **22/30**. Those arms are preserved as failed evidence, not as improvements. [training records and failed arms](docs/RESULTS_GALLERY.md#training-records)
-- **Route guidance helps the arrival baseline.** The arrival actor completes **30/30** connected-room routes when given privileged intermediate goals, but **0/30** with the final goal alone. This is an oracle diagnostic, not an autonomous score. [BENCHMARKS · Routing](docs/BENCHMARKS.md#routing-and-generator-diagnostics)
-- **The new candidate is not a replacement.** On the legacy first-entry protocol it regressed tabletop 124→101/128 and mixed 115→108/128. The original, static and moving-threat policies and their checkpoints stay preserved. [retention figure](docs/RESULTS_GALLERY.md#arrival-candidate-vs-preserved-baselines)
-- **Training loss hid a perception limit.** Corner imitation reduced loss but completed 0/30 DEV corners. A controlled mirrored-world probe found identical spawn inputs; later raw depth exposed gap information that min-pooling could erase. [Experiment and curves](docs/IMITATION_EXPERIMENT.md).
-- **The reward needs a longer-route audit.** In 120 actual TRAIN flights, 2/24 successful corner flights scored below matched 20 s hovering under the current discount. This measures an objective weakness; no improved policy is claimed. [Reward, credit horizon and reproducible figure](docs/RESEARCH_CREDIT_ASSIGNMENT.md).
-- **A longer discount did not solve the corner task.** Matched 800-rollout PPO arms both produced zero corner completions and lost room retention. The rejected checkpoints and recorded curves remain evidence. [Controlled experiment](docs/DISCOUNT_EXPERIMENT.md).
-- **Video evidence had to be rebuilt.** Early recordings were black or empty because of the observer-camera convention and hidden rendering. The current movies are unmodified Webots Supervisor output with an ffmpeg decoded-frame gate; one real rejected half-black capture is preserved as a failure. The earlier Blender cutaway reconstructions are **not** native footage and are not promoted. [recording protocol](webots/README.md#native-scene-recordings) · [rejected capture](docs/RESULTS_GALLERY.md#rejected-and-local-only-recordings)
-
----
-
-## Actual Webots flight recordings
-
-Native Webots R2025a main-view movies from live simulation. The observer camera follows the real GPS body position; the scene stays opaque and the drone keeps its declared size. The visible airframe uses simple primitives — it is **not** verified hardware CAD.
-
-| Scene and policy | Result | Goal rule |
-|---|---|---|
-| Offset doorway · arrival policy | 6.91 s, no contact, 0.2 s hold | Within 0.35 m, speed ≤0.5 m/s for 0.2 s |
-| Two offset doors with a table · room policy | 5.23 s, no contact | First entry within 0.35 m; final speed 1.56 m/s — **not** a stable stop |
-
-[![Native doorway view](artifacts/videos/native-doorway-preview.jpg)](artifacts/videos/native-doorway.mp4)
-
-*Offset doorway · arrival policy · 6.91 s stable hold with no contact — [watch the doorway flight](artifacts/videos/native-doorway.mp4).*
-
-[![Native connected-room view](artifacts/videos/native-connected-rooms-preview.jpg)](artifacts/videos/native-connected-rooms.mp4)
-
-*Two offset doors with a table · room policy · first entry at 5.23 s, no contact, final speed 1.56 m/s — [watch the connected-room flight](artifacts/videos/native-connected-rooms.mp4).*
-
-![Native moving course](artifacts/videos/native-moving-course-preview.jpg)
-
-*Moving cylinder, barrier and overhang · frozen default policy · first entry at 17.09 s, no contact. Actual mean path speed 0.715 m/s, peak 1.93 m/s — [watch the native moving-course flight](artifacts/videos/native-moving-course.mp4). [Receipt and limits](docs/COURSE_BANK_REVIEW.md).*
-
-These are **three selected successful examples**, not a success rate. Exact worlds, receipts, 100 Hz traces and video hashes: [native-flight-videos manifest](evidence/inputs/native-flight-videos/manifest.json). Reproduction commands: [webots/README.md](webots/README.md#native-scene-recordings). The full video catalogue, including raw takes and rejected captures, is in [the gallery](docs/RESULTS_GALLERY.md#videos).
-
----
-
-## Evidence
-
-- **[docs/RESULTS_GALLERY.md](docs/RESULTS_GALLERY.md)** — every figure, training record and video in the repository, each with a caption, the CSV/JSON it was built from, and a link to the authoritative document section.
-- **[`evidence/inputs/`](evidence/inputs)** — the compact CSV, TSV, JSONL and trace inputs behind every figure, with hashes in their manifests. Checkpoints used for provenance are in [`assets/checkpoints/`](assets/checkpoints).
-- Rebuild every figure and its input-hash manifest without running Metal:
-
-```sh
-python3 evidence.py --out artifacts
+```text
+Generate tasks → simulate flights → collect experience
+       → PPO update → evaluate → keep or reject the run
 ```
 
-- [`artifacts/manifest.json`](artifacts/manifest.json) records the command, inputs, per-figure filters, metric definitions and the stated limitations of each figure.
+I use the same loop to test hypotheses, not to assume every change helps. The [training strategy study](docs/TRAINING_STRATEGY_RESULTS.md) found that a larger collision cost reduced contacts but added timeouts, while a new task mixture improved blocked-route results and lost some old-task performance.
 
-`results/` and `build/` are gitignored working directories. Records that live only there (failed training arms, raw Webots runs, verification reports) are catalogued in the gallery and labelled as local-only.
+## What I train it to do
 
----
+The intended skill is to reach a supplied destination through unfamiliar local geometry. Training scenes vary the actual decisions: move directly when clear, brake before a narrow gap, go around a blocked route, choose between openings, move above or below an obstacle, and regain the goal direction after a detour. Distance alone does not define difficulty. Clearance, braking room, heading change, visibility, occlusion, obstacle motion, and route choice also matter.
 
-## Limitations — read this before citing the results
+This image shows generated challenge geometry and geometric witness routes. Those green routes are diagnostics for the generator; they are not learned policy trajectories.
 
-- **Simulation only.** No real-flight performance has been tested. Real stereo and a physical flight-controller connection remain unvalidated.
-- **The geometry-only baseline is strong and sometimes wins.** Mode 13 (no learned residual) reaches 96.1% on held two-doorways vs 89.1% for the learned mode 17, and 91.4% vs 89.8% on mixed. Learning clearly adds value on table/counter and moving spheres, but it is *not* uniformly better than the prior it builds on. Both are always reported side by side.
-- **Desired speed is bounded; actual vehicle speed can overshoot it** (a requested 1.5 m/s cap has been measured at 7.34 m/s in one table case).
-- **Doorway performance is sensitive to command delay** (50 ms alone: 85.2% → 76.6% on held two-door).
-- **Wind is a force-equivalent simulator disturbance**, not a measured wind velocity. The dynamics ranges used for training are declared stress settings, not identified hardware uncertainty.
-- **Collision is a conservative 0.18 m sphere**, not a mechanical airframe model; a pose-aware contact model exists as an audit and does not change scoring. Webots transfer uses clean depth and ideal ego sensors; Metal stress sweeps separately apply declared corruption.
-- **Independent transfer is incomplete.** The published paired room matrix is 25/30 Metal versus 18/30 Webots, with all 12 native contacts in hard scenes. One longer moving-course DEV example also succeeds. Sensor origin, sampling and motor startup still differ. These results do not establish broad generalization or hardware validation.
-- **Long dynamic courses remain difficult.** The selected room policy scores 10/108 on the new course DEV bank. Its privileged witnesses use 60 s, versus a 20 s policy budget, so those witnesses do not prove matched-budget feasibility. The native movie proves one selected moving-course case.
-- **No GR2PO experiment has been run.** Selected policies use PPO. An exploratory imitation experiment failed held-out navigation and was rejected; software parity does not establish transfer capability.
+![Challenge-bank worlds and geometric witness routes](artifacts/challenge-bank-witness-worlds.png)
 
----
+*Generated hallway, connected-room, and vertical-choice scenes. The routes show geometric witnesses, not learned flight.*
 
-## Build and run
+The repository also has studies of corner detours, arrival and braking, moving threats, depth history, and sensor visibility. [The results gallery](docs/RESULTS_GALLERY.md) links each figure to its source records.
 
-Requires Apple Silicon, macOS 15 or newer, CMake and Command Line Tools. Full Xcode is **not** required — Metal Shading Language sources compile at runtime via `MTLDevice`.
+## Results so far
+
+In 128 native Webots flights, the frozen dynamic-trained policy (FULL) outperformed the fast policy on two separately predeclared 32-task panels. No policy training ran in Webots.
+
+| Panel | Fast: success / contact / timeout | FULL: success / contact / timeout | Mean arrival on shared tasks, fast / FULL |
+|---|---:|---:|---:|
+| Diagnostic, 32 tasks | 29 / 3 / 0 | 32 / 0 / 0 | — |
+| Challenge, 32 tasks | 13 / 19 / 0 | 30 / 2 / 0 | 4.08 s vs 3.70 s |
+
+FULL completed 17 challenge tasks that fast missed; fast beat FULL on none, and both failed two. On the 13 challenge tasks both policies completed, fast averaged 4.08 s and FULL 3.70 s. These are exposed source-development tasks. See the [full protocol and evidence](docs/NATIVE_MOVING_TRANSFER.md).
+
+![Moving-obstacle transfer results](artifacts/plots/native-moving-transfer.png)
+
+*Frozen policies in Webots. The challenge panel adds faster approach and crossing cases. [Protocol and 916 hashed records](docs/NATIVE_MOVING_TRANSFER.md).*
+
+A separate static transfer test compared frozen imitation and fast policies across 128 Webots tasks. Imitation completed 113/128, with 14 contacts; fast completed 105/128, with 23. Successful arrival averaged 6.17 seconds for imitation and 3.61 for fast. Both completed all 85 direct-route tasks; imitation gained on blocked routes.
+
+![Native Webots reliability and arrival-time comparison](artifacts/plots/native-bc-transfer.png)
+
+*Frozen policies on the same static task bank. Imitation completes more tasks and takes longer. [Protocol, paired outcomes, and evidence bundle](docs/NATIVE_BC_TRANSFER.md).*
+
+The static test used exposed development scenes with short goals. The report retains all 256 flights, selection details, hashes, and the stable-arrival rule.
+
+## What failed
+
+More fixed rehearsal did not solve the loss of earlier skills. Four PPO runs completed 10,000 rollouts each across two matched seeds. Both predeclared gates failed: fresh blocked-task success fell, and the treatment missed old-task retention floors. I did not adopt that schedule. [Full outcomes and records](docs/REHEARSAL_RESULTS.md).
+
+The learned policy also does not beat its geometry prior on every task. On one held-out two-door composition, the prior reached 96.1% while the learned policy reached 89.1%; on the mixed set the prior reached 91.4% and the learned policy 89.8%. I keep that baseline beside the learned results.
+
+![Learned policy and geometry-only comparison](artifacts/static-scene-policy-comparison.png)
+
+*Fixed static scene matrix, 128 episodes per condition. [Full table and protocol](docs/RESULTS_GALLERY.md#policy-quality-robustness-and-speed).*
+
+Other studies show related tradeoffs. A larger collision penalty reduced contacts but produced more timeouts. Continued training after a strong connected-room checkpoint reduced its score. Corner imitation loss fell while completion stayed at 0/30. See [training comparisons](docs/TRAINING_STRATEGY_RESULTS.md), [local training review](docs/LOCAL_TRAINING_REVIEW.md), and [the research log](docs/RESEARCH_LOG.md).
+
+The experimental [perception-support profile](docs/PERCEPTION_SUPPORT.md) has passed interface checks; its full training comparison is still running.
+
+## Why Metal?
+
+I built the training loop for the machine used in this work: an Apple M3. A framework could provide familiar training components, but it would also put more layers between the measured bottleneck and the code that controls it. Writing the fixed-shape simulation and PPO workload in Metal makes memory use, kernel boundaries, and the actor's deployment contract explicit.
+
+That engineering matters because the useful unit is a tested policy update, not a fast kernel by itself. I keep numerical parity checks against CPU and upstream references, and I report whole-workload timing beside component measurements. The implementation and measured optimization ladder are in [BENCHMARKS.md](docs/BENCHMARKS.md); coding decisions follow [CODE_DIRECTION.md](docs/CODE_DIRECTION.md).
+
+## Physical deployment
+
+The intended onboard stack is a depth sensor and state estimate feeding Metal-nav, followed by a velocity-command interface to RAPTOR and the flight controller. The actor interface is designed around information that could be available onboard. Training and evaluation infrastructure may use privileged geometry to construct tasks, reject impossible starts, or score outcomes; those data are not actor inputs.
+
+The next deployment work is the onboard sensor front end and flight-controller connection, followed by physical flight testing.
+
+## Build and reproduce
+
+The project requires Apple Silicon, macOS, CMake, and the Xcode Command Line Tools. Metal shader sources compile at runtime; full Xcode is not required.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -189,119 +134,30 @@ cmake --build build -j 4
 ./build/metal_nav_guided test
 ```
 
-Train a fresh guided policy, then its table/counter curriculum, then evaluate:
+Use [docs/EXECUTION.md](docs/EXECUTION.md) and each result report to reproduce training and evaluation with the listed checkpoint, task manifest, seed, and grader.
+
+The key records are:
+
+- [Goal and current task boundary](goal.md)
+- [Code direction](docs/CODE_DIRECTION.md)
+- [Native Webots transfer: 256 flights](docs/NATIVE_BC_TRANSFER.md)
+- [Moving-obstacle transfer: 128 native flights](docs/NATIVE_MOVING_TRANSFER.md)
+- [Fixed rehearsal study](docs/REHEARSAL_RESULTS.md)
+- [Training strategy comparisons](docs/TRAINING_STRATEGY_RESULTS.md)
+- [Local training review](docs/LOCAL_TRAINING_REVIEW.md)
+- [Metal benchmarks and correctness gates](docs/BENCHMARKS.md)
+- [Research log, including rejected hypotheses](docs/RESEARCH_LOG.md)
+- [Next research phase](docs/RESEARCH_NEXT_PHASE.md)
+- [Figures, videos, source data, and limitations](docs/RESULTS_GALLERY.md)
+- [Writing standard for future repository documents](docs/WRITING_STANDARD.md)
+- [Evidence inputs and hashes](evidence/inputs/)
+- [Selected checkpoint files](assets/checkpoints/)
+- [Challenge-bank design and evaluation](docs/COURSE_BANK_REVIEW.md)
+
+Rebuild published figures from the checked-in evidence inputs without running Metal:
 
 ```sh
-./build/metal_nav_guided train 3000 7 results/guided.bin '' 1.5 4
-./build/metal_nav_guided train 1200 5 results/guided-table-memory.bin results/guided.bin.best 1.5 4 .04 .0003 .0001 1 1
-./build/metal_nav_guided eval assets/checkpoints/guided-table-memory.bin.best 17 8 800001 1.5 4
-python3 evaluation.py --checkpoint assets/checkpoints/guided-table-memory.bin.best
+python3 evidence.py --out artifacts
 ```
 
-`CHECKPOINT` saves exact resume state atomically; `CHECKPOINT.best` keeps the best validation score. Repeat the same command to resume. Validation seed **700001** differs from the legacy evaluation seeds **800001 / 900001**. Selected checkpoints are preserved under `assets/checkpoints/`.
-
-### Command reference
-
-```text
-train ROLLOUTS FAMILY CHECKPOINT [WARMSTART] [SPEED] [DISTANCE]
-      [RISK] [ENTROPY] [LEARNING_RATE] [VELOCITY_CONTRACT] [GEOMETRY_MEMORY]
-eval CHECKPOINT MODE FAMILY SEED SPEED DISTANCE [SENSOR_DELAY] [WIND_ACCEL]
-     [DEPTH_NOISE] [DROPOUT] [COMMAND_DELAY]
-bank-eval CHECKPOINT BANK_JSONL SPLIT OUTPUT_CSV [MODE=17] [SPEED=1.5] [MAX_STEPS=400]
-bank-witness BANK_JSONL train|dev OUTPUT_CSV [SPEED=1] [MAX_STEPS=1200]
-task-eval CHECKPOINT OUTPUT_CSV STAGE FAMILY DOMAIN_AMPLITUDE [SEED] [MODE]
-train-tasks ROLLOUTS CHECKPOINT WARMSTART STAGE FAMILY DOMAIN_AMPLITUDE [SEED]
-```
-
-Families: 0 open room, 1 boxes, 2 poles, 3 moving spheres, 4 offset doorway, 5 table/counter, 6 mixed, 7 training mixture 0–6, 8 **held-out** two-door composition. Eval modes: 1 random, 2 goal script, 4 full learned mean, 13 geometry prior alone, **17 overhead-gated residual (selected)**, 18/19 inference ablations on fixed weights. Speed is a desired-velocity cap in m/s, distance and noise are metres, wind is acceleration in m/s², dropout is a fraction; sensor delay counts 50 ms frames (≤6), command delay counts 50 ms navigation ticks (≤7). `eval` restores the checkpoint's contract and geometry-memory setting.
-
-### Training under measured sensing and disturbance
-
-Arguments after GEOMETRY_MEMORY are SENSOR_DELAY, WIND_ACCEL, DEPTH_NOISE, DROPOUT, COMMAND_DELAY and SELECTION_MODE. Defaults preserve the clean path:
-
-```sh
-./build/metal_nav_guided train 1000 7 results/guided-stress.bin assets/checkpoints/guided-table-memory.bin.best 1.5 4 .04 .0003 .0001 1 1 2 .5 .05 .1 1 17
-```
-
-That run trains with 100 ms sensing lag, 50 ms command lag, 0.5 m/s² disturbance, 0.05 m range noise and 10% pixel dropout. It is a candidate curriculum; the packaged policy changes only after independent validation. Measured outcomes of the resulting candidates are in [docs/BENCHMARKS.md](docs/BENCHMARKS.md#disturbance-curricula-and-controlled-threat-acceptance-gaps).
-
-### Deployed policy interface
-
-`assets/navigation.bin` is the selected actor export (48,496 bytes, 12,104 FP32 parameters, source-checkpoint hash inside). [`deployment.hpp`](deployment.hpp) loads it and returns a body FLU velocity vector plus yaw rate — **no Metal dependency, critic, optimizer or motor output**. The caller supplies 184 floats in four groups:
-
-| Indices | Value |
-|---|---|
-| 0–159 | Current and previous 2×2 min-pooled 8×10 ray ranges /12 |
-| 160–172 | Unit goal direction, goal distance /10, body linear/angular velocity /4, world-up in body frame |
-| 173–180 | Previous applied navigation fractions, sensor age, reference-position error ×2 |
-| 181–183 | Geometry-prior XYZ latents from `guidance.hpp` |
-
-The actor also carries a short depth/pose ring so the vehicle does not re-enter geometry that has left the sensor view. Native RAPTOR and physics run at 100 Hz; navigation and depth at 20 Hz. Requested intent uses a 1.5 m/s vector-norm cap and 0.5 rad/s yaw cap; actual speed can exceed it. **An actual sensor front-end and flight-controller connection still need integration and validation.**
-
-```sh
-./build/metal_nav_guided eval-policy assets/navigation.bin 8 800001
-./build/metal_nav_guided policy-bench assets/navigation.bin
-./build/metal_nav_guided export assets/checkpoints/guided-table-memory.bin.best assets/navigation.bin
-```
-
-### Validation and measurement
-
-```sh
-./build/metal_nav test            # parity gates: geometry, RAPTOR, L2F, PX4 transform, PPO/GAE/Adam, integrated loop
-./build/metal_nav bench-depth     # ray-range scaling ladder
-./build/metal_nav bench-raptor    # batched RAPTOR throughput
-./build/metal_nav gpu-bench 2048 3 1
-./build/metal_nav cpu-bench 3 2048 1
-./build/metal_nav profile         # hardware encoder timestamps on M3
-```
-
-Machine, commit, configuration and caveats for every benchmark are in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
-
----
-
-## Repository map
-
-| Path | What it holds |
-|---|---|
-| [goal.md](goal.md) | Outcome specification and execution contract — what "done" means and why |
-| [docs/README.md](docs/README.md) | Index of the research and engineering documents |
-| [docs/RESULTS_GALLERY.md](docs/RESULTS_GALLERY.md) | Every figure, training record and video, with source data and captions |
-| [docs/BENCHMARKS.md](docs/BENCHMARKS.md) | Every measured number: machine, commit, command, and discarded measurements |
-| [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md) | Hypothesis → experiment → result, including failed and rejected hypotheses |
-
-| [docs/RESEARCH_FIDELITY.md](docs/RESEARCH_FIDELITY.md) | Fidelity assessment and the recommended next ablation |
-| `main.mm` | Objective-C++ host: device/queue/pipeline setup, harnesses, benchmarks, training orchestration |
-| `*.metal` | GPU kernels — physics, depth, RAPTOR, PPO forward/backward, geometry memory |
-| `*.hpp` | Portable C++ references and shared CPU/GPU source |
-| [`deployment.hpp`](deployment.hpp) | CPU-only deployable actor interface |
-| [`challenge_bank.py`](challenge_bank.py) | Deterministic saved AABB levels, mirrored-level option, geometric witness routes |
-| [`evidence.py`](evidence.py) + [`evidence/inputs/`](evidence/inputs) | Reproducible figures and their compact inputs with hashes |
-| [`evaluation.py`](evaluation.py) | Fixed-seed, stress, threat, ablation and requested-cap evaluation matrices → CSV |
-| [`assets/checkpoints/`](assets/checkpoints) | Selected checkpoint snapshots used for evaluation provenance |
-| [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt) | MIT notices for RAPTOR / RLtools source and weights |
-
-> `STATUS.md` is a local working-state note kept out of version control; it is not part of the public deliverable.
-
----
-
-## Reference provenance
-
-Pinned upstream commits:
-
-- RAPTOR `2c789dfcf16cc96fe697704492b3bf79dd2cc5a0`
-- RLtools `e43ae4bcda4556321a63f4eb5dcc826cd637aa39`
-
-To regenerate the cold reference assets:
-
-```sh
-git clone https://github.com/rl-tools/raptor /tmp/raptor-reference
-git -C /tmp/raptor-reference checkout 2c789dfcf16cc96fe697704492b3bf79dd2cc5a0
-git -C /tmp/raptor-reference submodule update --init rl-tools data
-python3 export_raptor.py /tmp/raptor-reference/data/raptor-policy-checkpoint.tar.gz
-clang++ -std=c++17 -O2 -I/tmp/raptor-reference/rl-tools/include reference.cpp -o build/reference
-./build/reference assets/physics.bin
-```
-
-MIT notices for RAPTOR/RLtools source and weights are in [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt). **The navigation weights are trained locally by this engine.**
-
-Selected checkpoint SHA-256: `fdd62374c9a1724fc12690d1ccb756985b6c9f8d5f945b290156c17a204cf7d9`
+The evidence inputs and manifests record hashes, commands, metric definitions, and filters. Some raw simulator runs remain in the local `results/` directory; linked reports identify the records they use.
