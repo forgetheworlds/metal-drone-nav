@@ -11,6 +11,14 @@ and check physical feasibility and whether needed geometry can be observed in
 time. A visible-goal training mixture is an experiment, not a universal task
 acceptance rule.
 
+## Combined-policy acceptance — 2026-10-05
+
+The intended outcome is one navigator that handles static obstacles, moving
+obstacles, tight spaces and longer destinations together. Train reusable
+behaviors across varied tasks and combinations, preserve strong existing
+skills, and verify the frozen system in independent environments. Separate
+specialist successes are useful milestones, not completion of this outcome.
+
 ## North star
 
 The eventual system is a drone capable of carrying out open-ended tasks in unfamiliar environments.

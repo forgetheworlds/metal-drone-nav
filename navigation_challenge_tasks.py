@@ -1,0 +1,206 @@
+"""Seeded compositional 3-D tasks; witnesses grade geometry, not flight feasibility."""
+import argparse
+import hashlib
+import json
+import math
+from pathlib import Path
+import random
+import struct
+import subprocess
+
+from navigation_distance_tasks import read_bank, write_bank
+
+KINDS = ["staggered_gaps", "vertical_weave", "poles_overhang", "gap_crossing", "vertical_approach", "combined"]
+
+
+def box(center, half_extent, velocity=(0, 0, 0)):
+    return (0, center, half_extent, velocity)
+
+
+def sphere(center, radius, velocity):
+    return (1, center, (radius, radius, radius), velocity)
+
+
+def corridor(width):
+    return [box((6, sign * (width / 2 + .06), 2.5), (8, .06, 2.5)) for sign in [-1, 1]]
+
+
+def opening(x, center_y, width, corridor_width):
+    walls = []
+    for low, high in [(-corridor_width / 2, center_y - width / 2),
+                      (center_y + width / 2, corridor_width / 2)]:
+        walls.append(box((x, (low + high) / 2, 2.5), (.12, (high - low) / 2, 2.5)))
+    return walls
+
+
+def candidate(rng, kind, difficulty):
+    length = rng.uniform(8.5, 11.5)
+    z = rng.uniform(1.4, 1.8)
+    start, goal = (0, rng.uniform(-.2, .2), z), (length, rng.uniform(-.2, .2), z)
+    width = 3.2
+    obstacles = corridor(width)
+    route = [start]
+    gap_width = rng.uniform(1.15, 1.55) if difficulty == 0 else rng.uniform(.85, 1.2)
+    offset = rng.uniform(.45, .65) if difficulty == 0 else rng.uniform(.65, .85)
+    if kind in ["staggered_gaps", "gap_crossing", "combined"]:
+        stages = [length * .32, length * .68]
+        sign = rng.choice([-1, 1])
+        for index, x in enumerate(stages):
+            y = sign * offset * (-1 if index else 1)
+            obstacles.extend(opening(x, y, gap_width, width))
+            route.extend([(x - .45, y, z), (x + .45, y, z)])
+    if kind in ["vertical_weave", "vertical_approach"]:
+        # Alternate a floor obstruction and a hanging obstruction in one flight.
+        height = rng.uniform(1.65, 1.9)
+        hanging_base = rng.uniform(2.2, 2.5)
+        for x, over in [(length * .32, True), (length * .68, False)]:
+            if over:
+                obstacles.append(box((x, 0, height / 2), (.25, width / 2, height / 2)))
+                route_z = height + .55
+            else:
+                obstacles.append(box((x, 0, (5 + hanging_base) / 2),
+                                     (.25, width / 2, (5 - hanging_base) / 2)))
+                route_z = hanging_base - .55
+            route.extend([(x - .6, 0, route_z), (x + .6, 0, route_z)])
+    if kind == "poles_overhang":
+        for index, fraction in enumerate([.25, .45, .65, .8]):
+            x, y = length * fraction, rng.uniform(-.15, .15)
+            radius = rng.uniform(.16, .25)
+            obstacles.append((2, (x, y, 2.5), (radius, radius, 2.5), (0, 0, 0)))
+            side = (-1 if index % 2 else 1) * .85
+            route.extend([(x - .5, side, z), (x + .5, side, z)])
+        obstacles.append(box((length * .5, 0, 3.7), (2, width / 2, .45)))
+    if kind == "combined":
+        # A hanging beam between offset gaps adds a vertical decision.
+        x = length * .5
+        obstacles.append(box((x, 0, 3.35), (.25, width / 2, 1.65)))
+        route[3:3] = [(x - .6, 0, 1.05), (x + .6, 0, 1.05)]
+    if kind in ["gap_crossing", "vertical_approach", "combined"]:
+        speed = rng.uniform(.35, .65) if difficulty == 0 else rng.uniform(.65, 1.0)
+        x = length * .53
+        if kind == "vertical_approach":
+            obstacles.append(sphere((x + 2.8, .55, z + .1), .28, (-speed, 0, 0)))
+        else:
+            direction = rng.choice([-1, 1])
+            encounter = x / 1.1
+            obstacles.append(sphere((x, -direction * speed * encounter, z), .28,
+                                    (0, direction * speed, 0)))
+    route.append(goal)
+    assert len(obstacles) <= 16
+    return start, goal, obstacles, route, gap_width
+
+
+def pack_world(obstacles, goal, seed, family):
+    data = bytearray(676)
+    for i, (kind, center, extent, velocity) in enumerate(obstacles):
+        struct.pack_into("<I9f", data, i * 40, kind, *center, *extent, *velocity)
+    struct.pack_into("<3I6f", data, 640, len(obstacles), seed, family, *goal, 0, 0, 0)
+    return bytes(data)
+
+
+def samples(route, speed, start_wait=0.0):
+    points, clock, length = [], start_wait, 0.0
+    if start_wait:
+        count = math.ceil(start_wait * speed / .04)
+        points.extend((*route[0], start_wait * i / count) for i in range(count))
+    for a, b in zip(route, route[1:]):
+        distance = math.dist(a, b)
+        count = max(1, math.ceil(distance / .04))
+        for index in range(count):
+            fraction = index / count
+            points.append((*[a[j] + fraction * (b[j] - a[j]) for j in range(3)], clock + fraction * distance / speed))
+        clock += distance / speed
+        length += distance
+    points.append((*route[-1], clock))
+    return points, length, clock
+
+
+def grade(checker, world, queries):
+    wire = world + struct.pack("<I", len(queries)) + b"".join(struct.pack("<4f", *q) for q in queries)
+    data = subprocess.run([str(checker)], input=wire, stdout=subprocess.PIPE, check=True).stdout
+    assert len(data) == len(queries) * 4
+    return struct.unpack("<" + "f" * len(queries), data)
+
+
+def build(checker, seed, environments, period):
+    rng = random.Random(seed)
+    entries, labels = [], []
+    for env in range(environments):
+        for slot in range(period):
+            kind = KINDS[(env + slot) % len(KINDS)]
+            difficulty = (env // len(KINDS) + slot) % 2
+            for attempt in range(100):
+                start, goal, obstacles, route, gap_width = candidate(rng, kind, difficulty)
+                scene_seed = rng.getrandbits(32)
+                family = 14 if kind == "staggered_gaps" else 16 if kind.startswith("vertical") else 1
+                world = pack_world(obstacles, goal, scene_seed, family)
+                moving = any(any(o[3]) for o in obstacles)
+                start_wait = 2.5 if moving else 0.0
+                witness, route_length, duration = samples(route, 1.1, start_wait)
+                direct, _, _ = samples([start, goal], 1.1)
+                queries = [(*start, 0), (*goal, duration)] + witness + direct
+                values = grade(checker, world, queries)
+                # Space/time Lipschitz lower bound between .04m-spaced samples.
+                mover_speed = max(math.dist(o[3], (0, 0, 0)) for o in obstacles)
+                lower_bound = min(values[2:2 + len(witness)]) - .02 * (1 + mover_speed / 1.1)
+                if min(values[:2]) > .35 and lower_bound > .06 and duration < 17:
+                    break
+            else:
+                raise RuntimeError(f"No geometric witness for {kind} env{env} slot{slot}")
+            entry = bytearray(756)
+            entry[:676] = world
+            velocity = tuple(rng.uniform(-.35, .35) for _ in range(3))
+            yaw = rng.uniform(-math.pi, math.pi)
+            distance = math.dist(start, goal)
+            direct_clearance = min(values[2 + len(witness):]) - .02 * (1 + mover_speed / 1.1)
+            route_class = int(direct_clearance <= .02)
+            struct.pack_into("<10f6f4I", entry, 676, *start, *velocity, *goal, yaw,
+                             values[0], values[1], direct_clearance, lower_bound, route_length, distance,
+                             family, scene_seed, route_class, attempt + 1)
+            entries.append(bytes(entry))
+            labels.append({"env": env, "slot": slot, "kind": kind, "difficulty": difficulty,
+                           "scene_seed": scene_seed, "initial_distance_m": distance,
+                           "gap_width_m": gap_width, "obstacle_count": len(obstacles),
+                           "moving_count": sum(any(o[3]) for o in obstacles),
+                           "witness_route": route, "witness_duration_s_at_1p1_mps": duration,
+                           "witness_initial_wait_s": start_wait,
+                           "witness_body_clearance_lower_bound_m": lower_bound,
+                           "witness_kind": "scheduled geometric path, not RAPTOR flight",
+                           "direct_body_clearance_lower_bound_m": direct_clearance,
+                           "route_class": route_class, "generation_attempts": attempt + 1})
+    return entries, labels
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("output", type=Path)
+    parser.add_argument("--checker", type=Path, required=True)
+    parser.add_argument("--seed", type=int, required=True)
+    parser.add_argument("--period", type=int, default=1)
+    parser.add_argument("--rehearsal", type=Path)
+    args = parser.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
+    entries, labels = build(args.checker.resolve(), args.seed, 128, args.period)
+    write_bank(args.output / "challenges.bin", args.period, entries)
+    if args.rehearsal:
+        old_period, old = read_bank(args.rehearsal)
+        assert len(old) == 128 * old_period
+        mixed = []
+        for env in range(128):
+            mixed.extend(old[env * old_period:(env + 1) * old_period])
+            mixed.extend(entries[env * args.period:(env + 1) * args.period])
+        write_bank(args.output / "mixed.bin", old_period + args.period, mixed)
+    report = {"seed": args.seed, "period": args.period, "count": len(entries),
+              "entry_sha256": hashlib.sha256(b"".join(entries)).hexdigest(),
+              "checker_sha256": hashlib.sha256(args.checker.read_bytes()).hexdigest(),
+              "geometry_source_sha256": hashlib.sha256(Path(__file__).with_name("world.hpp").read_bytes()).hexdigest(),
+              "sensor_stress": "nominal; separate axis", "dynamics_stress": "nominal; separate axis",
+              "records": labels}
+    (args.output / "manifest.json").write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps({"count": len(entries), "period": args.period,
+                      "kinds": {kind: sum(x["kind"] == kind for x in labels) for kind in KINDS},
+                      "max_attempts": max(x["generation_attempts"] for x in labels)}))
+
+
+if __name__ == "__main__":
+    main()
