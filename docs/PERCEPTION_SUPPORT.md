@@ -73,3 +73,18 @@ alone is not evidence of better navigation. Exporting weights alone does not
 deploy this profile: a native frontend must reproduce the same prior from its
 range/pose history, frame timing and sensor semantics before a frozen transfer
 claim. Generic production `eval`/`export` do not apply the experimental profile.
+
+## Candidate-query optimization
+
+The first implementation queried all 85 candidate directions serially in one
+thread per environment. Treatment collection took about 0.58 s per rollout,
+versus 0.028 s for the control. Root preserved that pilot and split the
+independent queries across GPU threads. A small per-environment table holds
+their occupancy and free-range evidence; candidate scoring then uses that table.
+The scalar reference is retained in the same portable module.
+
+In a matched 100-rollout run, wall time fell from 69.8904 s to 8.11273 s
+(8.61×). The full saved checkpoints were byte-identical, including optimizer
+and simulator state. This is a performance gain, not a navigation gain. The
+four full comparison arms were restarted fresh with this faster implementation;
+the original complete control and partial treatment remain as pilot evidence.

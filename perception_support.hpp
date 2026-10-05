@@ -182,7 +182,8 @@ PS_INLINE void ps_nav_guidance_memory(PS_THREAD const float* current_range,
                                    PS_DEVICE const float* pose_ring,
                                    PS_THREAD const float* current_pose,
                                    uint latest_frame,uint valid_frames,
-                                   PS_THREAD float* hint,float mount_x=0.0f) {
+                                   PS_THREAD float* hint,float mount_x=0.0f,
+                                   PS_DEVICE const float* evidence=nullptr) {
     float gnorm=sqrt(goal_body_unit[0]*goal_body_unit[0]+goal_body_unit[1]*goal_body_unit[1]+goal_body_unit[2]*goal_body_unit[2]);
     if(gnorm<1e-6f||goal_distance<0.05f){hint[0]=hint[1]=hint[2]=0;return;}
     float goal[3]={goal_body_unit[0]/gnorm,goal_body_unit[1]/gnorm,goal_body_unit[2]/gnorm};
@@ -197,12 +198,14 @@ PS_INLINE void ps_nav_guidance_memory(PS_THREAD const float* current_range,
         if(candidate<80){row=candidate/10;col=candidate%10;nav_ray(row,col,tan_v,d);}
         else if(candidate==80){d[0]=goal[0];d[1]=goal[1];d[2]=goal[2];}else{d[0]=0;d[1]=candidate>=83?(candidate==83?1.0f:-1.0f):0;d[2]=candidate<83?(candidate==81?1.0f:-1.0f):0;}
         float sweep[3]={1.2f*d[0]+0.35f*body_velocity[0],1.2f*d[1]+0.35f*body_velocity[1],1.2f*d[2]+0.35f*body_velocity[2]};float sweep_norm=sqrt(sweep[0]*sweep[0]+sweep[1]*sweep[1]+sweep[2]*sweep[2]);for(uint j=0;j<3;j++)sweep[j]/=fmax(sweep_norm,1e-6f);
-        float clearance=ps_memory_clearance(sweep,range_ring,pose_ring,current_pose,latest_frame,valid_frames,sensor_dt,tan_v,mount_x);
+        float clearance=evidence?evidence[candidate*2]:
+            ps_memory_clearance(sweep,range_ring,pose_ring,current_pose,latest_frame,valid_frames,sensor_dt,tan_v,mount_x);
         const float observed=nav_min3x3(current_range,row,col);
         // Occupancy evidence and sampled free-space support are distinct.
         // Never borrow a forward image cell for a rear/side goal candidate.
-        const float support=ps_measured_free_bound(sweep,range_ring,pose_ring,current_pose,
-                                                   latest_frame,valid_frames,tan_v,mount_x);
+        const float support=evidence?evidence[candidate*2+1]:
+            ps_measured_free_bound(sweep,range_ring,pose_ring,current_pose,
+                                   latest_frame,valid_frames,tan_v,mount_x);
         float free=clearance;
         if(support>=0.0f)free=free>=0.0f?fmin(free,support):support;
         if(free>=0.0f&&candidate<81&&ps_in_current_frustum(d,tan_v))

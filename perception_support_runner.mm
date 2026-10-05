@@ -224,6 +224,75 @@ kernel void ps_override_prior(device float* obs [[buffer(0)]],
                            sensors+n*8*320,poses+n*8*12,pose,frame,valid,hint,NAV_SENSOR_ACTIVE_MOUNT_X);
     for(uint j=0;j<3;j++)obs[row+PPO_ACTOR_OBS-3+j]=hint[j];
 }
+
+kernel void ps_candidate_evidence(device const float* obs [[buffer(0)]],
+                                  device const SimRun* runs [[buffer(1)]],
+                                  device const RLPhysicsState* states [[buffer(2)]],
+                                  device const float* sensors [[buffer(3)]],
+                                  device const float* poses [[buffer(4)]],
+                                  constant RLPhysicsParams& p [[buffer(5)]],
+                                  constant SimConfig& cfg [[buffer(6)]],
+                                  device float* evidence [[buffer(7)]],
+                                  uint index [[thread_position_in_grid]]) {
+    const uint n=index/85,candidate=index%85;
+    if(n>=cfg.n||(cfg.eval&&runs[n].episodes))return;
+    const uint delay=sim_sensor_delay(cfg,n),available=runs[n].steps/cfg.sensor_period;
+    const uint frame=available>delay?available-delay:0;
+    const uint valid=available>=delay?min(frame+1,8-delay):0;
+    const uint context=(cfg.tick*cfg.n+n)*PPO_ACTOR_OBS+SIM_CONTEXT_OFFSET;
+    float goal[3],velocity[3];
+    for(uint j=0;j<3;j++){goal[j]=obs[context+j];velocity[j]=obs[context+4+j]*4.0f;}
+    const float norm=sqrt(goal[0]*goal[0]+goal[1]*goal[1]+goal[2]*goal[2]);
+    if(norm<1e-6f){evidence[index*2]=PS_UNKNOWN;evidence[index*2+1]=PS_UNKNOWN;return;}
+    for(uint j=0;j<3;j++)goal[j]/=norm;
+    float d[3];
+    if(candidate<80)nav_ray(candidate/10,candidate%10,NAV_SENSOR_ACTIVE_TAN_V,d);
+    else if(candidate==80){d[0]=goal[0];d[1]=goal[1];d[2]=goal[2];}
+    else{d[0]=0;d[1]=candidate>=83?(candidate==83?1.0f:-1.0f):0;d[2]=candidate<83?(candidate==81?1.0f:-1.0f):0;}
+    float sweep[3]={1.2f*d[0]+0.35f*velocity[0],1.2f*d[1]+0.35f*velocity[1],1.2f*d[2]+0.35f*velocity[2]};
+    const float sweep_norm=sqrt(sweep[0]*sweep[0]+sweep[1]*sweep[1]+sweep[2]*sweep[2]);
+    for(uint j=0;j<3;j++)sweep[j]/=fmax(sweep_norm,1e-6f);
+    RLPhysicsState state=states[n];float rotation[9],pose[12];sim_rotation(state.orientation_wxyz,rotation);
+    for(uint j=0;j<3;j++)pose[j]=states[n].position[j];
+    for(uint j=0;j<9;j++)pose[j+3]=rotation[j];
+    evidence[index*2]=ps_memory_clearance(sweep,sensors+n*8*320,poses+n*8*12,pose,
+        frame,valid,float(cfg.sensor_period)*p.dt*cfg.substeps,NAV_SENSOR_ACTIVE_TAN_V,NAV_SENSOR_ACTIVE_MOUNT_X);
+    evidence[index*2+1]=ps_measured_free_bound(sweep,sensors+n*8*320,poses+n*8*12,pose,
+        frame,valid,NAV_SENSOR_ACTIVE_TAN_V,NAV_SENSOR_ACTIVE_MOUNT_X);
+}
+kernel void ps_override_prior_cached(device float* obs [[buffer(0)]],
+                              device SimRun* runs [[buffer(1)]],
+                              device const RLPhysicsState* states [[buffer(2)]],
+                              device const float* sensors [[buffer(3)]],
+                              device const float* poses [[buffer(4)]],
+                              constant RLPhysicsParams& p [[buffer(5)]],
+                              constant SimConfig& cfg [[buffer(6)]],
+                              device const float* evidence [[buffer(7)]],
+                              uint n [[thread_position_in_grid]]) {
+    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;
+    const uint sensor_delay=sim_sensor_delay(cfg,n);
+    const uint available=runs[n].steps/cfg.sensor_period;
+    const uint frame=available>sensor_delay?available-sensor_delay:0;
+    const uint prev_frame=frame>0?frame-1:0;
+    const uint valid=available>=sensor_delay?min(frame+1,8-sensor_delay):0;
+    const uint row=(cfg.tick*cfg.n+n)*PPO_ACTOR_OBS;
+    const uint context=row+SIM_CONTEXT_OFFSET;
+    float cur[80],previous_range[80],goal[3],vel[3],hint[3];
+    for(uint k=0;k<80;k++){cur[k]=obs[row+k]*12.0f;previous_range[k]=obs[row+SIM_DEPTH_FEATURES+k]*12.0f;}
+    for(uint j=0;j<3;j++){goal[j]=obs[context+j];vel[j]=obs[context+4+j]*4.0f;}
+    // Same distance reconstruction the observation already carries (exact for
+    // local goals <=15 m, which every local task satisfies).
+    const float distance=obs[context+3]*10.0f;
+    RLPhysicsState s=states[n];float rotation[9];sim_rotation(s.orientation_wxyz,rotation);
+    float pose[12];
+    for(uint j=0;j<3;j++)pose[j]=s.position[j];
+    for(uint j=0;j<9;j++)pose[j+3]=rotation[j];
+    ps_nav_guidance_memory(cur,previous_range,goal,distance,vel,
+                           float(cfg.sensor_period)*p.dt*cfg.substeps,
+                           NAV_SENSOR_ACTIVE_TAN_V,
+                           sensors+n*8*320,poses+n*8*12,pose,frame,valid,hint,NAV_SENSOR_ACTIVE_MOUNT_X,evidence+n*85*2);
+    for(uint j=0;j<3;j++)obs[row+PPO_ACTOR_OBS-3+j]=hint[j];
+}
 )PSMSL";
 
 // Full compiled source for this experimental runner: core + the portable
@@ -1112,6 +1181,7 @@ struct LocalRun {
     id<MTLBuffer> bank_control;
     id<MTLComputePipelineState> apply_pipeline;
     bool support=false; // perception-support override dispatch (default off)
+    id<MTLBuffer> support_evidence=nullptr;
 };
 
 static LocalRun make_local_run(Sim& sim,const std::vector<BankEntry>& bank,const BankControl& control,
@@ -1121,6 +1191,7 @@ static LocalRun make_local_run(Sim& sim,const std::vector<BankEntry>& bank,const
     LocalRun run{sim,nullptr,nullptr,apply_pipeline,support};
     run.bank=sim.m.buffer(bank.size()*sizeof(BankEntry),bank.data());
     run.bank_control=sim.m.buffer(sizeof(BankControl),&control);
+    if(support)run.support_evidence=sim.m.buffer(sim.cfg.n*85*2*sizeof(float));
     return run;
 }
 
@@ -1148,9 +1219,12 @@ static void local_tick(LocalRun& run,id<MTLCommandBuffer> cb,uint32_t tick,bool 
     // rings/poses/timestamps/frustum and rewrite the3-float prior tail before
     // the actor encodes. Never dispatched unless the run was flagged, so the
     // flag-off path is bit-identical to the preserved runner.
-    if(run.support)
-        sim.m.dispatch(cb,sim.m.pipeline("ps_override_prior"),sim.cfg.n,
-            {sim.obs,sim.runs,sim.states,sim.sensors,sim.poses,sim.physics,c},64);
+    if(run.support) {
+        sim.m.dispatch(cb,sim.m.pipeline("ps_candidate_evidence"),sim.cfg.n*85,
+            {sim.obs,sim.runs,sim.states,sim.sensors,sim.poses,sim.physics,c,run.support_evidence},64);
+        sim.m.dispatch(cb,sim.m.pipeline("ps_override_prior_cached"),sim.cfg.n,
+            {sim.obs,sim.runs,sim.states,sim.sensors,sim.poses,sim.physics,c,run.support_evidence},64);
+    }
     const size_t row_offset=size_t(tick%sim.horizon)*sim.cfg.n;
     encode(sim.m,cb,sim.simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",
            sim.simd_actor?((size_t(sim.cfg.n)+7)/8)*256:sim.cfg.n,
