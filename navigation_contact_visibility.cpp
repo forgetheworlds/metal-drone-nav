@@ -41,6 +41,7 @@ int main() {
             (query.object == -1 && (query.boundary_face < 0 || query.boundary_face > 5))) return 1;
         bool attributed[320]{};
         uint32_t geometric_hits = 0, measured_hits = 0, pooled_hits = 0;
+        float maximum_range_error = 0;
         const WVec origin = wv(query.pose[0], query.pose[1], query.pose[2]);
         for (uint32_t pixel = 0; pixel < 320; ++pixel) {
             const WVec local = nav_sensor_pixel_ray(NAV_SENSOR_TAN_H, NAV_SENSOR_ACTIVE_TAN_V, pixel);
@@ -49,6 +50,7 @@ int main() {
                                 query.pose[9]*local.x + query.pose[10]*local.y + query.pose[11]*local.z);
             const float target = target_range(query, origin, ray);
             const float first = wray(query.world, origin, ray, query.capture_time);
+            maximum_range_error = std::max(maximum_range_error, std::fabs(first-query.measured[pixel]));
             const bool hits = target < 11.9f && std::fabs(target-first) < .001f;
             geometric_hits += hits;
             // Combined profile has 3 cm Gaussian noise; this attribution permits
@@ -78,7 +80,7 @@ int main() {
             dense_geometric_hits += target < 11.9f && std::fabs(target-first) < .001f;
         }
         std::cout << geometric_hits << ',' << measured_hits << ',' << pooled_hits
-                  << ',' << dense_geometric_hits << '\n';
+                  << ',' << dense_geometric_hits << ',' << maximum_range_error << '\n';
     }
     return std::cin.eof() && std::cin.gcount() == 0 ? 0 : 1;
 }

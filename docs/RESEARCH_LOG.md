@@ -503,3 +503,23 @@ rays and selected pooled points, and attributes boundary contacts to their actua
 face. Its dense 5,120-ray alternative is an offline geometry counterfactual at
 the same pose/FOV, not measured sensing or a new flight. Sensing replay and
 scored parity must complete before drawing visibility conclusions.
+
+## Retained camera clock validation — 2026-10-05
+
+A pre-publication range check caught a diagnostic time error. Using frame times
+nominal navigation period disagreed with the shared accumulated float32 physics
+clock. One grazing ray changed first surface, with a 0.865721 m range discrepancy.
+Replaying native 0.01 s accumulation removes it: all 1,024 retained nominal
+captures /327,680 rays agree within 2.5034e-6 m, and 1,024 delayed captures agree
+within 6.4373e-6 m. Training and recorded flight grades were unaffected.
+
+The visibility grader now uses that validated capture clock and excludes
+undelivered sensor frames. This is a clock replay, not a claim that the v1 ring
+format records independent timestamp measurements. Combined noise/dropout may
+change measured ranges by design; only the clean captures support this direct
+range parity check. All six sensing receipts are still required before the
+contact-object visibility verdict. The new delay reviewer similarly requires
+four real saved10,000/320,000 headers and all48 evaluated panels, checks paired
+plant bytes and stable arrivals, and separates absolute floors from delay gains.
+Interrupted exposure journals retain abandoned rows; last occurrence per saved
+rollout belongs to the resumed continuation and avoids double-counted budgets.
