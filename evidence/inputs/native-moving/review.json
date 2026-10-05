@@ -1,0 +1,51 @@
+{
+  "valid_flights": 128,
+  "hashed_inputs": 916,
+  "panels": {
+    "diagnostic": {
+      "arms": {
+        "fast": {
+          "episodes": 32,
+          "successes": 29,
+          "contacts": 3,
+          "timeouts": 0,
+          "successful_arrival_mean_s": 2.7241379310344827
+        },
+        "full": {
+          "episodes": 32,
+          "successes": 32,
+          "contacts": 0,
+          "timeouts": 0,
+          "successful_arrival_mean_s": 3.690625
+        }
+      },
+      "paired_full_only_wins": 3,
+      "paired_fast_only_wins": 0,
+      "both_success_n": 29,
+      "paired_full_minus_fast_arrival_s": 1.0206896551724138
+    },
+    "challenge": {
+      "arms": {
+        "fast": {
+          "episodes": 32,
+          "successes": 13,
+          "contacts": 19,
+          "timeouts": 0,
+          "successful_arrival_mean_s": 4.076923076923077
+        },
+        "full": {
+          "episodes": 32,
+          "successes": 30,
+          "contacts": 2,
+          "timeouts": 0,
+          "successful_arrival_mean_s": 3.55
+        }
+      },
+      "paired_full_only_wins": 17,
+      "paired_fast_only_wins": 0,
+      "both_success_n": 13,
+      "paired_full_minus_fast_arrival_s": -0.38076923076923086
+    }
+  },
+  "scope": "Frozen source weights and navigation; independent native ODE/sensors/motors/collisions; no target-side training. Diagnostic nonselector is easy; challenge was exposed source selector. Development evidence."
+}
