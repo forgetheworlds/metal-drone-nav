@@ -1,0 +1,28 @@
+{
+  "verdict": "NOT ADOPTED at5000 budget",
+  "gates": {
+    "primary_success_gain5": true,
+    "timeouts_drop8": true,
+    "contacts_within3": true,
+    "open_floor253": false,
+    "speed_within0.5s": true,
+    "retention_dev-a": true,
+    "retention_dev-b": true,
+    "retention_dev-c": true,
+    "retention_open": true,
+    "retention_clutter": true
+  },
+  "primary_successes_C_T": [
+    209,
+    233
+  ],
+  "primary_contacts_C_T": [
+    19,
+    14
+  ],
+  "primary_timeouts_C_T": [
+    28,
+    9
+  ],
+  "scope": "Two matched source seeds; primary final5000, bestsecondary; controller-state value inputs, actor unchanged; exposure disclosed"
+}

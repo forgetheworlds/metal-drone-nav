@@ -58,4 +58,41 @@ optimizer state. Gradient instrumentation only reads the pre-clip gradients.
 Build `navigation_critic_training.mm` with actor dimension 184 and critic
 dimension 64. `NAV_CRITIC_CONTROL_STATE=0` selects the control and `=1` the
 treatment. The default build retains 32 critic inputs. Full comparison results
-are pending; no policy asset has been replaced.
+are below; no policy asset has been replaced.
+
+## Full run results
+
+All four arms completed 5,000 rollouts and 160,000 optimizer steps. The
+48 evaluations completed after two launcher corrections: unsupported reward
+flags were removed, and dev-c was supplied through its original frozen bank.
+The three completed evaluations were retained when the second correction was
+made. Training, checkpoint selection and grading did not change.
+
+Final checkpoints, pooled over two seeds:
+
+| Tasks | Control success / contact / timeout | Controller-state critic |
+|---|---:|---:|
+| Nonselector dev-r2 | 209 / 19 / 28 | 233 / 14 / 9 |
+| Selector dev-a | 198 / 32 / 26 | 208 / 40 / 8 |
+| Existing dev-b | 201 / 28 / 27 | 218 / 30 / 8 |
+| Existing dev-c | 202 / 34 / 20 | 214 / 35 / 7 |
+| Open | 207 / 0 / 49 | 251 / 0 / 5 |
+| Clutter | 201 / 27 / 28 | 217 / 26 / 13 |
+
+Each row contains 256 flights per arm. On dev-r2, successful-arrival mean
+fell from 4.76 s to 4.61 s. The primary success, timeout, contact and speed
+gates passed, as did relative retention. The absolute open-space floor did
+not: 251/256 is below 253. **Not adopted at this budget.**
+
+The dev-a-selected checkpoints tell a different story. Both arms reach
+225/256 on dev-r2; control reaches 256/256 open tasks and treatment 255/256.
+The final-checkpoint improvement therefore does not establish superiority
+over the best selected control on every task. Selection and training stability
+remain part of the problem.
+
+[Raw records and source snapshot](../evidence/inputs/critic-state/records.tar.gz)
+contain 80 hashed files, including all flight CSVs, histories, gradient
+diagnostics, actual budget receipts, code, checks and failed launcher attempts.
+The [computed gate review](../evidence/inputs/critic-state/review.json) retains
+the failed open-space gate. The next diagnosis concerns those five remaining
+open-space timeouts and retaining the strongest behaviors across task classes.
