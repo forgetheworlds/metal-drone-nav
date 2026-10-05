@@ -30,6 +30,41 @@ require retaining dynamic success, improving static blocked routes, reaching
 at least 254/256 open goals, and preserving speed. They were fixed before the
 full runs. No simulator-side policy training or asset replacement is implied.
 
-Results are pending. This comparison asks whether the value-state correction
-helps one actor retain both skills; it does not change the task mixture, make
-the actor larger, or replace PPO.
+All four runs completed 5,000 rollouts and 160,000 optimizer steps. All 56
+evaluations completed. The richer critic improved fresh moving-task success,
+but the joint policy lost static avoidance skill. I did not adopt it.
+
+![Final mixed-task results](../artifacts/plots/joint-critic.png)
+
+Each count pools two matched seeds, 256 source flights per arm. Final
+checkpoints are primary; these are development evaluations.
+
+| Tasks | Control success / contact / timeout | Rich critic success / contact / timeout |
+|---|---:|---:|
+| Moving selector | 186 / 70 / 0 | 186 / 70 / 0 |
+| Fresh moving | 232 / 24 / 0 | 241 / 15 / 0 |
+| Static A | 200 / 54 / 2 | 193 / 63 / 0 |
+| Static B | 195 / 61 / 0 | 190 / 66 / 0 |
+| Static C | 189 / 67 / 0 | 178 / 78 / 0 |
+| Open | 256 / 0 / 0 | 256 / 0 / 0 |
+| Clutter | 199 / 56 / 1 | 183 / 73 / 0 |
+
+The blocked static subset fell from 156 to 114 successes. Successful arrivals
+were faster on every panel, but that speed came with more static contacts.
+Static retention and blocked-route improvement gates failed. Source-selected
+best checkpoints also lost fresh moving success (237 to 232) and did not
+rescue the combined capability.
+
+The same value inputs helped the earlier high-contact-penalty static experiment.
+They did not solve retention in this mixed trainer with its original reward.
+This result supports preserving broad behavioral checks when changing the
+critic; a better moving score alone cannot select a general navigator.
+
+The [archive](../evidence/inputs/joint-critic/records.tar.gz) contains 175 hashed
+inputs, including all flight CSVs, saved checkpoints, training histories,
+diagnostics, job receipts, frozen banks and source. The
+[review](../evidence/inputs/joint-critic/review.json) is reproducible:
+
+```sh
+python3 joint_critic_review.py evidence/inputs/joint-critic/records.tar.gz
+```
