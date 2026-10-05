@@ -78,6 +78,15 @@ static_assert(sizeof(BankFileHeader)==88,"waypoint bank file header ABI");
 
 // ------------------------------------------------------------ MSL mirror
 static const char* kWaypointKernels=R"MSL(
+kernel void waypoint_count_sample(device const SimRun* runs [[buffer(0)]],
+                                  device atomic_uint* counts [[buffer(1)]],
+                                  constant uint2& bank_control [[buffer(2)]],
+                                  constant SimConfig& cfg [[buffer(3)]],
+                                  uint env [[thread_position_in_grid]]) {
+    if(env>=cfg.n)return;
+    const uint slot=runs[env].episodes%max(bank_control.x,1u);
+    atomic_fetch_add_explicit(counts+slot,1u,memory_order_relaxed);
+}
 struct WaypointBankEntry {
     WWorld world;
     float start_position[3];
@@ -507,6 +516,8 @@ struct LocalRun {
     id<MTLComputePipelineState> apply_pipeline;
     // Optional experimental actor-input transform; null preserves legacy flights.
     id<MTLComputePipelineState> observation_transform=nullptr;
+    id<MTLBuffer> sample_counts=nullptr;
+    id<MTLComputePipelineState> sample_count_pipeline=nullptr;
 };
 
 static LocalRun make_local_run(Sim& sim,const std::vector<BankEntry>& bank,const BankControl& control,
@@ -530,6 +541,8 @@ static void local_tick(LocalRun& run,id<MTLCommandBuffer> cb,uint32_t tick,bool 
             {sim.states,sim.runs,sim.worlds,sim.task_states,run.bank,run.bank_control,sim.task_control,c},64);
     };
     if(install_before)install();
+    if(run.sample_counts)
+        sim.m.dispatch(cb,run.sample_count_pipeline,sim.cfg.n,{sim.runs,run.sample_counts,run.bank_control,c},64);
     sim.m.dispatch(cb,sim.depth_p,sim.cfg.n*320,{sim.states,sim.runs,sim.worlds,sim.sensors,sim.physics,c,sim.poses});
     if(sim.cfg.geometry_memory) {
         sim.m.dispatch(cb,sim.memory_points_p,sim.cfg.n*640,
@@ -1142,6 +1155,7 @@ struct TrainingOptions {
     float log_std=-1.0f,learning_rate=0.0001f,entropy=0.001f,speed=1.5f,time_cost=0.2f;
     float contact_penalty=10.0f;
     float arrival_bonus=10.0f;
+    float anchor_lambda=0.0f,anchor_radius=0.0f;
     std::string eval_spec="dev-a";
     BankSpec eval_bank_spec;
 };
@@ -1168,6 +1182,8 @@ static int command_train(int argc,char** argv) {
         else if(option=="--time-cost")options.time_cost=option_float(argc,argv,index,option);
         else if(option=="--contact-penalty")options.contact_penalty=option_float(argc,argv,index,option);
         else if(option=="--arrival-bonus")options.arrival_bonus=option_float(argc,argv,index,option);
+        else if(option=="--anchor")options.anchor_lambda=option_float(argc,argv,index,option);
+        else if(option=="--anchor-radius")options.anchor_radius=option_float(argc,argv,index,option);
         else if(option=="--eval-spec")options.eval_spec=option_value(argc,argv,index,option);
         else if(option=="--eval-every")options.eval_every=option_uint(argc,argv,index,option);
         else throw std::runtime_error("unknown local-train option "+option);
@@ -1288,11 +1304,22 @@ static int command_train(int argc,char** argv) {
     Sim sim(metal,config,options.horizon);
     LocalRun run=make_local_run(sim,bank,control,apply_pipeline,options.time_cost,options.contact_penalty,
                                 options.arrival_bonus);
+    run.sample_counts=metal.buffer(size_t(control.period)*sizeof(uint32_t));
+    run.sample_count_pipeline=metal.pipeline("waypoint_count_sample");
     PPOTrainer trainer(sim,options.epochs);
+    require(std::isfinite(options.anchor_lambda)&&options.anchor_lambda>=0&&
+            std::isfinite(options.anchor_radius)&&options.anchor_radius>=0,
+            "anchor coefficient/radius must be finite and nonnegative");
+    const PpoSafeguardConfig safeguards{options.epochs,0.0f,0.5f,options.anchor_lambda,
+                                       options.anchor_radius,0.0f,std::string(64,'0')};
 
     // Explicit warmstart: actor AND critic parameters, fresh Adam moments,
     // fresh log std. Critic/optimizer reset state is stated in the contract.
     if(resume) {
+        std::ifstream saved(checkpoint,std::ios::binary);
+        const auto existing_header=read_checkpoint_header(saved);
+        load_ppo_safeguard_state(checkpoint,safeguards,existing_header.completed_rollouts,
+                                options.anchor_lambda>0?trainer.anchor_ref_b.contents:nullptr);
         trainer.load_checkpoint(checkpoint,config.family,options.horizon,options.environments,options.seed);
     } else {
         navigation_training::load_actor(sim,warmstart,true);
@@ -1300,6 +1327,7 @@ static int command_train(int argc,char** argv) {
             ((float*)sim.actor.contents)[fixed_ppo::actor_log_std_offset+axis]=options.log_std;
         trainer.recapture_anchor_reference();
     }
+    trainer.set_anchor(options.anchor_lambda,options.anchor_radius);
 
     // A fresh environment snapshot must satisfy the reset contract before any
     // optimizer step. On resume the simulator continues mid-episode from the
@@ -1319,6 +1347,9 @@ static int command_train(int argc,char** argv) {
     require(bool(history),"cannot write training history");
     std::ofstream diag(checkpoint+".diag.csv",resume?std::ios::app:std::ios::trunc);
     require(bool(diag),"cannot write training diagnostics");
+    std::ofstream slot_samples(checkpoint+".slot-samples.csv",resume?std::ios::app:std::ios::trunc);
+    require(bool(slot_samples),"cannot write per-slot training exposure");
+    if(!resume)slot_samples<<"rollout,slot,transitions\n";
     if(!resume) {
         history<<"rollout,transitions,wall_s,collect_gpu_s,update_gpu_s,policy_loss,value_loss,entropy,ratio,"
                  "dev_success,dev_collision,dev_timeout,dev_arrival_s,dev_min_clearance\n";
@@ -1326,7 +1357,8 @@ static int command_train(int argc,char** argv) {
               "val_mean,pol_loss,val_loss,entropy,ratio,episodes,ep_success,ep_collision,ep_timeout,"
               "ep_path_m,ep_time_s,ep_speed_mps,inflight_clear_min,logstd0,logstd1,logstd2,logstd3,"
               "actor_drift_l2,actor_grad_norm_mean,actor_grad_norm_max,actor_clip_frac,"
-              "critic_grad_norm_mean,critic_grad_norm_max,critic_clip_frac\n";
+              "critic_grad_norm_mean,critic_grad_norm_max,critic_clip_frac,"
+              "ppo_actor_grad_norm_mean,anchor_grad_norm_mean,anchor_pull\n";
     }
     BankScore best;
     best.success=-1;
@@ -1351,6 +1383,7 @@ static int command_train(int argc,char** argv) {
              <<" sensor_profile="<<NAV_SENSOR_ACTIVE_NAME<<"\n";
     for(uint32_t rollout=trainer.completed_rollouts;rollout<finish;rollout++) {@autoreleasepool {
         std::memcpy(previous_runs.data(),sim.runs.contents,options.environments*sizeof(SimRun));
+        std::memset(run.sample_counts.contents,0,run.sample_counts.length);
         auto commands=[metal.queue commandBuffer];
         local_collect(run,commands,options.horizon);
         const double collect_gpu=metal.finish(commands);
@@ -1360,6 +1393,13 @@ static int command_train(int argc,char** argv) {
         trainer.completed_rollouts=rollout+1;
 
         const size_t rows=size_t(options.environments)*options.horizon;
+        const auto* counts=static_cast<const uint32_t*>(run.sample_counts.contents);
+        uint64_t count_sum=0;
+        for(uint32_t slot=0;slot<control.period;slot++) {
+            count_sum+=counts[slot];slot_samples<<(rollout+1)<<','<<slot<<','<<counts[slot]<<'\n';
+        }
+        require(count_sum==rows,"per-slot exposure count does not cover the rollout");
+        slot_samples.flush();
         const float* reward=(const float*)sim.rewards.contents;
         const float* advantage=(const float*)sim.advantages.contents;
         const float* returns=(const float*)sim.returns.contents;
@@ -1400,11 +1440,14 @@ static int command_train(int argc,char** argv) {
         for(uint32_t axis=0;axis<4;axis++)diag<<','<<actor_params[fixed_ppo::actor_log_std_offset+axis];
         diag<<','<<trainer.actor_drift_l2();
         const PPOTrainer::GradNormSummary grad=trainer.grad_norm_summary();
+        const auto anchor_norms=trainer.anchor_norm_means();
         diag<<','<<grad.actor_mean<<','<<grad.actor_max<<','<<grad.actor_clip_frac
-            <<','<<grad.critic_mean<<','<<grad.critic_max<<','<<grad.critic_clip_frac<<'\n';
+            <<','<<grad.critic_mean<<','<<grad.critic_max<<','<<grad.critic_clip_frac
+            <<','<<anchor_norms[0]<<','<<anchor_norms[1]<<','<<trainer.current_anchor_pull()<<'\n';
         diag.flush();
         if((rollout+1)%options.eval_every==0||rollout+1==finish) {
             trainer.save_checkpoint(checkpoint,config.family,options.seed,rollout+1);
+            save_ppo_safeguard_state(trainer,checkpoint,safeguards,rollout+1);
             BankScore score;
             if(!eval_bank.empty())
                 score=evaluate_bank(metal,(const float*)sim.actor.contents,&options.eval_bank_spec,eval_bank,eval_control,
@@ -1421,6 +1464,7 @@ static int command_train(int argc,char** argv) {
                  (best.success<=0||score.mean_time_s<best.mean_time_s));
             if(better&&!eval_bank.empty()) {
                 best=score;trainer.save_checkpoint(checkpoint+".best",config.family,options.seed,rollout+1);
+                save_ppo_safeguard_state(trainer,checkpoint+".best",safeguards,rollout+1);
                 if(std::filesystem::exists(checkpoint+".dev.csv"))
                     std::filesystem::copy_file(checkpoint+".dev.csv",checkpoint+".best-dev.csv",
                                                std::filesystem::copy_options::overwrite_existing);

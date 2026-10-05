@@ -670,6 +670,16 @@ kernel void ppo_anchor_grad(device float* grad [[buffer(0)]],
     grad[p] += lambda * (params[p] - reference[p]);
 }
 
+// Read-only diagnostic of the reference pull; actor/optimizer behavior is unchanged.
+kernel void ppo_anchor_component(device float* component [[buffer(0)]],
+                                 device const float* params [[buffer(1)]],
+                                 device const float* reference [[buffer(2)]],
+                                 constant float& lambda [[buffer(3)]],
+                                 constant uint& parameter_count [[buffer(4)]],
+                                 uint p [[thread_position_in_grid]]) {
+    if(p<parameter_count)component[p]=lambda*(params[p]-reference[p]);
+}
+
 kernel void ppo_adam_update(device float* params [[buffer(0)]],
                             device const float* grad [[buffer(1)]],
                             device float* first [[buffer(2)]],

@@ -1124,6 +1124,8 @@ struct PPOTrainer {
     // Training-only actor anchor: frozen copy of the actor weights at capture
     // time plus the pull strength toward that reference. lambda 0 disables it.
     id<MTLBuffer> anchor_ref_b, anchor_lambda_b;
+    id<MTLBuffer> anchor_component_grad=nil, anchor_norm_rows=nil;
+    id<MTLComputePipelineState> anchor_component_p=nil;
     id<MTLBuffer> direction_aux_coefficient_b=nil;
     id<MTLComputePipelineState> anchor_p;
     id<MTLComputePipelineState> direction_aux_grad_p=nil;
@@ -1341,8 +1343,14 @@ struct PPOTrainer {
                 dispatch(cb,metric_batch_p,1,{{losses,0},{metric_rows,size_t(update)*4*4},{bb,0}},1);
                 dispatch(cb,actor_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.actor,0},{d_means,0},{actor_hidden,0},{actor_hidden_delta,0},{bb,0}},128);
                 dispatch(cb,actor_grad_direct_p,fixed_ppo::actor_param_count,{{sim.obs,obs_offset},{actor_hidden,0},{d_means,0},{d_log_stds,0},{actor_hidden_delta,0},{actor_grad,0},{bb,0}},128);
-                if(anchor_lambda>0)
+                if(anchor_lambda>0) {
+                    // Measure PPO and reference pull separately before their sum is clipped.
+                    dispatch(cb,grad_norm_p,256,{{actor_grad,0},{anchor_norm_rows,size_t(update)*2*4},{actor_count_b,0}},256);
+                    dispatch(cb,anchor_component_p,fixed_ppo::actor_param_count,
+                        {{anchor_component_grad,0},{sim.actor,0},{anchor_ref_b,0},{anchor_lambda_b,0},{actor_count_b,0}},128);
+                    dispatch(cb,grad_norm_p,256,{{anchor_component_grad,0},{anchor_norm_rows,(size_t(update)*2+1)*4},{actor_count_b,0}},256);
                     dispatch(cb,anchor_p,fixed_ppo::actor_param_count,{{actor_grad,0},{sim.actor,0},{anchor_ref_b,0},{anchor_lambda_b,0},{actor_count_b,0}},128);
+                }
                 dispatch(cb,critic_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.critic,0},{d_values,0},{critic_hidden,0},{critic_hidden_delta,0},{bb,0}},128);
                 dispatch(cb,critic_grad_direct_p,fixed_ppo::critic_param_count,{{sim.co,co_offset},{critic_hidden,0},{d_values,0},{critic_hidden_delta,0},{critic_grad,0},{bb,0}},128);
                 require(optimizer_step<uint64_t(std::numeric_limits<uint32_t>::max()),"PPO Adam step overflow");
@@ -1383,6 +1391,11 @@ struct PPOTrainer {
         require(std::isfinite(lambda)&&lambda>=0.0f,"anchor lambda must be finite and non-negative");
         require(std::isfinite(radius)&&radius>=0.0f,"anchor radius must be finite and non-negative");
         anchor_lambda=lambda;anchor_radius=radius;
+        if(lambda>0 && !anchor_norm_rows) {
+            anchor_component_grad=metal.buffer(sim.actor.length);
+            anchor_norm_rows=metal.buffer(size_t(updates_per_rollout)*2*sizeof(float));
+            anchor_component_p=metal.pipeline("ppo_anchor_component");
+        }
         refresh_anchor_pull();
     }
     // Parameter-space hinge penalty: within anchor_radius of the reference the
@@ -1401,6 +1414,18 @@ struct PPOTrainer {
         std::memcpy(anchor_lambda_b.contents,&effective,sizeof(float));
     }
     float current_anchor_pull()const{return anchor_pull;}
+    std::array<double,2> anchor_norm_means()const {
+        if(anchor_lambda<=0)return {grad_norm_summary().actor_mean,0.0};
+        const float* rows=static_cast<const float*>(anchor_norm_rows.contents);
+        std::array<double,2> mean{};
+        for(uint32_t step=0;step<updates_per_rollout;step++)
+            for(uint32_t component=0;component<2;component++) {
+                const float value=rows[step*2+component];
+                require(std::isfinite(value),"non-finite PPO/anchor diagnostic");
+                mean[component]+=value/double(updates_per_rollout);
+            }
+        return mean;
+    }
     struct GradNormSummary {
         float actor_mean=0.0f,actor_max=0.0f,actor_clip_frac=0.0f;
         float critic_mean=0.0f,critic_max=0.0f,critic_clip_frac=0.0f;
