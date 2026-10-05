@@ -505,6 +505,8 @@ struct LocalRun {
     id<MTLBuffer> bank;
     id<MTLBuffer> bank_control;
     id<MTLComputePipelineState> apply_pipeline;
+    // Optional experimental actor-input transform; null preserves legacy flights.
+    id<MTLComputePipelineState> observation_transform=nullptr;
 };
 
 static LocalRun make_local_run(Sim& sim,const std::vector<BankEntry>& bank,const BankControl& control,
@@ -537,6 +539,8 @@ static void local_tick(LocalRun& run,id<MTLCommandBuffer> cb,uint32_t tick,bool 
     }
     sim.m.dispatch(cb,sim.observe_p,sim.cfg.n,
         {sim.states,sim.runs,sim.worlds,sim.sensors,sim.obs,sim.co,sim.physics,c,sim.poses,sim.memory_clearances},64);
+    if(run.observation_transform)
+        sim.m.dispatch(cb,run.observation_transform,sim.cfg.n,{sim.obs,c},64);
     const size_t row_offset=size_t(tick%sim.horizon)*sim.cfg.n;
     encode(sim.m,cb,sim.simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",
            sim.simd_actor?((size_t(sim.cfg.n)+7)/8)*256:sim.cfg.n,
@@ -735,7 +739,8 @@ static BankScore evaluate_bank(Metal& metal,const float* actor,const BankSpec* s
                                uint32_t mode,uint32_t seed,float speed,const std::string& csv_path,
                                const std::string& split,uint32_t environments=128,uint32_t max_steps=400,
                                uint32_t sensor_delay=0,uint32_t command_delay=0,float contact_penalty=10.0f,
-                               float arrival_bonus=10.0f) {
+                               float arrival_bonus=10.0f,
+                               id<MTLComputePipelineState> observation_transform=nullptr) {
     SimConfig config;
     config.n=environments;config.mode=mode;config.family=0;config.eval=1;config.seed=seed;
     config.speed=speed;config.distance=4;config.max_steps=max_steps;config.geometry_memory=1;
@@ -746,6 +751,7 @@ static BankScore evaluate_bank(Metal& metal,const float* actor,const BankSpec* s
     if(actor)std::memcpy(sim.actor.contents,actor,fixed_ppo::actor_param_count*4);
     LocalRun run=make_local_run(sim,bank,control,metal.pipeline("waypoint_task_apply"),0.2f,contact_penalty,
                                 arrival_bonus);
+    run.observation_transform=observation_transform;
     auto probe=[metal.queue commandBuffer];
     local_probe(run,probe);
     metal.finish(probe);
