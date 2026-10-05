@@ -2,7 +2,7 @@
 
 The strongest next step is to preserve useful behavior while learning from a cumulative task bank. Keep the current actor, geometry guidance, short geometry memory and RAPTOR controller. The evidence does not yet justify a larger network or a new RL algorithm. No existing checkpoint meets the full combined objective.
 
-This review used the current owning code and the final and selected-best flight CSVs in `results/root-distance-learning/evals/`. `STATUS.md` and `LONG_GOAL_EXPERIMENT.md` still describe active runs; the actual completed records supersede that execution status. No policy is promoted by this review.
+This review used the current owning code and the final and selected-best flight CSVs in `results/root-distance-learning/evals/`. This report records the diagnosis made after the long-goal study. The anchor, bounded-course and consolidation follow-ups are now complete; [combined progress](COMBINED_POLICY_PROGRESS.md) and [STATUS](../STATUS.md) carry their outcomes. No policy is promoted by this review.
 
 ## What the failures establish
 

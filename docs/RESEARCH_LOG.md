@@ -1,5 +1,9 @@
 # Research and decisions
 
+This is a chronological record. Older entries describe their own source and
+execution snapshots. Read [STATUS](../STATUS.md), [the document index](README.md)
+and [combined progress](COMBINED_POLICY_PROGRESS.md) for current results.
+
 ## Runtime compiler
 
 Question: is full Xcode required to begin raw Metal execution?
@@ -123,3 +127,302 @@ Controlled flying-start sphere encounters are generated on the host once; sensin
 Warm a1-environment guided episode,clone allstate/history/policy buffers,andconfirm identical motors before inserting a1m/s approaching sphere2m ahead into only one copy. Compare applied navigation fractions and motor outputs after each50ms navtick,threshold1e-4. No-delay response is detected by50ms;100ms sensor+50ms command delay response is detected by200ms. These are simulation upper bounds with50ms readout resolution;actual RAPTOR still updates100Hz. They establish causal response and modeled queue delay,not real sensor/transport latency or successful avoidance.
 
 Rehearsal1000 outcome: combined held-door70.31%→93.75%,command-only76.56%→95.31%,clean held-door89.06%→89.06%. However,table clean96.88%→78.13%,combined89.06%→76.56%;fresh mixed89.84%→87.50%. This successfullyaddresses the measured delay failure butstilldoesnotproduceonepolicyretainingallskills. Keep the original export and everycandidate. Next workshouldmixcleananddisturbedtrainingconditionsandtrainfastthreats,withper-familyvalidationguardingagainstaverageshidinglosses.
+
+## Distribution audit review (2026-10-04)
+
+Question: does the new capability-focused audit (`docs/LOCAL_DISTRIBUTION_AUDIT.md`)
+rest on reproducible measurements?
+
+Evidence: coordinator re-computed its cross-tabs from
+`results/omp-aware-navigation/evals/baseline-fast-deva.csv` joined to the dev-a
+bank: detour + goal outside FOV = 7 success / 26 contact / 1 timeout;
+detour + in-FOV = 12/1; direct = 81/81. TRAIN start-velocity yaw equals goal
+yaw in 1024/1024 rows (max deviation 2.4e-5 deg), confirming the accidental
+coupling the audit flags. Detour + out-FOV(±45°) + witness clearance <0.20 m =
+166/1024 TRAIN tasks; in-FOV count 246/1024 reproduces only at ±45° half-angle.
+
+Decision: accept the audit as round-1 baseline. Require (a) FOV convention
+stated next to every in/out-FOV count, (b) per-run runner hash — three copies
+exist (`aabe46e7…` published, `ac953404…` calibrated worktree, `f3af77a5…`
+learner) with no control-flow difference but diverging provenance, (c) the
+learner's first experiment keeps its stated matched-arm design (teacher+BC+PPO
+vs PPO, 10k rollouts each, dev-c predeclared) and files the reward-ordering
+audit with the research mission before any harder task class.
+
+Record: `results/omp-coordination/review-round1-2026-10-04.md`.
+
+## Background-job lifecycle failure (2026-10-04)
+
+Question: how did the first matched PPO arms die at 1700/2000 while the
+control arm finished?
+
+Evidence: research session 01a10753-8d11-7135-b9de-1e711df85f77 ended its
+turn with "wait for bg_3"; the harness recorded `session_exit reason=dispose`
+one second later; `shaped-s1.log` mtime equals that timestamp, its last line
+is rollout=1700 with no `local_train_done`, no `.end` file, and no
+`metal_nav_waypoint` process afterwards. The control arm, launched the same
+way but finishing 46 s before the session exit, has a complete receipt.
+
+Decision: never end a turn while a background training job still runs. Run
+matched arms in the foreground under `run_locked.py` (blocking), or accept
+session lifetime = job lifetime. The incomplete checkpoint is contract-safe to
+resume (sidecar v3 binds all parameters; wrong-scale resume already refused).
+Recorded as `research_run_incident` in dispatch.json with an exact
+append-mode job-request in `results/omp-coordination/inbox/`.
+
+## Background-job failure resolved (2026-10-04)
+
+Follow-up to the lifecycle failure above: the contract mission claimed the
+filed resume job-request as first claimant (locked, double-claim guarded).
+The resume exposed a second trap: `local-train N` is INCREMENTAL
+(`finish = completed + N`), so the job-request's literal `2000` ran the arm
+to 3700 instead of 2000. The claimant declared the deviation with evidence
+rather than silently patching; the coordinator then recomputed checkpoint
+selection over the full history and over rows <=2000 and found the identical
+winner (rollout 1950), so the matched-budget comparison survives.
+
+Decisions now standing:
+1. `local-train` resume arguments must be written as INCREMENTS (300 to reach
+   2000 from 1700). Both the runner usage line and any job-request must say so.
+2. Report curves from rows <=2000; keep >2000 rows as declared deviation
+   evidence; `.best` = rollout 1950 is the shaped-s1 selection.
+3. Remaining research work (seed 2 both arms, held-out/retention evals,
+   RESEARCH_EXPERIMENT_RESULTS.md) requires a root respawn of session
+   01a10753-8d11-7135-b9de-1e711df85f77; do not relaunch from a dead CLI.
+
+## Second dispose-during-job failure (2026-10-04)
+
+The learner mission hit the identical failure the research mission hit90
+minutes earlier: its final turn was a "status while the arm trains"
+message, the harness recorded `session_exit reason=dispose` at turn end,
+and the background Arm C job (3250/10000) died with the session. Arm T,
+which had completed6 minutes earlier under the same launch pattern, is
+intact.
+
+Decision (rule now with two independent data points, both fatal to the
+affected arm):
+1. Training arms run inside a BLOCKING foreground tool call. No harness
+   background job (`bg_N`), no `&` launch whose script outlives the turn,
+   no "status while X trains" turn end.
+2. If a session is disposed anyway, the arm resumes only via an explicit
+   contract-checked job-request, with the INCREMENTAL rollout argument
+   computed from the sidecar (`local-train N` = completed + N), and
+   `run-arm.sh`-style hardcoded targets forbidden for resumes.
+3. Receipt discipline stays mandatory: `finished_utc/exit` line + history
+   row count are what prove completion; absence of both at a dead CLI is
+   the P0 trigger, as this round demonstrated.
+
+## Third session-end child loss — and the resume-safe design absorbing it (2026-10-04)
+
+The local-dynamics mission's `full-s2` chunk2 (rollouts1000→2000) was at
+rollout1500 when its session ended at14:57:19: `logs/full-s2.bin.log`
+stops without `dynamic_train_done`/`chunk_exit`, no stderr anywhere, all
+other mission CLIs ended within the same15-minute window (learner already
+down14:14). Same dispose class as the two earlier failures, but the third
+data point differs in one way that matters: the mission's `run_arm.sh`
+launches5×1000 foreground chunks and recomputes remaining rollouts from
+the per-rollout diag, so the killed chunk costs minutes, not an arm.
+No corruption, no duplicate: the next invocation resumes at the recorded
+count. The earlier rule (blocking foreground call, receipt or it did not
+happen, incremental-only resumes) is now supplemented by the chunked
+pattern for any run longer than one turn's patience.
+
+## Grounded matched experiment: prereg chain, v5 freeze, fail-closed preflight, root-executed arms (2026-10-04)
+
+Timeline verified from bytes, not status prose:
+
+1. Preregistration first: `decision.md`13:12 (before any generator code),
+   then root's three pretraining corrections (13:14), contract adversarial
+   review (13:20), root policy-resolution + goal-ray clarifications
+   (13:23/13:25), and two user clarifications (13:37/13:40).
+2. The first attempt violated the combined projected frustum (independent
+   az/elev admitted72/1024 TRAIN +8+6 dev rows outside the true cone),
+   had no stopped-issue bucket, malformed `labels.json`, block-concat mix
+   layout, and a control arm started before inbox findings were read.
+   Root aborted at preflight13:33: the arm died by SIGTERM at
+   rollout≈4700/10000 (receipt exit241 = run_locked sys.exit(-15) chain),
+   everything archived intact under `invalid-preflight-v1/`, no pilot
+   outcome ever read. The coordinator independently reconstructed the
+   signal chain from the receipt before finding root's abort record —
+   both agree the ~191 s of GPU is waste, disclosed as such.
+3. Corrected phase: dated `decision-revision-2026-10-04.md` incorporating
+   every review item; generator reworked (yaw chosen after the route so
+   goal and first bend sit in the cone by construction; four distinct
+   visibility labels with a raw-ray gate and pooled bins as diagnostic
+   only; velocity buckets `stopped_slow` U[0,0.2] and `independent_stress`
+   U[0.2,1]; side round-robin; labels schema v2 with frozen exact
+   denominators). v5 banks frozen14:06, self-validation zeros, witness
+   flights on v5 retained both outcomes (918/1024,119/128,113/128 —
+   coordinator re-derived from the summary JSONs).
+4. Fail-closed gate: `local-train --preflight RECEIT` refuses grounded
+   specs without an independent PASS receipt, mutation-tested (missing,
+   FAIL verdict, mutated sha all refuse before any file write). The
+   contract re-derived every hash, the passage frame and the denominators
+   on the frozen bytes → PASS; role-specific receipts
+   `omp-contract-preflight-{control,treatment}.json` bind C=source,
+   T=grounded-mix, runner source784ca2f3; the single earlier receipt is
+   marked SUPERSEDED.
+5. Execution moved to root's parent (`root-run-all.sh`,15:31): four clean
+   `armG2-{C,T}-s{1,2}` runs (10000 fixed, seeds20261005/6, fresh paths,
+   pilot never resumed), then a75-eval matrix, analysis and plots.
+   Verified: C-s1 and T-s1 exit0 with `local_train_done rollouts=10000`
+   and correct role receipts; C-s2/T-s2 chained; in-run dev-g1@10000
+   C118 vs T121 of128 — in-run telemetry only, not the predeclared
+   endpoint (pooled blocked dev-g1+dev-g2 finals, ≥+10, retention ≥−3,
+   safety ≤+3; any miss = honest negative, no sweeps).
+
+Coordinator findings filed this round: the eval-matrix receipt template
+hardcodes a `runner_sha256` matching nothing (binary3a72ec8d, source
+784ca2f3, script f9bd2911 — P2, fix before the receipt lands); and the
+dynamics interim's paired "best-vs-best" +16 reproduces only from the
+FINAL checkpoint files (best-vs-best is +8:14/6) — basis must be labeled
+and bound to decision §8 before seed2 is compared. Still unverified: all
+four official outcomes, dynamics seed2 + cross-probe, collision parity
+and arms, the rebuilt contract tar, the M4 analysis copy.
+
+## Coherent outcome across four completed studies (2026-10-04 evening)
+
+All heavy comparisons are now complete, root-verified against real
+checkpoint headers and optimizer budgets, and independently reviewed by
+the coordinator where gates were involved. Read together:
+
+1. **Native256 (published3a3eb3e):** BC beats fast on reliability
+   (113 vs105; blocked28/43 vs20/43; paired net+8) but is much slower
+   (mean arrival6.17 vs3.61 s). Capability bought by behavior cloning
+   includes hesitation; speed and reliability trade against each other
+   on this exposed development bank.
+2. **Grounded mixture (NEGATIVE):** the minimal grounded distribution
+   genuinely teaches the new detour skill (+12 pooled blocked, both
+   seeds positive, safety improved) yet loses dev-c by12 beyond the
+   declared −3 floor. New-skill acquisition and prior-navigation
+   retention are separate axes; the preregistered falsifier did its job.
+3. **Dynamic ablation (NO ADOPTION):** real source learning gains
+   (warm27 →109/112) but the selector is development, the cross-drop
+   prediction went0/3, and the code shows the ablated arm retained a
+   cached8-frame geometry prior — the original contrast isolates only
+   the direct previous-depth channel. A corrected ablation is properly
+   predeclared (`decision-corrected-history.md`) before any new run.
+4. **Penalty10 vs50 (NO ADOPT):** the human hypothesis is real for
+   safety (contacts55→17, success +13) and real retention gains, but
+   the policy buys caution with stalling (timeouts0→25, time
+   +2.04 s) — exactly the failure mode the no-stalling gate was
+   written to catch. Reward strength moves the safety/progress
+   frontier; it does not by itself deliver fast-reliable pathfinding.
+
+Common methodological lessons now standing as rules: receipt+header
+or it did not happen; basis labels on every paired table; selectors on
+development banks are labeled as such; driver/fixture bugs are fixed
+and disclosed without touching PPO/reward; ablation claims require
+reading the actual memory path, not the intended one; frustum
+conformance is never a universal acceptance rule (goal.md operator
+clarification). Failure modes are documented with full denominators —
+no study was rerun to change its verdict.
+
+## One navigator: strategy and completed follow-ups — 2026-10-05
+
+Astra reviewed the actual trainer and completed flight records. Its strongest
+explanation was task coverage, unequal transition influence and interference
+between learned skills. Longer episodes can dominate samples even when older
+records remain in the bank. A dev-a-only selector cannot enforce combined
+capability. Larger networks and replacement algorithms were not established
+as the missing ingredient. The report is `UNIFIED_POLICY_STRATEGY.md`.
+
+Root implemented and executed these follow-ups with the preserved actor:
+
+- Long-goal coverage: long open 2→255/256 and hallway 0→256/256, but static
+  retention failed. Four matched 10,000-rollout runs completed.
+- Parameter anchoring: drift fell from about 9.3 to 1.2–1.4. Retention and
+  speed gates still failed. The coefficient stayed fixed in later studies.
+- Motion correction: all 384 prototype moving paths intersected scene geometry.
+  Root stopped unfinished invalid runs, retained evidence, implemented bounded
+  sphere motion, and checked full paths and source/native positions.
+- Balanced combined training: 50% static, 25% long and 25% bounded-course
+  transitions. Course success 223→243/256, contacts 33→13, but arrival regressed.
+- Independent native comparison: 96 valid flights, parent 43/48 versus combined
+  45/48 successes, contacts five→three. Published `4e0a9f3`, 598 hashed inputs.
+- Arrival analysis: reference windup did not explain the observed timeouts.
+  Late controller interventions diagnosed recoverable failures; they were not
+  credited as learned navigation gains.
+- One-actor teacher consolidation: two 2,000-update students, then four matched
+  10,000-rollout PPO runs and 64 evaluations. Final course success 217→240/256,
+  contacts 39→16, long open 253→255 and hall 255→256. Short open 254→246 and
+  static B 227→220, with slower arrivals. Full gates failed; no promotion.
+
+The actor remains 184/64/4. No deployed teacher switch, route oracle or larger
+network was introduced. Checkpoints and useful failures remain preserved.
+
+## Perception support: completed negative result — 2026-10-05
+
+Four 10,000-rollout arms and 48 evaluations completed. Final primary success
+was C202/T197 of 256, contacts 54/59; fresh dev-k 192/189, contacts 64/66.
+The experiment was not adopted. Its candidate-query optimization retained
+100-rollout full-checkpoint byte parity while reducing wall time from 69.89
+to 8.11 s. This is a measured speed gain, not a navigation gain.
+Records: `results/omp-perception-support/`; report: `PERCEPTION_SUPPORT.md`.
+
+## Rays and navigation frequency: useful hypotheses, not fixes — 2026-10-05
+
+The user proposed more rays, wider angles and higher navigation frequency.
+Existing collision attribution found 17 of 27 contacts never raw-ray measured.
+Recasting 5,120 rays at the same saved poses rescued zero of those 17; six
+complete colliders stayed outside view. Ten contacts had raw and pooled hits
+within the last 0.4 s. A hit alone does not establish enough warning or a
+safe available action. Source: `results/root-contract-review/existing-visibility-review.json`.
+
+More rays could help thin obstacles if angular sampling is the limitation.
+They cannot reveal geometry outside the field of view or behind occlusion.
+Wider sensing is a stronger distinct hypothesis, but widening at fixed ray
+count reduces angular density. Test coverage and density separately, preserve
+capture pose/time and unknown-space semantics, and include body-volume margins.
+The Fly360 primary paper studies panoramic depth for omnidirectional motion:
+https://arxiv.org/abs/2603.06573 . Its results motivate a test here; they do not
+validate our sensor or policy.
+
+At 20 Hz the maximum navigation sampling wait is 50 ms. At 50 Hz it would be
+20 ms, a 30 ms reduction; at 3 m/s that is 0.09 m of travel. This calculation
+excludes sensing, inference, transport and motor response. Raising inference
+rate alone cannot create fresh depth or repair missing coverage.
+
+A rate experiment must preserve elapsed physical time, sensor cadence/age,
+command hold, RAPTOR at 100 Hz, reward units and the discount/GAE horizon in
+seconds. For a new navigation step, use gamma_new = gamma_old^(dt_new/dt_old)
+when matching the same continuous discount horizon. Treat action smoothing,
+previous-action history and observation contracts explicitly; merely changing
+rollout step count would confound the result. Compare frozen-rate sensitivity
+first, then matched learning on the same multi-capability bank if justified.
+No rate or wider-FOV learning outcome is claimed yet.
+
+## Stress harness review and cleanup — 2026-10-05
+
+Luna independently found a runtime guard that blocked dynamics evaluation and
+a matrix launcher missing its preflight gate. Root fixed evaluation constructor
+ordering, retained the training guard, added full sampled-plant validation and
+exclusive finite grading, and published a readable receipt-gated runner.
+All four preflights now pass, including nominal scored-flight parity. The
+120-evaluation frozen matrix is a diagnostic, not actor tuning. Ego remains
+ideal and wind is zero; declared plant bounds are not hardware identification.
+
+The README, document index, code map and handoff now distinguish completed,
+invalid and live work. Stale perception status and historical fidelity claims
+were corrected. Optional research build targets use a separate directory;
+frozen binaries and unpublished drafts were preserved. Changes follow the
+operator's explicit-data-flow and measured-performance code standard.
+
+## Completed frozen stress outcomes — 2026-10-05
+
+The corrected harness completed all 120 evaluations / 15,360 source flights.
+Root checked every flight and plant hash and exclusive outcome. On bounded
+courses, the consolidated-PPO actor achieves 240/256 nominal versus 217 for
+its matched control. It falls to 227 with sensor delay, 218 with command delay,
+211 with both, 232 with plant variation and 191 with combined stress. Contacts
+rise from 16 nominal to 45 with both delays and 65 combined. Matched control
+combined success is 190/256: nominal gains almost vanish under joint stress.
+
+This is evidence of a robustness gap, not proof of one unique cause. Next
+analysis must inspect actual command history, sensing/warning time and sampled
+plant for paired failures before changing training. Check second-order effects
+on braking, arrival, static retention, physical horizons and inference cost.
+The user's standing rule is now explicit: diagnose the cause, check the fix and
+its effects on other behaviors, then rerun. Do not replace diagnosis with a
+parameter sweep. Full records: `results/root-stress-matrix/`; current results:
+`COMBINED_POLICY_PROGRESS.md`.

@@ -1,7 +1,7 @@
 # Preserving useful behavior during PPO
 
 Broader task coverage taught the long-route behavior, but keeping old tasks in
-the bank did not preserve every old skill. I am testing the existing actor
+the bank did not preserve every old skill. I tested the existing actor
 parameter anchor before adding another training method.
 
 Both arms use the same static-plus-long source bank, BC warmstart, 184/64/4
@@ -84,7 +84,7 @@ histories, diagnostics, slot exposures and launch receipts. Recompute the
 python3 navigation_anchor_review.py evidence/inputs/anchor-retention/records.tar.gz
 ```
 
-The next experiment reserves exact transition shares for static, long and
-corrected compositional tasks. The anchor coefficient stays fixed. Source
-teacher consolidation is also implemented and tested as a fallback; it has
-not yet produced a claimed capability gain.
+The follow-up reserved exact transition shares for static, long and corrected
+compositional tasks. The anchor coefficient stayed fixed. That comparison,
+source teacher consolidation and subsequent PPO are complete; see
+[combined progress](COMBINED_POLICY_PROGRESS.md) for gains and retention failures.

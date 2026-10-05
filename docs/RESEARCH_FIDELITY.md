@@ -1,5 +1,12 @@
 # Fidelity audit: physics, vehicle, sensing, reward, task
 
+**Historical audit: 2026-10-01.** Its task and reward descriptions refer to
+that source snapshot. Later work adds long and compositional tasks, bounded
+movers, controller-state critics and separate sensing/dynamics probes.
+Use [the current progress report](COMBINED_POLICY_PROGRESS.md) and
+[STATUS.md](../STATUS.md) for current outcomes. Reference-model parity remains
+a software check rather than proof of physical-aircraft fidelity.
+
 **Date:** 2026-10-01
 **Question:** Is the training environment good enough that success in it means the
 policy learned navigation — and is the physics/vehicle model accurate?

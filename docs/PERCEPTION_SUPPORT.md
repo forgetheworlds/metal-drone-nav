@@ -68,8 +68,14 @@ The fixed gates require fewer contacts without material loss of success, old
 skills, timeout rate or speed. A missed gate means no adoption at this budget.
 There is no coefficient sweep or larger network in this experiment.
 
-Full training and evaluation are still pending. Lower loss or prior correctness
-alone is not evidence of better navigation. Exporting weights alone does not
+Training and evaluation are complete: four 10,000-rollout runs and 48 evaluations.
+Final primary success was control 202/256 versus treatment 197/256, with
+54 versus 59 contacts. Fresh dev-k success was 192 versus 189, with 64 versus
+66 contacts. Retention success was dev-b 204/200, dev-c 188/190, open 256/255
+and clutter 193/188. The treatment failed the declared gates and was not adopted.
+Records remain in `results/omp-perception-support/`; consult STATUS and the
+research log for the exact archived run paths. Prior correctness did not
+produce better navigation in this comparison. Exporting weights alone does not
 deploy this profile: a native frontend must reproduce the same prior from its
 range/pose history, frame timing and sensor semantics before a frozen transfer
 claim. Generic production `eval`/`export` do not apply the experimental profile.

@@ -381,8 +381,8 @@ The [source-only imitation experiment](IMITATION_EXPERIMENT.md) reduced command 
 
 - **Blender reconstructions** of doorway and connected-room flights. They are rejected deliverables, not native footage, and are neither embedded nor promoted here. Their provenance record exists precisely so the distinction stays auditable: `evidence/inputs/flight-videos/manifest.json` *(local only)*.
 - **Synthetic verifier fixtures** (`SYNTHETIC_FIXTURE_*.mp4`) — self-test inputs, never navigation evidence.
-- **New plots generated for this page.** This gallery only catalogs figures that already exist and were produced by [`evidence.py`](../evidence.py) from hashed inputs. No figure was manufactured, regenerated or re-thresholded to make a claim look complete.
-- **Any final-split result.** There is none; the final 90 levels have never been evaluated.
+- **New plots generated for this page.** This gallery catalogs existing measured figures. Each report identifies its own review or plotting command and source records. No figure was manufactured, regenerated or re-thresholded to make a claim look complete.
+- **Any final-split result.** There is no accepted sealed-final result. Original final geometry was exposed; a fresh sealed set is required after freezing the full system.
 - **Hardware or airframe fidelity claims.** Numerical parity and simulator agreement are software checks.
 
 ## Calibrated camera sensitivity
@@ -416,3 +416,24 @@ Rebuild from published records with `python3 local_waypoint_results.py`.
 This selected success is an actual native Webots scene. Paired 32-flight verdicts
 agree 31/32 with Metal; the faster actor reaches 12/16 in both. No global routing,
 noise, moving-obstacle or blind final claim is made.
+
+## Longer goals and combined courses
+
+![Anchor retention outcomes](../artifacts/plots/anchor-retention.png)
+
+The [anchor study](ANCHOR_RETENTION_EXPERIMENT.md) measures weight drift,
+old-skill retention and long-goal outcomes across two matched seeds. Prototype
+moving scores used paths later found to intersect geometry; the report keeps
+that failure separate from its valid static results.
+
+![Corrected bounded-course geometry](../artifacts/plots/bounded-composite-worlds.png)
+
+These are procedural worlds with geometric witness routes, not recorded
+policy flights. [Full moving-path and numerical checks](MOTION_FIDELITY.md).
+
+![Combined frozen Webots transfer](../artifacts/plots/native-combined-transfer.png)
+
+The [96-flight native study](NATIVE_COMBINED_TRANSFER.md) measures frozen
+parents and combined policies: 43/48 versus 45/48 successes, five versus three
+contacts. All native flight receipts and mover traces are retained. Source
+training and arrival failures are in [combined progress](COMBINED_POLICY_PROGRESS.md).
