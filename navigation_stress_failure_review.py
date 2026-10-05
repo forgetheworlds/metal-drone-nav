@@ -42,7 +42,7 @@ def review(archive):
             stressed = flights(f'traces/T-s{seed}-{profile}.csv')
             lost = {env for env in stressed if stressed[env]['collision'] == '1'
                     and nominal[env]['success'] == '1'}
-            trajectories = {env: [] for env in lost}
+            trajectories = {env: [] for env in sorted(lost, key=int)}
             for row in rows(f'traces/T-s{seed}-{profile}-trace.csv'):
                 if row['env'] in trajectories:
                     trajectories[row['env']].append(row)
