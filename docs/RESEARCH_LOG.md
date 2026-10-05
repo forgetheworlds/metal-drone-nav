@@ -452,3 +452,28 @@ all outcomes: `evidence/inputs/stress-failure/records.tar.gz`,
 `navigation_stress_failure_review.py`, `COMBINED_POLICY_PROGRESS.md`.
 The matrix source snapshot is `c3585ed`; later diagnostic changes do not
 rewrite its freeze record. Only matching baseline/profile data are compared.
+
+## Matched delay learning — implementation and launch, 2026-10-05
+
+The joint trainer's actual configuration used sensor_delay=0 and command_delay=0.
+The new comparison tests this missing exposure rather than another reward,
+network or geometry coefficient. Control and treatment use identical combined
+TRAIN banks and corresponding consolidated-PPO warmstarts, with the same actor,
+rich critic, reward, anchor, fresh optimizer, physics and navigation timing.
+Treatment has both100ms delays in half the lanes, with clean rehearsal in half.
+
+Root caught a second-order assignment error before launching: even/odd lanes
+would make every long lane clean and every moving-course lane delayed because
+the capability groups repeat every four environments. Alternating four-lane
+blocks gives both delay strata32static/16long/16combined environments. Actor
+inputs contain no group identity. Actual exposure is logged per rollout.
+
+Preflight passed default100 full-checkpoint byte parity, delay8 versus4+4 resume
+byte parity, wrong-delay rejection before mutation, actual sensor-age exposure,
+and stratified bank allocation. Sidecarv3 binds delay settings and rehearsal;
+checkpoint/network ABI remains unchanged. Capture-age correction stays off.
+Full comparison: four10000rollout runs on seeds20261180/81, then48 evaluation
+panels. Final checkpoints are primary; source retention, contacts, timeouts,
+common-success timing and absolute floors remain independent gates. No training
+outcome is claimed before saved headers and full evaluations. Protocol:
+`DELAY_LEARNING.md`, `results/root-delay-learning/decision.md`.

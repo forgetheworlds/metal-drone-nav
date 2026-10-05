@@ -69,6 +69,13 @@ if(BUILD_NAVIGATION_EXPERIMENTS)
         target_link_libraries(${tool} PRIVATE
             "-framework Foundation" "-framework Metal" "-framework Accelerate")
     endforeach()
+    add_executable(navigation_delay_training navigation_critic_training.mm)
+    target_compile_options(navigation_delay_training PRIVATE -O3 -fobjc-arc -Wall -Wextra)
+    target_compile_definitions(navigation_delay_training PRIVATE
+        SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" FIXED_PPO_ACTOR_OBS_DIM=184
+        FIXED_PPO_CRITIC_OBS_DIM=64 NAV_CRITIC_CONTROL_STATE=1 NAV_DELAY_REHEARSAL=1)
+    target_link_libraries(navigation_delay_training PRIVATE
+        "-framework Foundation" "-framework Metal" "-framework Accelerate")
     add_executable(navigation_geometry_check navigation_geometry_check.cpp)
     target_compile_options(navigation_geometry_check PRIVATE -O3 -Wall -Wextra)
 endif()

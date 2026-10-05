@@ -1,4 +1,7 @@
 #pragma once
+#ifndef NAV_DELAY_REHEARSAL
+#define NAV_DELAY_REHEARSAL 0
+#endif
 
 // CPU reference for the fixed Metal navigation workload. Include this header
 // after SimRun and SimConfig are declared. It uses the same packed world,
@@ -214,7 +217,9 @@ private:
     std::vector<uint32_t> minibatch_starts;
 
     bool clean_training_env(uint32_t n) const {
-        return cfg.eval==0 && (cfg.family==12 || cfg.family==13) && (n%2==0);
+        return cfg.eval==0 &&
+            (((cfg.family==12 || cfg.family==13) && n%2==0) ||
+             (NAV_DELAY_REHEARSAL && cfg.mode==22 && (n/4)%2==0));
     }
     uint32_t effective_sensor_delay(uint32_t n) const {
         return clean_training_env(n)?0:cfg.sensor_delay;

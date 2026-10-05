@@ -974,6 +974,7 @@ static int command_bank(int argc,char** argv) {
 // is touched and BEFORE the checkpoint is loaded, so a mismatched invocation
 // can never overwrite artifacts or silently continue a different experiment.
 struct TrainContract {
+    uint32_t sensor_delay=0,command_delay=0,delay_rehearsal=0;
     std::string sensor_profile;
     uint32_t actor_obs_dim=0;
     std::string runner_sha256,core_sha256,warmstart_sha256;
@@ -1054,7 +1055,7 @@ static void require_contract_matches(const std::string& sidecar_path,const Train
             "checkpoint has no training sidecar "+sidecar_path+
             "; refusing to resume without a verifiable contract");
     const std::string text=read_text(sidecar_path);
-    require_json_string(text,"schema","local-waypoint-train-v2");
+    require_json_string(text,"schema","local-waypoint-train-v3");
     require_json_string(text,"sensor_profile",expected.sensor_profile);
     require_json_uint(text,"actor_obs_dim",expected.actor_obs_dim);
     require_json_string(text,"runner_sha256",expected.runner_sha256);
@@ -1074,6 +1075,9 @@ static void require_contract_matches(const std::string& sidecar_path,const Train
     require_json_uint(text,"epochs",expected.epochs);
     require_json_uint(text,"eval_every",expected.eval_every);
     require_json_uint(text,"max_steps",expected.max_steps);
+    require_json_uint(text,"sensor_delay",expected.sensor_delay);
+    require_json_uint(text,"command_delay",expected.command_delay);
+    require_json_uint(text,"delay_rehearsal",expected.delay_rehearsal);
     require_json_float(text,"learning_rate",expected.learning_rate);
     require_json_float(text,"entropy_coef",expected.entropy_coef);
     require_json_float(text,"risk_coef",expected.risk_coef);
@@ -1097,7 +1101,7 @@ static void write_contract(const std::string& path,const TrainContract& contract
     std::ofstream out(path);
     require(bool(out),"cannot write training sidecar "+path);
     out<<std::setprecision(9)<<"{\n"
-       <<"  \"schema\":\"local-waypoint-train-v2\",\n"
+       <<"  \"schema\":\"local-waypoint-train-v3\",\n"
        <<"  \"sensor_profile\":\""<<contract.sensor_profile<<"\",\n"
        <<"  \"actor_obs_dim\":"<<contract.actor_obs_dim<<",\n"
        <<"  \"runner_sha256\":\""<<contract.runner_sha256<<"\",\n"
@@ -1117,6 +1121,9 @@ static void write_contract(const std::string& path,const TrainContract& contract
        <<"  \"epochs\":"<<contract.epochs<<",\n"
        <<"  \"eval_every\":"<<contract.eval_every<<",\n"
        <<"  \"max_steps\":"<<contract.max_steps<<",\n"
+       <<"  \"sensor_delay\":"<<contract.sensor_delay<<",\n"
+       <<"  \"command_delay\":"<<contract.command_delay<<",\n"
+       <<"  \"delay_rehearsal\":"<<contract.delay_rehearsal<<",\n"
        <<"  \"learning_rate\":"<<contract.learning_rate<<",\n"
        <<"  \"entropy_coef\":"<<contract.entropy_coef<<",\n"
        <<"  \"risk_coef\":"<<contract.risk_coef<<",\n"
@@ -1142,7 +1149,7 @@ static int command_contract(int argc,char** argv) {
     std::ostringstream json;
     json<<std::setprecision(9)<<"{\n"
         <<"  \"schema\":\"local-waypoint-contract-v1\",\n"
-        <<"  \"train_sidecar_schema\":\"local-waypoint-train-v2\",\n"
+        <<"  \"train_sidecar_schema\":\"local-waypoint-train-v3\",\n"
         <<"  \"sensor_profile\":\""<<NAV_SENSOR_ACTIVE_NAME<<"\",\n"
         <<"  \"actor_obs_dim\":"<<fixed_ppo::actor_obs_dim<<",\n"
         <<"  \"runner_file\":\"navigation_waypoint_training.mm\",\n"
@@ -1160,6 +1167,7 @@ static int command_contract(int argc,char** argv) {
 }
 
 struct TrainingOptions {
+    uint32_t sensor_delay=0,command_delay=0;
     BankSpec spec;
     std::string bank_path;
     uint32_t seed=20261004,epochs=2,environments=128,horizon=32,eval_every=50;
@@ -1183,6 +1191,8 @@ static int command_train(int argc,char** argv) {
         if(option=="--spec")options.spec=spec_by_name(option_value(argc,argv,index,option));
         else if(option=="--bank")options.bank_path=option_value(argc,argv,index,option);
         else if(option=="--seed")options.seed=option_uint(argc,argv,index,option);
+        else if(option=="--sensor-delay")options.sensor_delay=option_uint(argc,argv,index,option);
+        else if(option=="--command-delay")options.command_delay=option_uint(argc,argv,index,option);
         else if(option=="--epochs")options.epochs=option_uint(argc,argv,index,option);
         else if(option=="--envs")options.environments=option_uint(argc,argv,index,option);
         else if(option=="--horizon")options.horizon=option_uint(argc,argv,index,option);
@@ -1263,6 +1273,10 @@ static int command_train(int argc,char** argv) {
     contract.horizon=options.horizon;
     contract.epochs=options.epochs;
     contract.eval_every=options.eval_every;
+    require(options.sensor_delay<=6 && options.command_delay<=7,"delay exceeds preserved ring capacity");
+    contract.sensor_delay=options.sensor_delay;
+    contract.command_delay=options.command_delay;
+    contract.delay_rehearsal=NAV_DELAY_REHEARSAL;
     contract.max_steps=400;
     contract.learning_rate=options.learning_rate;
     contract.entropy_coef=options.entropy;
@@ -1310,6 +1324,10 @@ static int command_train(int argc,char** argv) {
 
     SimConfig config;
     config.n=options.environments;config.mode=22;config.family=0;config.seed=options.seed;
+    config.sensor_delay=options.sensor_delay;config.command_delay=options.command_delay;
+    std::cout<<"delay_training sensor_ms="<<config.sensor_delay*50
+             <<" command_ms="<<config.command_delay*50
+             <<" clean_alternate_four_lane_blocks="<<NAV_DELAY_REHEARSAL<<'\n';
     config.speed=options.speed;config.distance=4;config.max_steps=400;config.geometry_memory=1;
     config.entropy_coef=options.entropy;config.learning_rate=options.learning_rate;
     Sim sim(metal,config,options.horizon);
@@ -1349,7 +1367,7 @@ static int command_train(int argc,char** argv) {
         auto probe=[metal.queue commandBuffer];
         local_probe(run,probe);
         metal.finish(probe);
-        verify_reset(run,bank,control,true);
+        verify_reset(run,bank,control,options.sensor_delay==0);
     }
 
     const std::filesystem::path checkpoint_path(checkpoint);
@@ -1371,6 +1389,9 @@ static int command_train(int argc,char** argv) {
               "critic_grad_norm_mean,critic_grad_norm_max,critic_clip_frac,"
               "ppo_actor_grad_norm_mean,anchor_grad_norm_mean,anchor_pull\n";
     }
+    std::ofstream delay_samples(checkpoint+".delay-exposure.csv",resume?std::ios::app:std::ios::trunc);
+    require(bool(delay_samples),"cannot write delay exposure");
+    if(!resume)delay_samples<<"rollout,clean_lane_rows,delayed_lane_rows,positive_age_rows,max_sensor_age_s\n";
     BankScore best;
     best.success=-1;
     if(resume&&std::filesystem::exists(checkpoint+".best")&&!eval_bank.empty()) {
@@ -1404,6 +1425,19 @@ static int command_train(int argc,char** argv) {
         trainer.completed_rollouts=rollout+1;
 
         const size_t rows=size_t(options.environments)*options.horizon;
+        const auto* actor_obs=static_cast<const float*>(sim.obs.contents);
+        uint64_t clean_rows=0,delayed_rows=0,positive_age=0;float max_age=0;
+        for(size_t row=0;row<rows;row++) {
+            const uint env=row%options.environments;
+            const bool clean=NAV_DELAY_REHEARSAL && (env/4)%2==0;
+            if(clean)clean_rows++;else delayed_rows++;
+            const float age=actor_obs[row*fixed_ppo::actor_obs_dim+fixed_ppo::context_offset+17];
+            require(std::isfinite(age)&&age>=0,"invalid delay-training capture age");
+            if(clean || options.sensor_delay==0)require(age==0,"nominal training lane has stale depth");
+            positive_age+=age>0;max_age=std::max(max_age,age);
+        }
+        delay_samples<<(rollout+1)<<','<<clean_rows<<','<<delayed_rows<<','<<positive_age<<','<<max_age<<'\n';
+        delay_samples.flush();
         const auto* counts=static_cast<const uint32_t*>(run.sample_counts.contents);
         uint64_t count_sum=0;
         for(uint32_t slot=0;slot<control.period;slot++) {

@@ -10,6 +10,7 @@ record individual experiments and do not replace it.
 |---|---|
 | [EXECUTION.md](EXECUTION.md) | Code map, build targets, live-run handoff, locks and reproduction |
 | [UNIFIED_POLICY_STRATEGY.md](UNIFIED_POLICY_STRATEGY.md) | Astra's diagnosis and the cumulative single-policy strategy |
+| [DELAY_LEARNING.md](DELAY_LEARNING.md) | Matched mixed-capability delay learning and verified exposure contract |
 | [COMBINED_POLICY_PROGRESS.md](COMBINED_POLICY_PROGRESS.md) | Balanced training, arrival diagnosis and behavior consolidation |
 | [MOTION_FIDELITY.md](MOTION_FIDELITY.md) | Bounded movers, full-path checks and legacy parity |
 | [NATIVE_COMBINED_TRANSFER.md](NATIVE_COMBINED_TRANSFER.md) | Latest 96-flight frozen Webots comparison |

@@ -11,8 +11,13 @@ struct SimConfig {
     float speed, distance, wind, depth_noise, dropout, risk_coef, entropy_coef, learning_rate;uint velocity_contract,geometry_memory;
 };
 struct ChallengeBankControl { uint enabled, bank_count, schedule_stride, horizon; };
+#ifndef NAV_DELAY_REHEARSAL
+#define NAV_DELAY_REHEARSAL 0
+#endif
 inline bool sim_clean_training_env(constant SimConfig& cfg,uint n) {
-    return cfg.eval==0 && (cfg.family==12 || cfg.family==13) && (n%2==0);
+    return cfg.eval==0 &&
+        (((cfg.family==12 || cfg.family==13) && n%2==0) ||
+         (NAV_DELAY_REHEARSAL && cfg.mode==22 && (n/4)%2==0));
 }
 inline uint sim_sensor_delay(constant SimConfig& cfg,uint n) {
     return sim_clean_training_env(cfg,n)?0:cfg.sensor_delay;
