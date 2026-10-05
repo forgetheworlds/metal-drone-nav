@@ -56,3 +56,19 @@ target_compile_definitions(metal_nav_waypoint PRIVATE
     SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" FIXED_PPO_ACTOR_OBS_DIM=184)
 target_link_libraries(metal_nav_waypoint PRIVATE
     "-framework Foundation" "-framework Metal" "-framework Accelerate")
+
+# Research tools build only on request. Their names do not overwrite the
+# hash-pinned motion trainer used by saved experiments.
+option(BUILD_NAVIGATION_EXPERIMENTS "Build source navigation research tools" OFF)
+if(BUILD_NAVIGATION_EXPERIMENTS)
+    foreach(tool navigation_stress_eval navigation_consolidation)
+        add_executable(${tool} ${tool}.mm)
+        target_compile_options(${tool} PRIVATE -O3 -fobjc-arc -Wall -Wextra)
+        target_compile_definitions(${tool} PRIVATE
+            SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" FIXED_PPO_ACTOR_OBS_DIM=184)
+        target_link_libraries(${tool} PRIVATE
+            "-framework Foundation" "-framework Metal" "-framework Accelerate")
+    endforeach()
+    add_executable(navigation_geometry_check navigation_geometry_check.cpp)
+    target_compile_options(navigation_geometry_check PRIVATE -O3 -Wall -Wextra)
+endif()
