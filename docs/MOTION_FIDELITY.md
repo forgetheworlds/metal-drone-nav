@@ -50,3 +50,9 @@ change those shares. All original and new records remain in the treatment.
 The corrected source runs are active. The original prototype results are not
 silently replaced. Independent transfer, harder motion, sensor errors and
 dynamics stress remain subsequent tests of the combined policy.
+
+The [55-input proof archive](../evidence/inputs/bounded-motion/records.tar.gz)
+contains corrected banks, certificates, CPU/Metal checks, frozen NAV export,
+source probes and actual native logs/receipts/pose traces. It also retains the
+invalid first smoke, the original mover audit and stopped-study receipt.
+Native controller and model hashes are recorded alongside their source.
