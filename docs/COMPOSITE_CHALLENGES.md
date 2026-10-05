@@ -1,5 +1,13 @@
 # Combining navigation skills within a flight
 
+The first bank below is preserved as a prototype. A later audit found that all
+384 moving TRAIN records pass through other geometry or the room boundary
+during the 20 s task window. Its drone-path witnesses did not check the movers'
+own clearance. I stopped the unfinished training comparison and replaced those
+paths with [bounded motion and side openings](MOTION_FIDELITY.md). The original
+scores remain evidence of responses to those synthetic encounters, not faithful
+moving-course navigation. The static records are unaffected.
+
 The new source bank combines geometry and moving threats instead of giving each
 skill its own simple episode. It has 768 TRAIN records and 128 separate
 development records, with six capability groups:

@@ -9,6 +9,7 @@ import struct
 import subprocess
 
 from navigation_distance_tasks import read_bank, write_bank
+from obstacle_motion import position
 
 KINDS = ["staggered_gaps", "vertical_weave", "poles_overhang", "gap_crossing", "vertical_approach", "combined"]
 
@@ -21,8 +22,21 @@ def sphere(center, radius, velocity):
     return (1, center, (radius, radius, radius), velocity)
 
 
+def bounded_sphere(center, radius, peak_velocity, amplitude, phase):
+    return (3, center, (radius, amplitude, phase), peak_velocity)
+
+
 def corridor(width):
     return [box((6, sign * (width / 2 + .06), 2.5), (8, .06, 2.5)) for sign in [-1, 1]]
+
+
+def corridor_with_side_opening(width, x):
+    walls = []
+    for sign in [-1, 1]:
+        for low, high in [(-2, x - .7), (x + .7, 14)]:
+            walls.append(box(((low + high) / 2, sign * (width / 2 + .06), 2.5),
+                             ((high - low) / 2, .06, 2.5)))
+    return walls
 
 
 def opening(x, center_y, width, corridor_width):
@@ -38,7 +52,9 @@ def candidate(rng, kind, difficulty):
     z = rng.uniform(1.4, 1.8)
     start, goal = (0, rng.uniform(-.2, .2), z), (length, rng.uniform(-.2, .2), z)
     width = 3.2
-    obstacles = corridor(width)
+    crossing_x = length * .59
+    obstacles = (corridor_with_side_opening(width, crossing_x)
+                 if kind in ["gap_crossing", "combined"] else corridor(width))
     route = [start]
     gap_width = rng.uniform(1.15, 1.55) if difficulty == 0 else rng.uniform(.85, 1.2)
     offset = rng.uniform(.45, .65) if difficulty == 0 else rng.uniform(.65, .85)
@@ -77,14 +93,21 @@ def candidate(rng, kind, difficulty):
         route[3:3] = [(x - .6, 0, 1.05), (x + .6, 0, 1.05)]
     if kind in ["gap_crossing", "vertical_approach", "combined"]:
         speed = rng.uniform(.35, .65) if difficulty == 0 else rng.uniform(.65, 1.0)
-        x = length * .53
+        x = crossing_x
+        phase = rng.uniform(-math.pi / 2 - .25, -math.pi / 2 + .25)
         if kind == "vertical_approach":
-            obstacles.append(sphere((x + 2.8, .55, z + .1), .28, (-speed, 0, 0)))
+            # Keep the entire smooth path beyond the floor obstruction and
+            # below the hanging obstruction; validate its swept sphere later.
+            center_x = length * .58
+            amplitude = min(rng.uniform(1.1, 1.8), center_x - length * .32 - .65)
+            sphere_z = min(z, hanging_base - .38)
+            obstacles.append(bounded_sphere((center_x, .55, sphere_z), .28,
+                                            (-speed, 0, 0), amplitude, phase))
         else:
             direction = rng.choice([-1, 1])
-            encounter = x / 1.1
-            obstacles.append(sphere((x, -direction * speed * encounter, z), .28,
-                                    (0, direction * speed, 0)))
+            obstacles.append(bounded_sphere((x, 0, z), .28,
+                                            (0, direction * speed, 0),
+                                            rng.uniform(2.2, 3.4), phase))
     route.append(goal)
     assert len(obstacles) <= 16
     return start, goal, obstacles, route, gap_width
@@ -122,6 +145,28 @@ def grade(checker, world, queries):
     return struct.unpack("<" + "f" * len(queries), data)
 
 
+def motion_position(obstacle, time):
+    kind, center, size, velocity = obstacle
+    return position(kind, center, size, velocity, time)
+
+
+def mover_clearance(checker, obstacles, goal, seed, family):
+    minimum = float("inf")
+    for index, obstacle in enumerate(obstacles):
+        if not any(obstacle[3]):
+            continue
+        assert obstacle[0] in [1, 3], "mover audit currently supports spheres"
+        world = pack_world([o for i, o in enumerate(obstacles) if i != index], goal, seed, family)
+        queries = [(*motion_position(obstacle, step * .02), step * .02) for step in range(1001)]
+        speed = math.dist(obstacle[3], (0, 0, 0))
+        other_speed = max((math.dist(o[3], (0, 0, 0)) for i, o in enumerate(obstacles) if i != index), default=0)
+        # Checker subtracts drone radius .18. Replace it with mover radius and
+        # bound the unsampled motion interval using its peak speed.
+        bound = min(grade(checker, world, queries)) + .18 - obstacle[2][0] - (speed + other_speed) * .01
+        minimum = min(minimum, bound)
+    return None if minimum == float("inf") else minimum
+
+
 def build(checker, seed, environments, period):
     rng = random.Random(seed)
     entries, labels = [], []
@@ -134,16 +179,22 @@ def build(checker, seed, environments, period):
                 scene_seed = rng.getrandbits(32)
                 family = 14 if kind == "staggered_gaps" else 16 if kind.startswith("vertical") else 1
                 world = pack_world(obstacles, goal, scene_seed, family)
+                own_clearance = mover_clearance(checker, obstacles, goal, scene_seed, family)
+                if own_clearance is not None and own_clearance <= .02:
+                    continue
                 moving = any(any(o[3]) for o in obstacles)
-                start_wait = 2.5 if moving else 0.0
-                witness, route_length, duration = samples(route, 1.1, start_wait)
                 direct, _, _ = samples([start, goal], 1.1)
-                queries = [(*start, 0), (*goal, duration)] + witness + direct
-                values = grade(checker, world, queries)
-                # Space/time Lipschitz lower bound between .04m-spaced samples.
                 mover_speed = max(math.dist(o[3], (0, 0, 0)) for o in obstacles)
-                lower_bound = min(values[2:2 + len(witness)]) - .02 * (1 + mover_speed / 1.1)
-                if min(values[:2]) > .35 and lower_bound > .06 and duration < 17:
+                valid_route = False
+                for start_wait in ([0, .75, 1.5, 2.5, 4] if moving else [0]):
+                    witness, route_length, duration = samples(route, 1.1, start_wait)
+                    queries = [(*start, 0), (*goal, duration)] + witness + direct
+                    values = grade(checker, world, queries)
+                    lower_bound = min(values[2:2 + len(witness)]) - .02 * (1 + mover_speed / 1.1)
+                    if min(values[:2]) > .35 and lower_bound > .06 and duration < 17:
+                        valid_route = True
+                        break
+                if valid_route:
                     break
             else:
                 raise RuntimeError(f"No geometric witness for {kind} env{env} slot{slot}")
@@ -162,6 +213,7 @@ def build(checker, seed, environments, period):
                            "scene_seed": scene_seed, "initial_distance_m": distance,
                            "gap_width_m": gap_width, "obstacle_count": len(obstacles),
                            "moving_count": sum(any(o[3]) for o in obstacles),
+                           "mover_own_clearance_lower_bound_m": own_clearance,
                            "witness_route": route, "witness_duration_s_at_1p1_mps": duration,
                            "witness_initial_wait_s": start_wait,
                            "witness_body_clearance_lower_bound_m": lower_bound,
@@ -190,7 +242,7 @@ def main():
             mixed.extend(old[env * old_period:(env + 1) * old_period])
             mixed.extend(entries[env * args.period:(env + 1) * args.period])
         write_bank(args.output / "mixed.bin", old_period + args.period, mixed)
-    report = {"seed": args.seed, "period": args.period, "count": len(entries),
+    report = {"schema": "compositional-v2-bounded-motion", "seed": args.seed, "period": args.period, "count": len(entries),
               "entry_sha256": hashlib.sha256(b"".join(entries)).hexdigest(),
               "checker_sha256": hashlib.sha256(args.checker.read_bytes()).hexdigest(),
               "geometry_source_sha256": hashlib.sha256(Path(__file__).with_name("world.hpp").read_bytes()).hexdigest(),

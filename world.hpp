@@ -11,7 +11,7 @@ using uint = uint32_t;
 #define WP
 #define WF inline
 #define WT
-using std::sqrt; using std::fabs; using std::fmin; using std::fmax;
+using std::sqrt; using std::fabs; using std::fmin; using std::fmax; using std::sin;
 #endif
 
 // Shared scalar layout is identical in C++ and MSL. Depth is ray range in metres.
@@ -23,11 +23,22 @@ WF WVec wm(WVec a,float s) { return wv(a.x*s,a.y*s,a.z*s); }
 WF float wd(WVec a,WVec b) { return a.x*b.x+a.y*b.y+a.z*b.z; }
 WF float wl(WVec a) { return sqrt(wd(a,a)); }
 WF WVec wn(WVec a) { return wm(a,1.0f/fmax(wl(a),1e-8f)); }
+// Kind3 is a bounded moving sphere: size={radius, travel amplitude, phase}.
+// velocity gives direction times peak speed; other kinds retain linear motion.
 struct WObstacle { uint kind; float center[3], size[3], velocity[3]; };
 struct WWorld { WObstacle obstacles[16]; uint count,seed,family; float goal[3],wind[3]; };
 WF uint wrng(WT uint& s) { s^=s<<13; s^=s>>17; s^=s<<5; return s; }
 WF float wurand(WT uint& s) { return float(wrng(s)>>8)*(1.0f/16777216.0f); }
-WF WVec wc(WP const WObstacle& o,float t) { return wv(o.center[0]+t*o.velocity[0],o.center[1]+t*o.velocity[1],o.center[2]+t*o.velocity[2]); }
+WF WVec wc(WP const WObstacle& o,float t) {
+    if(o.kind==3) {
+        WVec velocity=wv(o.velocity[0],o.velocity[1],o.velocity[2]);
+        const float speed=wl(velocity),amplitude=o.size[1];
+        if(speed<=1e-8f||amplitude<=1e-8f)return wv(o.center[0],o.center[1],o.center[2]);
+        const float offset=amplitude*sin(t*speed/amplitude+o.size[2])/speed;
+        return wa(wv(o.center[0],o.center[1],o.center[2]),wm(velocity,offset));
+    }
+    return wv(o.center[0]+t*o.velocity[0],o.center[1]+t*o.velocity[1],o.center[2]+t*o.velocity[2]);
+}
 WF float wray_sphere(WVec p,WVec d,WVec c,float r) {
     WVec q=ws(p,c); float b=wd(q,d), k=wd(q,q)-r*r, disc=b*b-k;
     if(disc<0) return 1000;
@@ -64,7 +75,7 @@ WF float wray(WP const WWorld& w,WVec p,WVec d,float time) {
     for(uint i=0;i<w.count;i++) {
         WP const WObstacle& o=w.obstacles[i]; WVec c=wc(o,time); float t=1000;
         if(o.kind==0) t=wray_box(p,d,c,wv(o.size[0],o.size[1],o.size[2]));
-        if(o.kind==1) t=wray_sphere(p,d,c,o.size[0]);
+        if(o.kind==1||o.kind==3) t=wray_sphere(p,d,c,o.size[0]);
         if(o.kind==2) t=wray_cylinder(p,d,c,o.size[0],o.size[2]);
         best=fmin(best,t);
     }
@@ -74,7 +85,7 @@ WF float wclearance(WP const WWorld& w,WVec p,float time) {
     float best=fmin(fmin(p.x+2,14-p.x),fmin(fmin(p.y+5,5-p.y),fmin(p.z,5-p.z)))-0.18f;
     for(uint i=0;i<w.count;i++) {
         WP const WObstacle& o=w.obstacles[i]; WVec q=ws(p,wc(o,time)); float distance;
-        if(o.kind==1) distance=wl(q)-o.size[0];
+        if(o.kind==1||o.kind==3) distance=wl(q)-o.size[0];
         else if(o.kind==2) {
             float a=sqrt(q.x*q.x+q.y*q.y)-o.size[0],b=fabs(q.z)-o.size[2];
             distance=sqrt(fmax(a,0.0f)*fmax(a,0.0f)+fmax(b,0.0f)*fmax(b,0.0f))+fmin(fmax(a,b),0.0f);

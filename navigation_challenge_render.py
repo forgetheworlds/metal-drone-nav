@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from navigation_distance_tasks import read_bank
+from navigation_challenge_tasks import motion_position
 
 
 def main():
@@ -32,12 +33,12 @@ def main():
             shape, *values = struct.unpack_from("<I9f", entry, obstacle * 40)
             center, size, velocity = values[:3], values[3:6], values[6:]
             moving = any(velocity)
-            center = [center[j] + 5 * velocity[j] for j in range(3)]
+            center = motion_position((shape, center, size, velocity), 5)
             color = "#ef4444" if moving else "#64748b"
             if shape == 0:
                 ax.bar3d(*[center[j] - size[j] for j in range(3)], *[2 * s for s in size],
                          color=color, alpha=.13 if obstacle < 2 else .5, shade=True)
-            elif shape == 1:
+            elif shape in [1, 3]:
                 u, v = np.meshgrid(np.linspace(0, 2 * np.pi, 16), np.linspace(0, np.pi, 12))
                 ax.plot_surface(center[0] + size[0] * np.cos(u) * np.sin(v),
                                 center[1] + size[0] * np.sin(u) * np.sin(v),
