@@ -8,6 +8,7 @@ record individual experiments and do not replace it.
 
 | Document | Purpose |
 |---|---|
+| [PARALLELISM_PILOT.md](PARALLELISM_PILOT.md) | Matched sample/optimizer budget, throughput, memory and broad skill outcomes |
 | [TRAINING_SCALE_REVIEW.md](TRAINING_SCALE_REVIEW.md) | Requested Astra review: batch-regime causality, capacity blockers and measurement controls |
 | [TRAINING_SCALE_PHASE.md](TRAINING_SCALE_PHASE.md) | Current operator brief: scale, curriculum, adaptive sampling and separate capacity sweep |
 | [EXECUTION.md](EXECUTION.md) | Code map, build targets, live-run handoff, locks and reproduction |
