@@ -1,0 +1,170 @@
+{
+  "README-NARRATIVE-DRAFT.md": {
+    "sha256": "108af6e0a52761c68b756d2f43ae616ea28995db0458062c4bcc243c2cbd1d58",
+    "bytes": 18453
+  },
+  "docs/LOCAL_DISTRIBUTION_AUDIT.md": {
+    "sha256": "e3baddaffbc926722f56dc6e6b953798e8a191737a02f26bebd833e31a75da6d",
+    "bytes": 21888
+  },
+  "docs/LOCAL_TASK_CONTRACT_AUDIT.md": {
+    "sha256": "6d4aef972049d4a771397fd01a2767d559eaa8ae6edb0715a5e788553cdce6db",
+    "bytes": 21051
+  },
+  "docs/OVERNIGHT_PROGRESS.md": {
+    "sha256": "f9c4eae04ca046db4d9022b1d74e350910d445da9cc6a482a43854e9b9071d5c",
+    "bytes": 60714
+  },
+  "docs/RESEARCH_CREDIT_ASSIGNMENT_EXTERNAL.md": {
+    "sha256": "d742a8cf070b0ff15529801831360472c9d9ecbe57c9f134b8da1320badea036",
+    "bytes": 18283
+  },
+  "docs/RESEARCH_EXPERIMENT_RESULTS.md": {
+    "sha256": "25c57ff2ae4945e78811c8974bbb997dfdb8113f49b7afe43e136b51d7c3b72d",
+    "bytes": 18675
+  },
+  "docs/RESEARCH_TRAINING_NEXT.md": {
+    "sha256": "3e73ab99c6175403f10f98b54cf4daf801b8b8f7924a61edc1596755c292abf3",
+    "bytes": 17572
+  },
+  "navigation_active_sensing.mm": {
+    "sha256": "ef9571bad2f3c2e96fedd73f79154e32a0d8983c7b348acbaa5665337a739481",
+    "bytes": 57710
+  },
+  "navigation_exploration.mm": {
+    "sha256": "462cd3eda3491c2bf189cea41fdd983a1eb09b97d05c87c3ac8471a93a40b8fc",
+    "bytes": 91925
+  },
+  "navigation_memory.mm": {
+    "sha256": "ae3207bfc06a944e4343b92fa5c592322289867a90fe4f4cdb8389519d7a7c70",
+    "bytes": 60274
+  },
+  "navigation_recurrent.mm": {
+    "sha256": "58ffcc7bfa6a23009bff99065cb93758138159367ebde26ece966cf977c61caa",
+    "bytes": 55706
+  },
+  "navigation_speed_experiments.py": {
+    "sha256": "d9c18bee4102025013adffb3d0e42ff13c52f8582b66355f4d0586bc3763fa0d",
+    "bytes": 31790
+  },
+  "webots/render_recorded_flight.py": {
+    "sha256": "978675f7036b582ab3bf1355b756730755279efb189afd7a4e99927db442bfa3",
+    "bytes": 20479
+  },
+  "artifacts/videos/connected-rooms-preview.png": {
+    "sha256": "627d210b1b31dd1931e4e8e34b32958f72666eba89dfa713b83fd6e45b905ea2",
+    "bytes": 894399
+  },
+  "artifacts/videos/connected-rooms.mp4": {
+    "sha256": "1e04a45aa4ad4a05b60889116b1aaaadef9932d0623abcbcdf4629a313b088f9",
+    "bytes": 213733
+  },
+  "artifacts/videos/doorway-preview.png": {
+    "sha256": "ad80a2695f57fae74879f131c0da52669c3e94545cfd9377eeb00a00046be7cf",
+    "bytes": 928200
+  },
+  "artifacts/videos/doorway-verification.json": {
+    "sha256": "b9f1471e9a1de0101090f1d7bc4c6983cb0ddaa8515cf9a09c7d884f27ffb8d9",
+    "bytes": 12667
+  },
+  "artifacts/videos/doorway.mp4": {
+    "sha256": "effd93e77b605cda8937d7c8a2c2c65ac79d80a5091dc0c6629f8af452a6ccba",
+    "bytes": 208850
+  },
+  "evidence/inputs/flight-videos/manifest.json": {
+    "sha256": "1fd3051c10d993bf890dcffcd1cb49b687acd0e8625b7c66ea7563cf44f7e5a8",
+    "bytes": 2684
+  },
+  "evidence/inputs/flight-videos/connected-rooms/episode.json": {
+    "sha256": "6c8bc6042f72ff3b86b3724bbed91a9621f8e1f7b60cbb6e92fa1b3b0d7c624d",
+    "bytes": 1248
+  },
+  "evidence/inputs/flight-videos/connected-rooms/trace.csv": {
+    "sha256": "f65a3621e1ae9ff013a3e25ef3a1f8b40caed7249a9be994dd6f9e4f87819080",
+    "bytes": 76255
+  },
+  "evidence/inputs/flight-videos/connected-rooms/route.wbt": {
+    "sha256": "98e775a8533d6047aae8a1dfdaefb4a2062d6b6e405c469f9dc2d3d899f93919",
+    "bytes": 6992
+  },
+  "evidence/inputs/flight-videos/connected-rooms/scene-metadata.json": {
+    "sha256": "4e0d6e65fefaef924818ec6f1f8f294f868d7af064f64c0e13882a176d1249b5",
+    "bytes": 14290
+  },
+  "evidence/inputs/flight-videos/connected-rooms/webots.log": {
+    "sha256": "56dfe1c0e776b2d1396e9e888b0358bb3b065d4289186ea1ce71317492a0eb4c",
+    "bytes": 1404
+  },
+  "evidence/inputs/flight-videos/connected-rooms/run_manifest.json": {
+    "sha256": "6fe69bca7a88320e84db52251bd624d5e53ca9eb24b0a8523e9c3515ccff1be2",
+    "bytes": 2723
+  },
+  "evidence/inputs/flight-videos/connected-rooms/exit.marker": {
+    "sha256": "a215bbefbc28ae037ff9523eb904675bda8537b054925cd7b27ce06d2f90bc89",
+    "bytes": 32
+  },
+  "evidence/inputs/flight-videos/doorway/episode.json": {
+    "sha256": "a7e86b969cef3ae56c95cb30e2ed5cb25744036467dbf2ec51684d4ea2c0735d",
+    "bytes": 1201
+  },
+  "evidence/inputs/flight-videos/doorway/trace.csv": {
+    "sha256": "370bd4f627b0e205a32ce2445166d82147b4a7c7ec048672342f4b3fd682e83c",
+    "bytes": 101966
+  },
+  "evidence/inputs/flight-videos/doorway/route.wbt": {
+    "sha256": "5f1a606f1d66d0acefc22f20f926f3a0ddc507792406fe0f6e6653b1ee497431",
+    "bytes": 2117
+  },
+  "evidence/inputs/flight-videos/doorway/scene-metadata.json": {
+    "sha256": "78d08e37eb9e92c4c214dc5b282a4915a5fd7503f8bf1476f07bfd077cb3ae40",
+    "bytes": 3057
+  },
+  "evidence/inputs/flight-videos/doorway/webots.log": {
+    "sha256": "76e3a38a9f636b1c327e0962e3e8f251948d1b3f093317d17f178086cc88d571",
+    "bytes": 1419
+  },
+  "evidence/inputs/flight-videos/doorway/run_manifest.json": {
+    "sha256": "cbe8ee7cbd213e2e4374396c04111c38def3f3bfadbaa6ef0c0e34a608be479d",
+    "bytes": 2344
+  },
+  "evidence/inputs/flight-videos/doorway/exit.marker": {
+    "sha256": "a8d5435eab122be9eec7ac3869f07aa4a30c5a62f77ac3ec88bb7a059e20fb69",
+    "bytes": 32
+  },
+  "evidence/inputs/local-contract/records.tar.gz": {
+    "sha256": "281fd7d6b44a148acacf43a26d94a5e5574114e9006ee4779470578a34f6220a",
+    "bytes": 1936482
+  },
+  "evidence/inputs/local-contract/manifest.json": {
+    "sha256": "ea0c69c4861e3f2b0263c452b18a2f6230e9011725d31b4c93db63501b5f2882",
+    "bytes": 10077
+  },
+  "evidence/inputs/local-contract/verifiers/local_reward_ordering.py": {
+    "sha256": "0d7309b3b39c5faef03d46c9dbe164527136c907240d994e62df450ae93a31ab",
+    "bytes": 15196
+  },
+  "evidence/inputs/local-contract/verifiers/local_resume_contract_audit.py": {
+    "sha256": "90ad871f5ce9a8f1c6c6986378c9418acf2b5c096065727376b265caba20a772",
+    "bytes": 7915
+  },
+  "evidence/inputs/local-contract/verifiers/local_contract_audit.py": {
+    "sha256": "adaaa0acb740a565215b159b4f0f23807cd1780e0f96de4bd3d08c5ed757d31b",
+    "bytes": 27270
+  },
+  "evidence/inputs/local-contract/verifiers/local_step_contract_check.mm": {
+    "sha256": "a8f52cf10743a6ef5d4ba4c0658ebc8fbae807eb82313128e20a8f5a650c7534",
+    "bytes": 15223
+  },
+  "evidence/inputs/local-contract/verifiers/local_flight_evidence.py": {
+    "sha256": "80bebdba9c911bc7edc40432b1ed658acfed6bf32fe35e284a349cc8d56cf945",
+    "bytes": 19420
+  },
+  "evidence/inputs/local-contract/verifiers/local_contract_probe.mm": {
+    "sha256": "b6e19be5895d1493ddccd1678b94f0d03f02129bd981efb2fd9fc6ecee8d4d20",
+    "bytes": 53346
+  },
+  "evidence/inputs/local-contract/verifiers/verifier_fault_selftest.py": {
+    "sha256": "4dbbd017e40b15ec5c682717fb12301ee197dc461b2840baabf5cadf986024e2",
+    "bytes": 5403
+  }
+}

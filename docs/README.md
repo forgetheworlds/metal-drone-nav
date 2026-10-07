@@ -8,6 +8,8 @@ record individual experiments and do not replace it.
 
 | Document | Purpose |
 |---|---|
+| [TRAINING_SCALE_REVIEW.md](TRAINING_SCALE_REVIEW.md) | Requested Astra review: batch-regime causality, capacity blockers and measurement controls |
+| [TRAINING_SCALE_PHASE.md](TRAINING_SCALE_PHASE.md) | Current operator brief: scale, curriculum, adaptive sampling and separate capacity sweep |
 | [EXECUTION.md](EXECUTION.md) | Code map, build targets, live-run handoff, locks and reproduction |
 | [UNIFIED_POLICY_STRATEGY.md](UNIFIED_POLICY_STRATEGY.md) | Astra's diagnosis and the cumulative single-policy strategy |
 | [DELAY_LEARNING.md](DELAY_LEARNING.md) | Matched mixed-capability delay learning and verified exposure contract |

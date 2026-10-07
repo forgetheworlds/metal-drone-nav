@@ -550,3 +550,41 @@ setup uses Linux/Xvfb or Docker: https://cyberbotics.com/doc/guide/installation-
 Future resumes must record launcher-only supplemental provenance and preserve
 actors/selection/raw receipts. No remaining80 flights were launched for this
 handoff. `HANDOFF.md` records exact state and the next evidence-producing steps.
+
+## Experience-scale continuation and Astra review — October 7
+
+The operator explicitly keeps the original navigation goal and now prioritizes
+experience amount/diversity/ordering, competence-based curricula, direct-mixed
+PPO controls and capacity as a separate axis. Larger teachers may be distilled
+and quantized for an ESP32-S3-class target, but retained behavior and complete
+onboard latency/memory costs must be tested. Webots is deferred. The local
+RL VM was deleted on request; it was never Cloud Codex.
+
+Root enabled explicit-bank learner counts without tying fixed128 development
+evaluation to learner N. Default100 FULLcheckpoint byte parity and N512/fixed128
+smoke passed. Frozen corpus tiling does not add unique worlds. Phase balance
+avoids large-N first-slot-only exposure; the schedule is explicit and fixed.
+
+Four single-seed pilots consumed4,194,304 samples/32,768 Adam steps each.
+Throughput N128/512/2048/8192:98k/167k/198k/180k samples per total job wall second.
+Astra correctly identifies this as practical PPO collection/batch regimes, not
+hardware alone: policy refresh, normalization and stale updates differ.
+N2048 is fastest but longopen falls128→102. N512 open/long/hall all128, staticC108
+and clutter114, but course119 versus warm123. N8192 better retains difficult
+courses/delays while improving staticC110 and clutter112; open125,long127.
+This is not multiseed evidence or a network limit. Full60 evaluated panels and
+raw telemetry are in `results/training-scale/`.
+
+Next root run compares N512 and8192 on both T parents,41,943,040 samples/327,680
+updates each (167,772,160 total), with all other axes fixed. Cheap inference-only
+snapshots support retrospective capability/time curves without duplicating full
+environment state. Original-record exposure now counts actual rotated entries;
+logical slots alone cannot prove curriculum coverage. Counter/snapshot changes
+retain full-checkpoint byte parity. No policy promotion from FPS or reward.
+
+The one requested Astra report is `TRAINING_SCALE_REVIEW.md`. Fixed64 simulator
+scratch arrays, shared actor/critic widths and exact-count warm loaders block
+safe capacity experiments. Root will correct those only when the capacity axis
+begins, preserving critic size and initial represented behavior. No architecture
+cleanup or simultaneous curriculum/reward/network change is authorized by this
+phase. Archived unpublished drafts and rejected media retain exact hashes.

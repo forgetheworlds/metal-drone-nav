@@ -8,3 +8,9 @@ __pycache__/
 
 # Offline reconstruction frame caches; preserve only selected media.
 artifacts/videos/*-frames/
+
+# Local agent state and generated controller executables are not source.
+.claude/
+webots/controllers/local_waypoint_transfer/local_waypoint_transfer
+webots/controllers/sensor_geometry_audit/sensor_geometry_audit
+*.potential-v2.cache

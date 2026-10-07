@@ -1,0 +1,57 @@
+{
+  "scope": "exposed nominal DEV-b; frozen navigation, no target training; not FINAL or broad robustness",
+  "actors": {
+    "bc": {
+      "n": 128,
+      "success": 113,
+      "collision": 14,
+      "timeout": 1,
+      "mean_successful_arrival_s": 6.165929203539823,
+      "by_route": {
+        "0": {
+          "n": 85,
+          "success": 85
+        },
+        "1": {
+          "n": 43,
+          "success": 28
+        }
+      }
+    },
+    "fast": {
+      "n": 128,
+      "success": 105,
+      "collision": 23,
+      "timeout": 0,
+      "mean_successful_arrival_s": 3.614761904761905,
+      "by_route": {
+        "0": {
+          "n": 85,
+          "success": 85
+        },
+        "1": {
+          "n": 43,
+          "success": 20
+        }
+      }
+    }
+  },
+  "pairs": {
+    "primary_balanced": {
+      "n_tasks": 86,
+      "bc_only_success": 15,
+      "fast_only_success": 7,
+      "net": 8
+    },
+    "full_bank": {
+      "n_tasks": 128,
+      "bc_only_success": 15,
+      "fast_only_success": 7,
+      "net": 8
+    }
+  },
+  "raw_terminal_flag_overlap": [
+    "rootdbf-env034-connected_rooms-fast"
+  ],
+  "archive_inputs_verified": 1552
+}

@@ -34,6 +34,8 @@
 //
 // Options are `--key value`. See usage() for the full list.
 
+#include <sys/resource.h>
+
 #define main metal_nav_reserved_main
 #include "main.mm"
 #undef main
@@ -85,7 +87,7 @@ kernel void waypoint_count_sample(device const SimRun* runs [[buffer(0)]],
                                   uint env [[thread_position_in_grid]]) {
     if(env>=cfg.n)return;
     const uint slot=runs[env].episodes%max(bank_control.x,1u);
-    atomic_fetch_add_explicit(counts+slot,1u,memory_order_relaxed);
+    atomic_fetch_add_explicit(counts+env*bank_control.x+slot,1u,memory_order_relaxed);
 }
 struct WaypointBankEntry {
     WWorld world;
@@ -974,7 +976,7 @@ static int command_bank(int argc,char** argv) {
 // is touched and BEFORE the checkpoint is loaded, so a mismatched invocation
 // can never overwrite artifacts or silently continue a different experiment.
 struct TrainContract {
-    uint32_t sensor_delay=0,command_delay=0,delay_rehearsal=0;
+    uint32_t sensor_delay=0,command_delay=0,delay_rehearsal=0,model_snapshots=0;
     std::string sensor_profile;
     uint32_t actor_obs_dim=0;
     std::string runner_sha256,core_sha256,warmstart_sha256;
@@ -1078,6 +1080,7 @@ static void require_contract_matches(const std::string& sidecar_path,const Train
     require_json_uint(text,"sensor_delay",expected.sensor_delay);
     require_json_uint(text,"command_delay",expected.command_delay);
     require_json_uint(text,"delay_rehearsal",expected.delay_rehearsal);
+    require_json_uint(text,"model_snapshots",expected.model_snapshots);
     require_json_float(text,"learning_rate",expected.learning_rate);
     require_json_float(text,"entropy_coef",expected.entropy_coef);
     require_json_float(text,"risk_coef",expected.risk_coef);
@@ -1124,6 +1127,7 @@ static void write_contract(const std::string& path,const TrainContract& contract
        <<"  \"sensor_delay\":"<<contract.sensor_delay<<",\n"
        <<"  \"command_delay\":"<<contract.command_delay<<",\n"
        <<"  \"delay_rehearsal\":"<<contract.delay_rehearsal<<",\n"
+       <<"  \"model_snapshots\":"<<contract.model_snapshots<<",\n"
        <<"  \"learning_rate\":"<<contract.learning_rate<<",\n"
        <<"  \"entropy_coef\":"<<contract.entropy_coef<<",\n"
        <<"  \"risk_coef\":"<<contract.risk_coef<<",\n"
@@ -1167,7 +1171,7 @@ static int command_contract(int argc,char** argv) {
 }
 
 struct TrainingOptions {
-    uint32_t sensor_delay=0,command_delay=0;
+    uint32_t sensor_delay=0,command_delay=0,model_snapshots=0;
     BankSpec spec;
     std::string bank_path;
     uint32_t seed=20261004,epochs=2,environments=128,horizon=32,eval_every=50;
@@ -1191,6 +1195,7 @@ static int command_train(int argc,char** argv) {
         if(option=="--spec")options.spec=spec_by_name(option_value(argc,argv,index,option));
         else if(option=="--bank")options.bank_path=option_value(argc,argv,index,option);
         else if(option=="--seed")options.seed=option_uint(argc,argv,index,option);
+        else if(option=="--model-snapshots")options.model_snapshots=option_uint(argc,argv,index,option);
         else if(option=="--sensor-delay")options.sensor_delay=option_uint(argc,argv,index,option);
         else if(option=="--command-delay")options.command_delay=option_uint(argc,argv,index,option);
         else if(option=="--epochs")options.epochs=option_uint(argc,argv,index,option);
@@ -1210,8 +1215,11 @@ static int command_train(int argc,char** argv) {
         else throw std::runtime_error("unknown local-train option "+option);
     }
     require(rollouts>0&&fixed_ppo::actor_obs_dim==184,"local training requires positive rollouts and the 184D guided actor");
-    require(options.spec.environments==options.environments,
-            "bank environments must equal --envs; rebuild the bank with matching --tasks");
+    if(options.bank_path.empty())
+        require(options.spec.environments==options.environments,
+                "generated bank environments must match --envs");
+    else
+        options.spec.environments=options.environments; // Explicit banks bind their own count below.
     require(std::isfinite(options.log_std)&&options.log_std>=-2&&options.log_std<=0.5f,
             "warmstart log std outside supported range");
 
@@ -1276,7 +1284,9 @@ static int command_train(int argc,char** argv) {
     require(options.sensor_delay<=6 && options.command_delay<=7,"delay exceeds preserved ring capacity");
     contract.sensor_delay=options.sensor_delay;
     contract.command_delay=options.command_delay;
+    require(options.model_snapshots<=1,"model-snapshots must be0or1");
     contract.delay_rehearsal=NAV_DELAY_REHEARSAL;
+    contract.model_snapshots=options.model_snapshots;
     contract.max_steps=400;
     contract.learning_rate=options.learning_rate;
     contract.entropy_coef=options.entropy;
@@ -1333,7 +1343,7 @@ static int command_train(int argc,char** argv) {
     Sim sim(metal,config,options.horizon);
     LocalRun run=make_local_run(sim,bank,control,apply_pipeline,options.time_cost,options.contact_penalty,
                                 options.arrival_bonus);
-    run.sample_counts=metal.buffer(size_t(control.period)*sizeof(uint32_t));
+    run.sample_counts=metal.buffer(size_t(control.count)*sizeof(uint32_t));
     run.sample_count_pipeline=metal.pipeline("waypoint_count_sample");
     PPOTrainer trainer(sim,options.epochs);
     require(std::isfinite(options.anchor_lambda)&&options.anchor_lambda>=0&&
@@ -1398,12 +1408,15 @@ static int command_train(int argc,char** argv) {
         Sim selected(metal,config,options.horizon);
         navigation_training::load_actor(selected,checkpoint+".best",false);
         best=evaluate_bank(metal,(const float*)selected.actor.contents,&options.eval_bank_spec,eval_bank,eval_control,
-                           17,700001,options.speed,"",options.eval_spec,options.environments,400,0,0,
+                           17,700001,options.speed,"",options.eval_spec,eval_control.count/eval_control.period,400,0,0,
                            options.contact_penalty,options.arrival_bonus);
     }
 
     std::vector<SimRun> previous_runs(options.environments);
+    std::vector<uint64_t> entry_totals(control.count,0);
     const double started=seconds();
+    double total_collect_gpu=0,total_update_gpu=0;
+    size_t peak_gpu_allocated=metal.device.currentAllocatedSize;
     const uint32_t finish=trainer.completed_rollouts+rollouts;
     std::cout<<"local_train bank="<<options.spec.name<<" environments="<<options.environments
              <<" horizon="<<options.horizon<<" epochs="<<options.epochs
@@ -1422,6 +1435,8 @@ static int command_train(int argc,char** argv) {
         auto update=[metal.queue commandBuffer];
         trainer.rollout_update(update,rollout);
         const double update_gpu=metal.finish(update);
+        total_collect_gpu+=collect_gpu;total_update_gpu+=update_gpu;
+        peak_gpu_allocated=std::max(peak_gpu_allocated,size_t(metal.device.currentAllocatedSize));
         trainer.completed_rollouts=rollout+1;
 
         const size_t rows=size_t(options.environments)*options.horizon;
@@ -1441,7 +1456,12 @@ static int command_train(int argc,char** argv) {
         const auto* counts=static_cast<const uint32_t*>(run.sample_counts.contents);
         uint64_t count_sum=0;
         for(uint32_t slot=0;slot<control.period;slot++) {
-            count_sum+=counts[slot];slot_samples<<(rollout+1)<<','<<slot<<','<<counts[slot]<<'\n';
+            uint64_t slot_total=0;
+            for(uint32_t env=0;env<options.environments;env++) {
+                const size_t entry=size_t(env)*control.period+slot;
+                entry_totals[entry]+=counts[entry];slot_total+=counts[entry];
+            }
+            count_sum+=slot_total;slot_samples<<(rollout+1)<<','<<slot<<','<<slot_total<<'\n';
         }
         require(count_sum==rows,"per-slot exposure count does not cover the rollout");
         slot_samples.flush();
@@ -1493,10 +1513,22 @@ static int command_train(int argc,char** argv) {
         if((rollout+1)%options.eval_every==0||rollout+1==finish) {
             trainer.save_checkpoint(checkpoint,config.family,options.seed,rollout+1);
             save_ppo_safeguard_state(trainer,checkpoint,safeguards,rollout+1);
+            if(options.model_snapshots) {
+                // Inference prefix only: retain cheap learning checkpoints without
+                // duplicating the large environment-state suffix. Not resumable.
+                std::ifstream source(checkpoint,std::ios::binary);
+                const PpoCheckpointHeader header=read_checkpoint_header(source);
+                const size_t model_bytes=sizeof(header)+size_t(header.actor_count+header.critic_count)*sizeof(float);
+                source.seekg(0);std::vector<char> model(model_bytes);source.read(model.data(),model.size());
+                require(bool(source),"model snapshot prefix read failed");
+                const std::string path=checkpoint+".at-"+std::to_string(rollout+1)+".model.bin";
+                std::ofstream snapshot(path,std::ios::binary);snapshot.write(model.data(),model.size());
+                require(bool(snapshot),"model snapshot write failed");
+            }
             BankScore score;
             if(!eval_bank.empty())
                 score=evaluate_bank(metal,(const float*)sim.actor.contents,&options.eval_bank_spec,eval_bank,eval_control,
-                                    17,700001,options.speed,checkpoint+".dev.csv",options.eval_spec,options.environments,
+                                    17,700001,options.speed,checkpoint+".dev.csv",options.eval_spec,eval_control.count/eval_control.period,
                                     400,0,0,options.contact_penalty,options.arrival_bonus);
             history<<(rollout+1)<<','<<uint64_t(rollout+1)*rows<<','<<seconds()-started
                    <<','<<collect_gpu<<','<<update_gpu<<','<<metric[0]<<','<<metric[1]<<','<<metric[2]<<','<<metric[3]
@@ -1522,7 +1554,17 @@ static int command_train(int argc,char** argv) {
                      <<" dev_arrival_s="<<score.mean_time_s<<" clear_min="<<clearance_min<<"\n";
         }
     }}
-    std::cout<<"local_train_done rollouts="<<finish<<" wall_s="<<seconds()-started<<"\n";
+    // Counts correspond to exact rotated bank positions, not ambiguous logical
+    // slots. Map payload hashes back to source identities in the cold reviewer.
+    std::ofstream exposure(checkpoint+".entry-transitions.bin",std::ios::binary);
+    exposure.write(reinterpret_cast<const char*>(entry_totals.data()),entry_totals.size()*sizeof(uint64_t));
+    require(bool(exposure),"entry exposure write failed");
+    struct rusage usage{};getrusage(RUSAGE_SELF,&usage);
+    std::cout<<"local_train_done rollouts="<<finish<<" wall_s="<<seconds()-started
+             <<" segment_transitions="<<uint64_t(rollouts)*options.environments*options.horizon
+             <<" collect_gpu_total_s="<<total_collect_gpu<<" update_gpu_total_s="<<total_update_gpu
+             <<" peak_gpu_allocated_bytes="<<peak_gpu_allocated
+             <<" peak_process_rss_bytes="<<usage.ru_maxrss<<"\n";
     return 0;
 }
 

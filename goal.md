@@ -1,5 +1,17 @@
 # Goal
 
+## Current research phase — October 7
+
+Focus on experience scale, competence-driven curriculum and adaptive task
+sampling, with direct-mixed PPO controls and policy capacity as a separate axis.
+Optimize held-out capability gained per training hour, not raw FPS or reward.
+The exact operator brief is [TRAINING_SCALE_PHASE.md](docs/TRAINING_SCALE_PHASE.md).
+Webots work is deferred for this phase. The dedicated local VM was deleted;
+training runs directly on the Mac. The broader transfer goal remains intact. Larger models can be research teachers;
+we may distill and quantize their behavior for an ESP32-S3-class target. Delivery
+still requires one small policy with measured control quality, latency, RAM and
+flash use, including geometry guidance. Compression is not assumed successful.
+
 ## Operator clarification — 2026-10-04
 
 The navigator receives a geometric goal. Training goals outside the current

@@ -1,4 +1,12 @@
-# Navigation handoff — October 5
+# Navigation state — October 7
+
+The original handoff below is historical. Usage has reset and the root agent
+is actively working. The fresh native benchmark completed all 192 valid flights.
+The user now prioritizes the training-scale phase and defers Webots. The local
+`rl-webots` VM was deleted; no VM or Webots process is running.
+Read `docs/TRAINING_SCALE_PHASE.md` and `STATUS.md` for current work.
+
+## Historical October 5 handoff
 
 The goal is active and incomplete. Build one fast, reliable local 3-D navigator
 for supplied geometric goals, with static/moving avoidance, tight/long routes,
