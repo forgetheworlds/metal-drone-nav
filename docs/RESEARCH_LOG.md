@@ -588,3 +588,24 @@ safe capacity experiments. Root will correct those only when the capacity axis
 begins, preserving critic size and initial represented behavior. No architecture
 cleanup or simultaneous curriculum/reward/network change is authorized by this
 phase. Archived unpublished drafts and rejected media retain exact hashes.
+
+## October 7 — more experience and fresh task checks
+
+Four matched PPO regimes completed 167,772,160 transitions, with 480 scored
+development panels. N512 improved short/static retention; N8192 retained long
+and course skills better. All 2048 payloads were actually visited, with exact
+lane and clean/delay transition shares. Missing level coverage alone does not
+explain the tradeoff. No final policy promotion.
+
+Root generated 896 fresh seeded tasks after checkpoint freeze and scored six
+policies across 90 panels (11,520 flights). Clutter pooled warm205/256 becomes
+225 at N512 and211 at N8192. Reflected course combined stress172 becomes159/184.
+The skill tradeoff persists beyond the old development records. Same procedural
+families, not sealed FINAL or independent-simulator proof.
+
+Results, curves, retained contacts/timeouts and reproduction are in
+[EXPERIENCE_SCALE_RESULTS](EXPERIENCE_SCALE_RESULTS.md). Adaptive sampling is
+next, within the fixed three capability lanes. Root found the helper's normalized
+weight formula did not implement the documented exact25% uniform mixture;
+requested correction plus a numerical heterogeneous-count test before training.
+Episode-boundary selection and outcome attribution remain under implementation.
