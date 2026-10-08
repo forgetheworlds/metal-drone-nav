@@ -1,42 +1,54 @@
 # Current handoff — October 8
 
-Original goal active/incomplete. Read goal.md, STATUS.md, docs/TRAINING_SCALE_PHASE.md,
-CODE_DIRECTION and ACTOR_CAPACITY_RESULTS. No Webots/VM this phase. Existing
-policies, actual native videos and all failed experiments preserved.
+The original goal is active and incomplete. Read goal.md, STATUS.md,
+docs/TRAINING_SCALE_PHASE.md, CODE_DIRECTION.md and ACTOR_CAPACITY_RESULTS.md.
+Webots and VM work remain deferred. Preserve policies, native videos and failures.
 
-## Full capacity experiment COMPLETE
+## Completed capacity comparison
 
-All10producers/419.4M transitions and1530panels/195840flights complete, not live.
-root_parent.py38317 and report_when_ready.py10143 finished. DeepSeek final report
-finished too. Published535b9df contains full results/raw58.6MB bundle/reviewer.
-Both narrow full checkpoints match priorN512 bit-for-bit. No widened policy
-promoted. Root rejected broad"capacitynotbottleneck" inference. Original
-capacity-parity mostlyentropy (zeroadvantages); root's all10trained dense checks
-now validate everyactor layer/newrows. First-updateKL.00691at64 vs.04267at2560
-vs.09066at5120 motivates next targeted actor-step test. Bundle parameter-prefix
-fingerprint/reproduction correction published as follow-up; curves/values unchanged.
+All ten producers and 1,530 evaluation panels are complete: 419.4 million
+training transitions and 195,840 scored source flights. The old root parent,
+report waiter and delegated report process finished. Do not restart them.
+Results are published in 535b9df, with replay fingerprints corrected in f67dec9.
+The evidence bundle reproduces all raw curves and the first-update probe.
+Both narrow checkpoints match the previous uninterrupted N512 controls exactly.
+
+No widened policy was promoted. Under the fixed recipe, larger actors lost
+retention. This does not prove that capacity cannot limit the original goal.
+The original gradient gate used zero advantages and mostly checked entropy.
+Root subsequently checked nonzero derivatives through all ten trained models,
+including added first-layer rows; every layer passed against the CPU reference.
+The same-observation first-update probe gives Gaussian KL 0.00691 at width 64,
+0.04267 at width 2560 and 0.09066 at width 5120. Update size is the next hypothesis.
 
 ## Current delegated continuation
 
-SAME OMP opencode-go/deepseek-v4.1-flash session01a117e9-8c9b-755b-b8d6-6c35054380b8,
-rootexec71240, initialPID22276, results/omp-actor-step/{brief,launcher,events}.
-Inspect actualprocess andownedfiles before action. NativeLuna only; freeOpenCode
-MiMo acceptable fallback after concrete terminal/provider evidence, no duplicate.
-Owns /Users/muadhsambul/.codex/worktrees/navigation-actor-capacity/RL and that
-result folder. It is implementing actor-only Adamrate factor.4 atfixedH2560;
-criticrate.0001/reward/source/physics/NN remainfixed. Must prove default1full100
-parity, actualnonzero actor/critic optimizer isolation, strictresume, functional
-KLreduction then write frozen2seedpilot request. ROOT must readcode+gates before
-launching actual persistent training. No actor-step fulltraining claimed.
-Old capacity controls already complete: reusematchingprefix256 for4.194M pilots,
-not rerun. Fulltreatment total2560rollouts (resumeincrementally fromactualheader).
-Samewarmw2560 seed1/2, sametrainingseeds20261210/11, samebankn512 period48.
-Original old frozen code/binaries preserved on2f17eda andevidence bundle.
+OMP model: opencode-go/deepseek-v4.1-flash. Same session:
+01a117e9-8c9b-755b-b8d6-6c35054380b8. Launcher exec session 71240; initial PID 22276.
+Read actual processes and results/omp-actor-step/{brief,launcher,events} first.
+The agent owns the navigation-actor-capacity worktree and that result directory.
+Native agents must use Luna; free OpenCode MiMo is an authorized fallback after
+concrete provider/terminal evidence. Do not duplicate an active mission.
 
-Root main has partial unverified Luna sampler edits. Do not adopt/merge/training
-from them. Main selectedassets untouched. AllGPUjobs absolute rootlock, owned
-persistentparents. OMPprint endingdisposescallback/backgroundchildren; never use
-that as fulltrainingownership. Root handlescoherent Forge theWorldcommit/push.
+The experiment keeps the actor at width 2560, the critic at 64 and the original
+source, reward and physics fixed. Actor-only Adam rate factor 0.4 comes from the
+TRAIN functional probe. Critic rate stays 0.0001. The agent must prove default
+factor-1 checkpoint parity, nonzero gradient/optimizer isolation, strict resume
+and reduced functional drift, then submit a frozen two-seed pilot request.
+Root reads code and gates before launching persistent training. No actor-step
+learning outcome has been claimed yet.
+
+Existing width-2560 controls are complete. Use their matching 256-rollout models
+for 4.19-million-transition pilot comparisons. Full treatment totals 2,560
+rollouts; resume incrementally from the actual saved header. Warm files, bank
+and training seeds stay matched. Preserve the old code/binaries on 2f17eda and
+in the capacity bundle before making further changes.
+
+The root checkout has partial, unverified Luna sampler edits. Do not adopt or
+train from them. Default assets are unchanged. All heavy jobs share the absolute
+root metal-training.lock and need persistent parents. OMP print mode disposes
+background children when the agent ends; never treat a callback as ownership.
+Root reviews outcomes and makes Forge the World commits and pushes.
 
 ## Historical October 5 handoff
 
