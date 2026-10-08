@@ -10,6 +10,7 @@ record individual experiments and do not replace it.
 |---|---|
 | [PARALLELISM_PILOT.md](PARALLELISM_PILOT.md) | Matched sample/optimizer budget, throughput, memory and broad skill outcomes |
 | [TRAINING_SCALE_REVIEW.md](TRAINING_SCALE_REVIEW.md) | Requested Astra review: batch-regime causality, capacity blockers and measurement controls |
+| [ACTOR_STEP_RESULTS.md](ACTOR_STEP_RESULTS.md) | Actor-only update scaling: early gains, full-budget retention failures and next diagnosis |
 | [ACTOR_CAPACITY_RESULTS.md](ACTOR_CAPACITY_RESULTS.md) | Five actor sizes, two seeds, complete source evaluation and update-size diagnosis |
 | [EXPERIENCE_SCALE_RESULTS.md](EXPERIENCE_SCALE_RESULTS.md) | 167.8M training transitions, learning curves and fresh task evaluation |
 | [TRAINING_SCALE_PHASE.md](TRAINING_SCALE_PHASE.md) | Current operator brief: scale, curriculum, adaptive sampling and separate capacity sweep |

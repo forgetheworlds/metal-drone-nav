@@ -649,3 +649,26 @@ overclaims and a misleading normalized-success-per-hour metric.
 
 [Capacity report](ACTOR_CAPACITY_RESULTS.md) has all sizes, costs, fresh task
 results, failures, corrected verification and reproduction. Original goal active.
+
+## October 8 — actor-step full outcomes
+
+Two full factor0.4 treatments completed41.94M transitions/327680steps each;
+92paired panels at pilot and full endpoints pass matched input/stable arrival
+checks. Actor-only LR.00004, criticLR.0001, all other settings fixed. Controls
+reused; fresh pilot controls actually executed. No policy promotion.
+
+Same-size full longopen55->219/256, hallway222->256 with contacts34->0,
+clutter181->208, nominalcourse169->176. Pilot nominalcourse248 erodes to176
+and contacts8->79 after more exposure. Fresh reflectedcombined135->118 with
+contacts120->137. Narrow same-budget control remains stronger overall.
+
+Preserved pilot fullweights and entrycounts before incremental2304rollout
+extension; combined exposure exactly41,943,040 perseed. Root approved unchanged
+code/input/CLI after correcting stale latefreeze/expandedparity request metadata.
+Default1narrow/wide100byteparity, nonzero gradients and critic Adam isolation pass.
+KLprobe .04267->.00612 supports a cause but not a complete learning fix.
+
+Next SAME-session OMP mission investigates learning erosion using actual
+reward/likelihood/GAE/data/control paths and matched failure flights. Read-only
+learners; no new training or coefficient sweep before a cause is established.
+[Results](ACTOR_STEP_RESULTS.md) preserve both seeds and the failure story.
