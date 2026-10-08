@@ -22,6 +22,38 @@ Depth / stereo + ego state + geometric goal
 
 The goal is one fast, reliable navigator for static obstacles, moving threats, tight gaps and longer routes, with frozen behavior that transfers outside the training simulator. The supplied destination can be outside the current sensor view. Distance alone does not separate local navigation from semantic planning. [Full goal](goal.md).
 
+## Latest learning result
+
+More environments and larger networks did not by themselves produce a stronger
+navigator. The [experience study](docs/EXPERIENCE_SCALE_RESULTS.md) compared equal
+sample budgets at 512 and 8,192 environments. The [capacity study](docs/ACTOR_CAPACITY_RESULTS.md)
+tested actors from 12,000 to nearly one million parameters. Each exposed useful
+skills being lost during continued PPO.
+
+I recovered useful translation and later turn behavior in one larger actor,
+then tested a training-only physical XYZ reference loss. Four matched runs and
+138 source evaluation panels are complete. Every deployed candidate remains
+one navigation network; the reference teacher is removed at inference.
+
+| Successful arrivals / 256 | Starting actor | Ordinary PPO | PPO with retention |
+|---|---:|---:|---:|
+| Course | 244 | 204 | **245** |
+| Course, both 100 ms delays | 233 | 185 | **236** |
+| Long open | 256 | 234 | **256** |
+| Reflected course, combined stress | 170 | 147 | **181** |
+
+![Keeping several navigation skills during PPO](artifacts/plots/physical-retention.png)
+
+*Two training seeds on the same 128 task instances. Retention helps both seeds,
+but five static/contact/arrival gates still fail. These new actors have source
+development evidence; independent transfer is pending. [All outcomes and the
+754-input replay](docs/PHYSICAL_RETENTION_RESULTS.md).*
+
+The research actor has 967,688 parameters. The default actor and earlier native
+flight controls remain unchanged. [One-actor composition](docs/OUTPUT_CHANNEL_RECOVERY.md)
+and [the current training experiment](docs/PHYSICAL_RETENTION_EXPERIMENT.md)
+explain how useful behavior was recovered and what remains weak.
+
 ## What has improved
 
 Training on longer goals made a large difference with the same network. Across two trained seeds, long open-room success rose from **2 to 255 of 256 trials**, and hallway success from **0 to 256**. Some earlier static skills weakened. That made retention a central part of subsequent experiments.
@@ -52,11 +84,11 @@ The [results gallery](docs/RESULTS_GALLERY.md) contains native videos, training 
 
 The simulator advances L2F-compatible rigid-body dynamics and motor lag, renders depth, runs actual RAPTOR, and collects navigation experience. PPO, GAE, backward passes and Adam run in raw Metal. Python handles experiment orchestration and evidence review.
 
-The current actor has **184 inputs, one 64-unit hidden layer and four outputs**, about 12,000 parameters. Its inputs include pooled current and previous depth, motion, goal context and depth-derived geometry guidance. A training critic can receive controller state that the deployed actor does not receive.
+The default actor has **184 inputs, one 64-unit hidden layer and four outputs**, about 12,000 parameters. Current larger-policy research uses a 5,120-unit hidden layer with the same input/output contract; its deployment cost still needs measurement. Its inputs include pooled current and previous depth, motion, goal context and depth-derived geometry guidance. A training critic can receive controller state that the deployed actor does not receive.
 
 The useful imitation baseline was initialized from a trained PPO policy, then fitted to successful source flights with braking and turning behavior. It was not trained from random weights solely by imitation. Later work uses successful arrival, static, hallway and moving-course teachers to fit **one actor**, followed by PPO on the combined distribution. No teacher ID or route witness enters the deployed actor.
 
-Most policy studies use 128 simultaneous environments. A separate throughput ladder reaches 8,192. An optimized perception query workload became **8.61× faster**, with matched full-checkpoint byte parity. [Measured performance and correctness](docs/BENCHMARKS.md).
+Early studies used 128 simultaneous environments. Current matched large-actor experiments use 512, and the experience-scale study compares 512 with 8,192. An optimized perception query workload became **8.61× faster**, with matched full-checkpoint byte parity. [Measured performance and correctness](docs/BENCHMARKS.md).
 
 ## Learning to handle delay
 
