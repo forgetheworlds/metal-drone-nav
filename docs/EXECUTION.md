@@ -132,3 +132,10 @@ and actual processes. A timeout in observation is not permission to restart.
 Keep defaults and controls unchanged until all capability, safety, speed and
 retention gates pass. A fresh sealed set comes after the full policy and
 selection rule are frozen.
+
+The October 8 operator update permits Webots validation when useful. Keep runs
+in minimized batch mode, use the dedicated RL port and project, and avoid
+foreground recording unless requested. Keep sensor rendering enabled when
+needed for depth; UI suppression must not change the sensor contract. VM work
+remains deferred. A frozen source comparison should justify the next independent
+benchmark before spending time on a larger simulator matrix.

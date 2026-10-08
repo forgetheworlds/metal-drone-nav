@@ -6,8 +6,10 @@ Focus on experience scale, competence-driven curriculum and adaptive task
 sampling, with direct-mixed PPO controls and policy capacity as a separate axis.
 Optimize held-out capability gained per training hour, not raw FPS or reward.
 The exact operator brief is [TRAINING_SCALE_PHASE.md](docs/TRAINING_SCALE_PHASE.md).
-Webots work is deferred for this phase. The dedicated local VM was deleted;
-training runs directly on the Mac. The broader transfer goal remains intact. Larger models can be research teachers;
+Webots runs are permitted when needed for independent validation. Use batch
+mode and minimized windows, keep runs isolated on RL port23456, and avoid
+foreground recording unless the user requests it. The dedicated local VM was
+deleted; training runs directly on the Mac. The broader transfer goal remains intact. Larger models can be research teachers;
 we may distill and quantize their behavior for an ESP32-S3-class target. Delivery
 still requires one small policy with measured control quality, latency, RAM and
 flash use, including geometry guidance. Compression is not assumed successful.

@@ -1,7 +1,7 @@
 # Current handoff — October 8
 
-The original one-navigator goal is active and incomplete. Webots and VM work
-are deferred. Defaults and published native videos are preserved.
+The original one-navigator goal is active and incomplete. Webots validation is permitted as needed with minimized batch runs on RL
+port23456. VM work remains deferred. Defaults and published native videos are preserved.
 
 ## Current work
 
@@ -201,3 +201,11 @@ and should not run automatically during this handoff.
 All heavy work uses `/Users/muadhsambul/RL/results/metal-training.lock` through
 `run_locked.py`. Resume rollout counts are incremental. Real PIDs, saved headers,
 receipts and raw flights—not a CLI label or loss curve—prove execution.
+
+## Latest operator direction
+
+Webots may run as necessary. Keep it minimized and batched on RL port23456,
+with the smallest useful independent comparison and no foreground recording
+unless requested. Never touch the other project's files/settings/processes.
+Review the frozen source critic experiment first; do not duplicate its active
+training or hold the shared GPU lock with a parallel simulator.
