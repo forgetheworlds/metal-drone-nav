@@ -760,3 +760,14 @@ is one new masked-approach hypothesis, with avoidance risk near goals explicitly
 gated. The user also requested an independent OpenCode free MiMo critic/training
 audit; it is actually responding. Both own isolated result folders and cannot
 change the frozen source or begin pilots before root code/evidence review.
+
+## October 8 — critic audit premise correction
+
+Root checked the frozen ppo.metal directly: old_values is unused and the critic
+uses plain mean-squared value error, with gradient value_coef*(V-return)/batch.
+There is no absolute value clipping at0.2; that parameter clips the actor's
+probability ratio. The audit must not recommend disabling a nonexistent value
+clip. Motor state named rpm is normalized0..1, so its name does not demonstrate
+input saturation. MiMo's log analysis identified the same value-clip correction.
+Actual predictive-quality and input-alias probes are still in progress; mean
+ratio or aggregate value loss alone does not settle critic quality.
