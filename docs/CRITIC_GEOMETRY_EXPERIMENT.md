@@ -45,7 +45,7 @@ Root executed these gates:
 - With nonzero extra weights, bootstrap predictions agree with the post-step
   value check within 0.0000129. This prevents zero initialization from concealing
   a missing next-state feature path.
-- Both seeds, both arms: six updates versus three plus three resumed updates
+- Both seeds, both arms: six rollouts versus three plus three resumed rollouts
   produce identical full checkpoint bytes. Wrong feature and width contracts
   are refused without overwriting saved weights.
 - The actor is byte-identical after the first complete PPO rollout. The existing
