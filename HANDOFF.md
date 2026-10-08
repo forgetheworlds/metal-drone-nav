@@ -1,54 +1,37 @@
 # Current handoff — October 8
 
-The original goal is active and incomplete. Read goal.md, STATUS.md,
-docs/TRAINING_SCALE_PHASE.md, CODE_DIRECTION.md and ACTOR_CAPACITY_RESULTS.md.
-Webots and VM work remain deferred. Preserve policies, native videos and failures.
+The original goal is active and incomplete. Read goal.md, STATUS.md and the
+capacity/actor-step result reports. Webots and VM work remain deferred.
 
-## Completed capacity comparison
+Capacity (419.4M transitions / 1,530 panels) and actor-step pilot/full comparisons
+are complete and pushed through 2f0ee15. Do not rerun them. Larger actors lose
+retention under the tested recipe. Actor-only rate factor 0.4 reduces first-step
+KL and helps the same-size control, but course success falls 248 -> 176/256 with
+continued learning. Default policy remains unchanged.
 
-All ten producers and 1,530 evaluation panels are complete: 419.4 million
-training transitions and 195,840 scored source flights. The old root parent,
-report waiter and delegated report process finished. Do not restart them.
-Results are published in 535b9df, with replay fingerprints corrected in f67dec9.
-The evidence bundle reproduces all raw curves and the first-update probe.
-Both narrow checkpoints match the previous uninterrupted N512 controls exactly.
+The erosion audit confirms loss on the exact TRAIN payload set. Its hard GAE
+horizon explanation was withdrawn. Root independently replayed all eight corrected
+stochastic CSVs and normalization, and reproduced the sampled-clearance bands.
+Read results/omp-erosion-contract-repair/root-decision.md and root-review.json.
+Latent actions are not physical commands. Sampled pre-action clearance is not
+substep flight minimum. Low-margin correlation does not establish update cause.
+No anchor/lambda experiment was approved.
 
-No widened policy was promoted. Under the fixed recipe, larger actors lost
-retention. This does not prove that capacity cannot limit the original goal.
-The original gradient gate used zero advantages and mostly checked entropy.
-Root subsequently checked nonzero derivatives through all ten trained models,
-including added first-layer rows; every layer passed against the CPU reference.
-The same-observation first-update probe gives Gaussian KL 0.00691 at width 64,
-0.04267 at width 2560 and 0.09066 at width 5120. Update size is the next hypothesis.
+Current OMP update-mechanism mission uses opencode-go/deepseek-v4.1-flash in SAME
+session 01a117e9-8c9b-755b-b8d6-6c35054380b8. Root launch exec 19724, initial PID
+39887, folder results/omp-update-mechanism. It owns only that folder; all original
+learners/checkpoints/results read-only. Inspect actual launcher/events/child logs.
+Mission: resume cloned FULL pilot/final learner states for bounded diagnostic
+updates, prove instrument-off resume parity, measure functional step/clipping/
+anchor and additive task-gradient conflict. Root reviews before any long training.
+The previous audit exec 58161 is terminal exit 0; no duplicate or stale revival.
 
-## Current delegated continuation
-
-OMP model: opencode-go/deepseek-v4.1-flash. Same session:
-01a117e9-8c9b-755b-b8d6-6c35054380b8. Launcher exec session 71240; initial PID 22276.
-Read actual processes and results/omp-actor-step/{brief,launcher,events} first.
-The agent owns the navigation-actor-capacity worktree and that result directory.
-Native agents must use Luna; free OpenCode MiMo is an authorized fallback after
-concrete provider/terminal evidence. Do not duplicate an active mission.
-
-The experiment keeps the actor at width 2560, the critic at 64 and the original
-source, reward and physics fixed. Actor-only Adam rate factor 0.4 comes from the
-TRAIN functional probe. Critic rate stays 0.0001. The agent must prove default
-factor-1 checkpoint parity, nonzero gradient/optimizer isolation, strict resume
-and reduced functional drift, then submit a frozen two-seed pilot request.
-Root reads code and gates before launching persistent training. No actor-step
-learning outcome has been claimed yet.
-
-Existing width-2560 controls are complete. Use their matching 256-rollout models
-for 4.19-million-transition pilot comparisons. Full treatment totals 2,560
-rollouts; resume incrementally from the actual saved header. Warm files, bank
-and training seeds stay matched. Preserve the old code/binaries on 2f17eda and
-in the capacity bundle before making further changes.
-
-The root checkout has partial, unverified Luna sampler edits. Do not adopt or
-train from them. Default assets are unchanged. All heavy jobs share the absolute
-root metal-training.lock and need persistent parents. OMP print mode disposes
-background children when the agent ends; never treat a callback as ownership.
-Root reviews outcomes and makes Forge the World commits and pushes.
+Only Luna native agents; no skills. Free OpenCode MiMo is a fallback after concrete
+terminal/provider evidence. All heavy jobs share absolute root metal-training.lock.
+OMP print disposal kills background children: bounded foreground or root persistent
+parents only. Saved header counts are incremental. Root partial competence sampler
+is unverified; never adopt or train from it. Preserve controls, actual videos,
+failures and denominators. Keep state readable and observe at longer intervals.
 
 ## Historical October 5 handoff
 

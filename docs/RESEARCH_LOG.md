@@ -672,3 +672,22 @@ Next SAME-session OMP mission investigates learning erosion using actual
 reward/likelihood/GAE/data/control paths and matched failure flights. Read-only
 learners; no new training or coefficient sweep before a cause is established.
 [Results](ACTOR_STEP_RESULTS.md) preserve both seeds and the failure story.
+
+## October 8 — corrected erosion audit and root review
+
+Eight frozen stochastic source runs completed twelve consecutive 32-step windows
+each. Root replayed every CSV reward/value/mask and normalization independently;
+96 windows pass with maximum double replay error 0.000018 (GAE), 0.00011 (normalized).
+The four low-clearance loss tables reproduce. The old hard-horizon explanation
+was withdrawn. No new learner or anchor coefficient is accepted from this evidence.
+
+Important labels: action columns are sampled latent actions; clearance is outside
+the 0.18 m collision sphere before the action, excluding physics substeps. Equal
+bank tasks need not retain equal random draws after unequal episode lengths.
+Low-margin loss association does not establish optimizer causality. Prior anchor
+results already show reduced drift with incomplete retention and slower arrivals.
+
+Root wrote an independent replay and decision in results/omp-erosion-contract-repair.
+A new same-session bounded update audit now inspects cloned saved early/full Adam
+and simulator states, with parity before instrumentation. It must identify a real
+update mechanism and its second-order costs before another long learning change.

@@ -1,0 +1,188 @@
+{
+  "runs": {
+    "wide-early-s1": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1143,
+      "csv_sha256": "2751a8ab8f92904ac5c372e6ae92bdc494cbaf39d69422a00c6d33a8bd86201f",
+      "max_double_replay_gae_error": 1.6715207202366855e-05,
+      "max_double_replay_normalization_error": 8.355259288705952e-05
+    },
+    "wide-full-s1": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1294,
+      "csv_sha256": "d290505a35d2c689e6ffd69aeb0311666514108ff2076b1b9f67c06cf6b58003",
+      "max_double_replay_gae_error": 1.7596814430476115e-05,
+      "max_double_replay_normalization_error": 5.8795502761554985e-05
+    },
+    "wide-early-s2": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1218,
+      "csv_sha256": "eefa326158d1ec76f664681e8e4280a04150aa844e7a184f588419042e6991a3",
+      "max_double_replay_gae_error": 1.662227744247957e-05,
+      "max_double_replay_normalization_error": 6.580722548577e-05
+    },
+    "wide-full-s2": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1136,
+      "csv_sha256": "84805f12b086026984d04112b1272f2232bd916208339fb2a11c32d086e80150",
+      "max_double_replay_gae_error": 1.4660902550645005e-05,
+      "max_double_replay_normalization_error": 6.554648056322776e-05
+    },
+    "narrow-early-s1": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1134,
+      "csv_sha256": "99dcd85b54efcf28d91dd29e1ef2b45416acb3a2d00d4007d72dcbca001932aa",
+      "max_double_replay_gae_error": 1.404465239929209e-05,
+      "max_double_replay_normalization_error": 0.00010614110180284797
+    },
+    "narrow-full-s1": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1189,
+      "csv_sha256": "5c65b1efa1619be6278e7ba33b6a92f38cd52b65769bb739fcffa94321ce2a47",
+      "max_double_replay_gae_error": 1.4925968368828535e-05,
+      "max_double_replay_normalization_error": 7.637324744358409e-05
+    },
+    "narrow-early-s2": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1196,
+      "csv_sha256": "11a231ec36643224803e8fbed77ed08c64cb00182c8784538adfcd50e63b666b",
+      "max_double_replay_gae_error": 1.2914861798662969e-05,
+      "max_double_replay_normalization_error": 7.70075637657186e-05
+    },
+    "narrow-full-s2": {
+      "rows": 196608,
+      "windows": 12,
+      "completed_tasks": 1336,
+      "csv_sha256": "224fe4b4cbe1804ec68dec59b5433b538db6c2bccfa39c8c5760fa943f51f463",
+      "max_double_replay_gae_error": 1.703096398841808e-05,
+      "max_double_replay_normalization_error": 5.6189766668879315e-05
+    }
+  },
+  "pairs": {
+    "wide-s1": {
+      "shared_tasks": 1102,
+      "bands": {
+        "0-0.05": {
+          "early_success": 52,
+          "lost": 19
+        },
+        "0.05-0.1": {
+          "early_success": 85,
+          "lost": 40
+        },
+        "0.1-0.2": {
+          "early_success": 106,
+          "lost": 14
+        },
+        "0.2-0.4": {
+          "early_success": 162,
+          "lost": 10
+        },
+        "0.4-inf": {
+          "early_success": 577,
+          "lost": 0
+        }
+      },
+      "early_success": 982,
+      "full_success": 938
+    },
+    "wide-s2": {
+      "shared_tasks": 1038,
+      "bands": {
+        "0-0.05": {
+          "early_success": 51,
+          "lost": 25
+        },
+        "0.05-0.1": {
+          "early_success": 75,
+          "lost": 39
+        },
+        "0.1-0.2": {
+          "early_success": 101,
+          "lost": 23
+        },
+        "0.2-0.4": {
+          "early_success": 133,
+          "lost": 12
+        },
+        "0.4-inf": {
+          "early_success": 562,
+          "lost": 2
+        }
+      },
+      "early_success": 922,
+      "full_success": 863
+    },
+    "narrow-s1": {
+      "shared_tasks": 1070,
+      "bands": {
+        "0-0.05": {
+          "early_success": 43,
+          "lost": 12
+        },
+        "0.05-0.1": {
+          "early_success": 86,
+          "lost": 15
+        },
+        "0.1-0.2": {
+          "early_success": 105,
+          "lost": 3
+        },
+        "0.2-0.4": {
+          "early_success": 155,
+          "lost": 2
+        },
+        "0.4-inf": {
+          "early_success": 569,
+          "lost": 0
+        }
+      },
+      "early_success": 958,
+      "full_success": 967
+    },
+    "narrow-s2": {
+      "shared_tasks": 1155,
+      "bands": {
+        "0-0.05": {
+          "early_success": 59,
+          "lost": 27
+        },
+        "0.05-0.1": {
+          "early_success": 94,
+          "lost": 27
+        },
+        "0.1-0.2": {
+          "early_success": 132,
+          "lost": 23
+        },
+        "0.2-0.4": {
+          "early_success": 126,
+          "lost": 4
+        },
+        "0.4-inf": {
+          "early_success": 624,
+          "lost": 1
+        }
+      },
+      "early_success": 1035,
+      "full_success": 984
+    }
+  },
+  "decision": "No new learner authorized by this diagnostic alone",
+  "scope": [
+    "Frozen sampled actors; no optimizer updates between consecutive windows.",
+    "Bank payloads align by environment/episode; action-noise draws do not remain paired after different episode lengths.",
+    "clearance_m is pre-action clearance of the 0.18 m collision sphere, not minimum clearance over all 100 Hz physics substeps.",
+    "action_0..3 are sampled Gaussian latents, not BODY velocity commands after guidance, tanh, delay and RAPTOR.",
+    "Margin association is replicated; it does not identify the cause of drift or justify a specific anchor strength.",
+    "Ratios of mean advantages and selected completed-episode Monte Carlo errors do not prove route credit or rule out value errors.",
+    "Parameter anchor targets the original warmstart, not the useful early trained policy; prior 0 versus .01 study already exists."
+  ]
+}
