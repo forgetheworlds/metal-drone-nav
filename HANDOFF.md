@@ -40,11 +40,13 @@ near obstacles. Arrival code OMP exec26202/PID82206 is TERMINAL. Root reviewed
 actual source diff, default-off FULL6 parity, active6/3+3 resume, mask derivatives
 and refusal gates, then accepted its frozen two-seed request.
 
-Actual masked pilot: root exec2724, root-run-pilot.py in
-results/omp-arrival-retention. Seed1 childPID12074 has real history beyond42.
-Only two new masked256-rollout arms run. Existing unmasked controls and parents
-are reused; only46 new evaluation panels follow. Source/binaries frozen; read
-actual jobs/logs/headers before acting. Do not duplicate or restart on timeout.
+Arrival-release pilot COMPLETE: two256-rollout headers and46 new panels plus
+138reused panels are independently graded. Mask release fails: oldopen249->238,
+freshopen250->245,longopen256->232,reflectedcombined181->168. Bothseeds lose open
+andlong skills. Course245->246 is insufficient. No promotion/sweep/full extension.
+Stronger unmasked teacher candidate preserved. Read ARRIVAL_RETENTION_RESULTS.md
+and results/omp-arrival-retention/root-results-review.json. Parent2724 terminal;
+never restart completed runs. Full masked raw archive publication is pending.
 
 The USER explicitly requested an independent OpenCode MiMo critic/training audit.
 It is active on opencode/mimo-v2.6-flash-free, exec89815/PID87529, session
