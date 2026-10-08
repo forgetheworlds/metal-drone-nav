@@ -16,7 +16,9 @@ import local_waypoint_transfer as transfer
 import metal_scene
 
 
-def export(bank, index, policy, project, slug):
+def export(bank, index, policy, project, slug, policy_version=1):
+    if policy_version not in [1, 4]:
+        raise ValueError("bounded guided export requires policy version1 or4")
     record = transfer.read_bank(bank)[index]
     shapes, schedules = [], []
     for i, obstacle in enumerate(record["obstacles"][:record["world_count"]]):
@@ -54,6 +56,7 @@ def export(bank, index, policy, project, slug):
     text = world.read_text()
     # The controller resolves absolute NAV paths; isolate receipt paths by project.
     text = re.sub(r"policy=[^;\"]+", "policy=" + str(policy.resolve()), text, count=1)
+    text = text.replace("policy_version=1", f"policy_version={policy_version}", 1)
     if schedules:
         custom = json.dumps(schedules, separators=(",", ":")).replace('"', '\\"')
         text += '\nDEF BoundedMoverDriver Robot { supervisor TRUE controller "bounded_obstacle" customData "' + custom + '" }\n'
@@ -62,6 +65,7 @@ def export(bank, index, policy, project, slug):
                 "index": index, "record_sha256": record["record_sha256"], "record": record,
                 "schedules": schedules, "world_sha256": hashlib.sha256(world.read_bytes()).hexdigest(),
                 "policy_sha256": hashlib.sha256(policy.read_bytes()).hexdigest(),
+                "policy_version": policy_version,
                 "motion_module_sha256": hashlib.sha256((mover / "obstacle_motion.py").read_bytes()).hexdigest()}
     world.with_suffix(".json").write_text(json.dumps(manifest, indent=2) + "\n")
     return world

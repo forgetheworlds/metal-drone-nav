@@ -1,0 +1,47 @@
+{
+  "actual_flights": 48,
+  "new_flights": 47,
+  "reused_smoke": 1,
+  "totals": {
+    "static-parent": {
+      "tasks": 8,
+      "success": 8,
+      "collision": 0,
+      "timeout": 0
+    },
+    "static-unmasked": {
+      "tasks": 8,
+      "success": 8,
+      "collision": 0,
+      "timeout": 0
+    },
+    "static-geometry": {
+      "tasks": 8,
+      "success": 7,
+      "collision": 0,
+      "timeout": 1
+    },
+    "moving-parent": {
+      "tasks": 8,
+      "success": 7,
+      "collision": 1,
+      "timeout": 0
+    },
+    "moving-unmasked": {
+      "tasks": 8,
+      "success": 7,
+      "collision": 1,
+      "timeout": 0
+    },
+    "moving-geometry": {
+      "tasks": 8,
+      "success": 7,
+      "collision": 1,
+      "timeout": 0
+    }
+  },
+  "max_mover_error_m": 0.0009344456392296838,
+  "scope": "Exposed DEV, nominal independent ODE/motors/depth; no target training or blind-final claim. Parent static index0 was an integration smoke before this plan; its valid receipt is reused, never rerun.",
+  "camera_note": "Preserved legacy adapter: model .75/body-origin, physical native .8/.08m. This mismatch is disclosed, not fixed from target feedback.",
+  "verified_inputs": 451
+}

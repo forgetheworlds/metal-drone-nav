@@ -570,7 +570,8 @@ def webots_command(world: pathlib.Path, record_movie: bool) -> list[str]:
     return command
 
 
-def run_flight(world: pathlib.Path, flight_dir: pathlib.Path, record_movie: bool) -> dict:
+def run_flight(world: pathlib.Path, flight_dir: pathlib.Path, record_movie: bool,
+               expected_policy_version: int = 1) -> dict:
     flight_dir.mkdir(parents=True, exist_ok=True)
     slug = flight_dir.name
     controller_dir = WEBOTS_DIR / "results"
@@ -659,7 +660,7 @@ def run_flight(world: pathlib.Path, flight_dir: pathlib.Path, record_movie: bool
     if receipt.get("grading") != "navigation_task_step":
         return {"valid": False, "invalid_reason": "receipt is not graded by the shared task function",
                 "exit_code": returncode, "receipt": receipt}
-    if receipt.get("sensor_profile") != "legacy" or receipt.get("policy_version") != 1:
+    if receipt.get("sensor_profile") != "legacy" or receipt.get("policy_version") != expected_policy_version:
         return {"valid": False, "invalid_reason": "receipt left the legacy 184-input contract",
                 "exit_code": returncode, "receipt": receipt}
     if not trace_path.is_file():

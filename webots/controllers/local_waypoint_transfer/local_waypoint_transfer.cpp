@@ -9,6 +9,7 @@
 
 #include "sensor_profile.hpp"
 #include "deployment.hpp"
+#include "navigation_wide_deployment.hpp"
 #include "guidance.hpp"
 #include "physics.hpp"
 #include "raptor.hpp"
@@ -239,8 +240,8 @@ int main(int argc,char** argv) {
     }
     const int step_ms=10; // RAPTOR remains100Hz with finer ODE integration.
     const Config config=parse_config(wb_robot_get_custom_data());
-    if(config.policy_version!=1&&config.policy_version!=2&&config.policy_version!=3) {
-        std::fprintf(stderr,"policy_version must be1,2, or3\n");wb_robot_cleanup();return 2;
+    if(config.policy_version!=1&&config.policy_version!=2&&config.policy_version!=3&&config.policy_version!=4) {
+        std::fprintf(stderr,"policy_version must be1,2,3, or4\n");wb_robot_cleanup();return 2;
     }
     if(config.sensor_profile!=NAV_SENSOR_LEGACY_ID&&config.sensor_profile!=NAV_SENSOR_NATIVE_ID) {
         std::fprintf(stderr,"sensor_profile must be legacy(1) or native(2)\n");wb_robot_cleanup();return 2;
@@ -366,6 +367,7 @@ int main(int argc,char** argv) {
     }
     nav_deployment::NavigationPolicy navigation;
     nav_deployment::RawDepthNavigationPolicy raw_depth_navigation;
+    nav_deployment::WideNavigationPolicy wide_navigation;
     const bool policy_mode=config.phase=="navigation";
     if(policy_mode){
         std::filesystem::path policy_path=config.policy;
@@ -378,6 +380,15 @@ int main(int argc,char** argv) {
                 std::fprintf(stderr,"policy_version1 uses the legacy sensor profile; sensor_profile must be legacy\n");
                 wb_robot_cleanup();return 2;
             }
+        } else if(config.policy_version==4) {
+            loaded=wide_navigation.load(policy_path.string(),&error);
+            if(loaded&&wide_navigation.sensor_contract().profile_id!=config.sensor_profile) {
+                std::fprintf(stderr,"wide policy camera profile differs from controller\n");
+                wb_robot_cleanup();return 2;
+            }
+            if(loaded)std::printf("WEBOTS_WIDE_POLICY inputs=%u hidden=%u weights=%u source_hash=%016llx\n",
+                wide_navigation.metadata().observation_count,wide_navigation.metadata().hidden_count_value,
+                wide_navigation.metadata().weight_count,(unsigned long long)wide_navigation.source_checkpoint_hash());
         } else {
             loaded=raw_depth_navigation.load(policy_path.string(),&error);
             if(loaded) {
@@ -401,7 +412,7 @@ int main(int argc,char** argv) {
         if(!loaded){std::fprintf(stderr,"policy version%u load failed: %s\n",config.policy_version,error.c_str());wb_robot_cleanup();return 2;}
         std::printf("WEBOTS_POLICY profile=%s contract=%s policy_version=%u\n",
                     nav_sensor::name(config.sensor_profile),
-                    raw_depth_navigation.has_sensor_contract()?"declared":"implicit-legacy",
+                    (config.policy_version==4||raw_depth_navigation.has_sensor_contract())?"declared":"implicit-legacy",
                     config.policy_version);
         std::fflush(stdout);
     }
@@ -674,7 +685,8 @@ int main(int argc,char** argv) {
             nav_deployment::NavigationAction action;
             const bool action_ready=config.policy_version==1
                 ?navigation.infer(observation,action)
-                :raw_depth_navigation.infer(observation,action);
+                :(config.policy_version==4?wide_navigation.infer(observation,action)
+                                         :raw_depth_navigation.infer(observation,action));
             if(action_ready){
                 const float nav_scale=diagnostics?config.diagnostic_nav_scale:1.0f;
                 for(int j=0;j<3;j++)target_velocity_body[j]=nav_scale*action.body_velocity_mps[j];
