@@ -627,3 +627,25 @@ filename sample labels to rollout*512*32. No wide-policy capability claim yet.
 [Experiment direction](CAPACITY_EXPERIMENT.md); actual receipts and reporting
 under results/omp-capacity-scale. Luna's sampler integration stopped on quota
 and remains uncommitted/unverified; it is separate from capacity training.
+
+## October 8 — capacity outcomes and a corrected gradient check
+
+All10capacity arms completed419,430,400transitions and1530panels/195840 source
+flights. Wider actors lose overall retention under the fixed recipe. Nominal
+course success220/256 at12k becomes149/256 at1M; contacts35->105. The1M
+long-open244 vs240 gain is outweighed by hallway256->159 with97contacts.
+No promotion. Both small-actor full checkpoints match priorN512 controls exactly.
+
+Root found original capacity-parity copied zero advantages, making actor-gradient
+checks mostly entropy-only. New nonzero derivative probes on real observations
+and all10trained models validate each layer and the added W1 rows. Raw code and
+receipts retained. This correction concerns verification, not a changed learner.
+
+One-rollout/128Adam fixed-observation probe: latentGaussian KL .00691 at64,
+.04267at2560 and .09066at5120. Larger functional steps are a concrete hypothesis
+for a targeted actor-step experiment, not proof that capacity itself is useless.
+Critic/reward/task changes will remain separate. Root corrected delegated-report
+overclaims and a misleading normalized-success-per-hour metric.
+
+[Capacity report](ACTOR_CAPACITY_RESULTS.md) has all sizes, costs, fresh task
+results, failures, corrected verification and reproduction. Original goal active.
