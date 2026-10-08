@@ -22,31 +22,41 @@ This is a research candidate with no new learning, blind final or transfer test.
 Candidates: results/root-action-channel/composed-s1.bin and composed-s2.bin.
 They contain parameters only and cannot resume training.
 
-## Root-owned next learning comparison
+## Current work
 
-The OMP functional-retention mission ended (exec 6589, PID 77229, exit 0). Its
-unrun procedures and coefficient 0.05 request were not accepted. Root preserved
-the original delivery and failed logs, fixed genuine nonzero derivative probes,
-descent/batch fixtures and sidecar paths, and bound new implementation hashes.
-Actual TRAIN calibration yields 4.134632354 for both seeds. Metal relative L2
-error is 3.6e-7. Enabled six versus three-plus-three FULL resume is exact on both
-seeds. Nine bad sidecar cases reject without writes; coefficient-zero resume passes.
+Physical-retention pilot COMPLETE: all four 256-rollout headers, 16.78M
+transitions and 138 actual evaluations are root-reviewed. The evaluator CLI was
+repaired; nominal/combined parent-flight parity is exact. Publication b1ae9bd
+contains 754 retained inputs, full final checkpoints, grades, source and replay.
+Archive-only review matches live results exactly. Course C204/T245 with49/11
+contacts; long open234/256; reflected combined147/181. Five gates still fail,
+so no default promotion or full extension. Read PHYSICAL_RETENTION_RESULTS.md.
 
-Actual validation parent: root exec 34579, PID 8867,
-results/omp-functional-retention/root-validation.py is COMPLETE. Both 100-rollout
-FULL checkpoints match the reference exactly. Do not mutate loss code or binaries.
-Actual root pilot: exec 70872, parent PID 11092, root-pilot.py accepted the actual
-calibrated request after all gates. Seed 1 control child PID 14287 is training;
-actual history passed rollout 75. C/T on two seeds total 16.78M transitions and
-138 evaluation panels. Inspect jobs/logs/headers before action. Never duplicate
-or restart on an observation timeout. Parent and learner grading
-include broad retention and stress; no target simulator training or sealed FINAL.
+The arrival diagnosis and residual channel tests are complete. Teacher closing
+velocity near failed goals is weak/negative; ordinary PPO predicts positive
+closure on the same states. One new hypothesis releases the teacher penalty
+within one to three goal radii. It is training-only and carries avoidance risk
+near obstacles. Arrival code OMP exec26202/PID82206 is TERMINAL. Root reviewed
+actual source diff, default-off FULL6 parity, active6/3+3 resume, mask derivatives
+and refusal gates, then accepted its frozen two-seed request.
 
-All GPU jobs use the absolute root metal-training.lock with persistent parents.
-Only Luna native agents. No skills. Webots/VM deferred. The unverified root
-competence sampler stays parked. Default assets and videos remain unchanged.
-Root commits as Forge the World and pushes reviewed milestones. Original goal
-active and incomplete. Read docs/PHYSICAL_RETENTION_EXPERIMENT.md.
+Actual masked pilot: root exec2724, root-run-pilot.py in
+results/omp-arrival-retention. Seed1 childPID12074 has real history beyond42.
+Only two new masked256-rollout arms run. Existing unmasked controls and parents
+are reused; only46 new evaluation panels follow. Source/binaries frozen; read
+actual jobs/logs/headers before acting. Do not duplicate or restart on timeout.
+
+The USER explicitly requested an independent OpenCode MiMo critic/training audit.
+It is active on opencode/mimo-v2.6-flash-free, exec89815/PID87529, session
+ses_ee40a094fffedFudFA5Js2wDGh. Own folder results/mimo-training-audit only.
+Probe builder and initial log analysis exist. It must verify critic information,
+fitting, clipping/targets/gradients/Adam/timing/reward contracts with actual
+on-policy tests. No new learner before root code/evidence review. No skills.
+
+GPU jobs use absolute root metal-training.lock and real foreground/persistent
+parents. Native agents Luna only; Webots/VM deferred. Root sampler draft parked.
+Default policies and native videos unchanged. Full original goal active/incomplete.
+Root commits/pushes as Forge the World. Keep state concise and readable.
 
 ## Historical October 5 handoff
 
