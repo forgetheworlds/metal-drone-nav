@@ -799,3 +799,11 @@ pre-pose/time from critic fields and the correct world.hpp motion formula. On
 mean6.1e-7m; the wrong motion formula alone reaches.68m error. This is a probe
 attribution defect, not a learner-physics change. The audit must correct its
 geometry error strata before they can support a causal training decision.
+
+Root separately replayed observed discounted rewards to actual success/contact
+on the frozen stochastic source trajectories, excluding timeout/incomplete
+segments. EV against these sampled future returns is0.462 versus0.847 against
+self-bootstrapped GAE targets; RMSE8.14. Rows with32+futuresteps haveEV0.296.
+These are correlated stochastic outcomes, not noiseless conditional targets;
+conditioning on eventual collision cannot prove critic optimism. The audit must
+keep target-fitting and independent future-prediction scope separate.
