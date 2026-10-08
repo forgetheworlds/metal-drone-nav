@@ -5,26 +5,32 @@ are deferred. Defaults and published native videos are preserved.
 
 ## Current work
 
-OpenCode free MiMo's independent critic audit and written correction pass are
-COMPLETE, both exit 0. No external engineering mission or GPU job remains active.
-Original session ses_ee40a094fffedFudFA5Js2wDGh; completed execs 89815 and 24910.
-Read docs/CRITIC_AUDIT_RESULTS.md and results/root-critic-audit-review/review.md.
+MiMo's critic audit and correction are COMPLETE. Their reviewed72-input replay
+is published3a697ce. No old external mission remains active.
 
-Root reviewed the numerical implementation, corrected geometry timing and mover
-scaling, and checked the actual Metal sample-loss kernel. Its dV error is zero;
-raw critic-gradient CPU/Metal difference 1.55e-6; fresh Adam parameter difference
-1.19e-7. This is a limited one-batch check, not value sufficiency or a causal fix.
-Root's independent archive-only replay verifies72 inputs and exactly reproduces
-GAE-target EV.8473 versus sampled future-return EV.4619. Complete original and
-corrected reports/data/weights/source are preserved. No new learning result.
+Root implemented the critic geometry experiment. Both critics have226inputs,
+64hidden and14,593parameters. Control pads the old64 with162zeros; treatment
+adds all16objects' geometry/motion, count and actual time. The actor remains
+184/5120/4 and never receives those training-only features. Same source, reward,
+teacher and compute. Current and next value use the SAME feature builder.
 
-Next root work: choose and implement one controlled critic-information experiment.
-The old count+nearest proposal is partial, not adopted as a fix. Preserve actor,
-reward, bank, teacher and compute; use equal critic parameter counts and actual
-function-preserving initialization. Check identical current/bootstrap feature
-semantics, nonzero derivatives and strict resume before any parent-owned pilot.
-Grade two seeds and broad navigation/retention/stress, not arbitrary EV alone.
-No architecture/reward sweep, completed-study reruns, Webots or VM.
+Engineering gates PASS: CPU/Metal feature error0; actor and original64-input
+hashes identical; zero appended warmstart weights with biases/head preserved;
+new feature gradient L2=7.88; CPU/Metal gradient max error2.53e-7; next-value
+consistency1.29e-5 or better with nonzero added weights. Both seeds C/T6vs3+3
+FULL resume exact, wrong feature/width refused without writes, first rollout
+actor bytes identical. Existing inference frontend scored128 first-update
+flights identically for C/T. Initial CPU fixture FMA-contraction failure retained;
+reference-only contraction disabled to restore exact preservation, training
+compiler flags unchanged.
+
+Actual ROOT producer/grader: results/root-critic-geometry/run.py, persistent
+exec32931. Read jobs.json and actual PID/history/header, never duplicate/restart
+on an observation timeout. Four256-rollout arms (16.78Mtransitions), then92
+actual DEV/stress panels. Critic-only addition, not an actor-capacity sweep.
+The freeze covers sources/binaries/banks/parents/request/decision. Do not mutate
+these while active. No learning gain claimed yet. Final checkpoints only.
+Read docs/CRITIC_GEOMETRY_EXPERIMENT.md and decision.md for exact outcome gates.
 
 ## Completed studies
 

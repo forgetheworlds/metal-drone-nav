@@ -842,3 +842,21 @@ No new learner or default promotion. The next experiment must isolate critic
 information, preserve current/bootstrap feature timing and initial value weights,
 match source exposure and critic parameter count, and grade actual broad
 navigation/retention/stress outcomes rather than a target-fit threshold alone.
+
+## October 8 — controlled critic geometry experiment
+
+Root wrote one critic-information addition after reviewing the MiMo audit. The
+critic now has226inputs/64hidden in BOTH arms: old64+162zeros control versus
+all16objects' shapes/motion/count/time treatment. Actor, teacher, source and
+reward are unchanged. Nominal parameter counts match; extra control columns
+remain inactive, so this is not a pure information-versus-function-class proof.
+
+The shared current/bootstrap feature builder matches CPU/Metal exactly. New
+feature gradients are real (L2=7.88), raw GPU gradient error2.53e-7. Bias/head
+weights are preserved. A CPU exact fixture failed due FMA contraction (7.87e-6);
+reference-only contraction-off restores0, without changing training flags.
+Both seeds C/T6vs3+3 FULL checkpoint parity, wrong-feature/width refusals, and
+first-rollout actor byte parity pass.128 actual inference flights match exactly.
+Four256-rollout arms and92 panels are root-owned under the shared lock; no gain
+is claimed while training. All broad capability/contact/speed/stress gates were
+frozen before launch. See [experiment](CRITIC_GEOMETRY_EXPERIMENT.md).

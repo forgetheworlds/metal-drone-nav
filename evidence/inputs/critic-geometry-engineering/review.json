@@ -1,0 +1,34 @@
+{
+  "verified_engineering_only": true,
+  "inputs": 80,
+  "actual_learning": "in progress; not a result",
+  "source_hashes_unchanged_before_snapshot": true,
+  "gates": [
+    {
+      "arm": "control",
+      "seed": 1,
+      "full6_vs_3plus3_byte_identical": true,
+      "full_sha256": "b131fe7e8ee9d02a66157e46d612302d014a765f3f6cf663d5e3cd66dc2804c1"
+    },
+    {
+      "arm": "geometry",
+      "seed": 1,
+      "full6_vs_3plus3_byte_identical": true,
+      "full_sha256": "96632b15ad39f0bd2b99eda245fe6c1c070a719c0cf40e28ff62cb9d561c5e2c"
+    },
+    {
+      "arm": "control",
+      "seed": 2,
+      "full6_vs_3plus3_byte_identical": true,
+      "full_sha256": "ee2ede62cedb9b67d06b2af200b901087dda53c6cc0b97622741cf7c7fc284cc"
+    },
+    {
+      "arm": "geometry",
+      "seed": 2,
+      "full6_vs_3plus3_byte_identical": true,
+      "full_sha256": "a0eaee5a502bb2e95c1a1ce5b911edf0e7cd4cc1f82f154dd7fa5fb61e287776"
+    }
+  ],
+  "first_rollout_actor_byte_identical": true,
+  "archive_sha256": "710b22ac9d7d86c554519d861d03e8282db59f35cf388d4d239c9fdd08cf571b"
+}
