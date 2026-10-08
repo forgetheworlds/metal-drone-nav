@@ -824,3 +824,21 @@ Code, build hashes, raw output and receipt are retained under
 `results/root-critic-audit-review/loss-kernel-*` and `critic_loss_kernel_check.mm`.
 MiMo has applied the geometry corrections and removed the unsupported
 information-bound conclusion. Its final independent report is still pending.
+
+## October 8 — completed critic audit and portable replay
+
+MiMo's initial audit and zero-transition correction pass both finished with
+exit 0. Root reviewed the report and rejected unsupported causal rule-outs and
+the claim that zeroing existing critic biases preserves the value function.
+Diagnostic collection was 1,097,728 transitions, within the 1.1M budget; the
+first report double-counted determinism. The active task uses contact50/arrival10.
+
+Root wrote an independent archive-only replay. It checks all72 hashed inputs
+and reproduces target EV0.8473 and sampled future-return EV0.4619 exactly, with
+all excluded/corrupt/timeout rows retained and disclosed. The corrected report,
+original report, root decisions, raw dump, checkpoint, bank and compiled-source
+inputs are preserved. See [critic audit results](CRITIC_AUDIT_RESULTS.md).
+No new learner or default promotion. The next experiment must isolate critic
+information, preserve current/bootstrap feature timing and initial value weights,
+match source exposure and critic parameter count, and grade actual broad
+navigation/retention/stress outcomes rather than a target-fit threshold alone.

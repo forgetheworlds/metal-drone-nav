@@ -5,18 +5,26 @@ are deferred. Defaults and published native videos are preserved.
 
 ## Current work
 
-OpenCode free MiMo is auditing the critic and training pipeline. Actual session
-`ses_ee40a094fffedFudFA5Js2wDGh`, exec 89815, PID 87529. It owns only
-`results/mimo-training-audit`. Recent tool responses and changed analysis files
-confirm work; final REPORT.md is not yet present. No new training is authorized
-from a preliminary audit verdict. Root owns results/root-critic-audit-review.
+OpenCode free MiMo's independent critic audit and written correction pass are
+COMPLETE, both exit 0. No external engineering mission or GPU job remains active.
+Original session ses_ee40a094fffedFudFA5Js2wDGh; completed execs 89815 and 24910.
+Read docs/CRITIC_AUDIT_RESULTS.md and results/root-critic-audit-review/review.md.
 
-Root corrected probe geometry timing and mover scaling; corrected clearance
-matches Metal within 7.4e-5 m. MiMo applied the corrections and withdrew its
-fresh-regressor information-bound claim. The critic has no value clipping.
-Root exercised the actual sample-loss kernel on a trained nonzero batch: dV
-error zero, raw critic-gradient CPU/Metal error 1.55e-6, fresh Adam parameter
-error 1.19e-7. This verifies one batch, not value adequacy or a causal remedy.
+Root reviewed the numerical implementation, corrected geometry timing and mover
+scaling, and checked the actual Metal sample-loss kernel. Its dV error is zero;
+raw critic-gradient CPU/Metal difference 1.55e-6; fresh Adam parameter difference
+1.19e-7. This is a limited one-batch check, not value sufficiency or a causal fix.
+Root's independent archive-only replay verifies72 inputs and exactly reproduces
+GAE-target EV.8473 versus sampled future-return EV.4619. Complete original and
+corrected reports/data/weights/source are preserved. No new learning result.
+
+Next root work: choose and implement one controlled critic-information experiment.
+The old count+nearest proposal is partial, not adopted as a fix. Preserve actor,
+reward, bank, teacher and compute; use equal critic parameter counts and actual
+function-preserving initialization. Check identical current/bootstrap feature
+semantics, nonzero derivatives and strict resume before any parent-owned pilot.
+Grade two seeds and broad navigation/retention/stress, not arbitrary EV alone.
+No architecture/reward sweep, completed-study reruns, Webots or VM.
 
 ## Completed studies
 
