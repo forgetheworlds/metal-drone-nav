@@ -47,7 +47,19 @@ trajectories. A larger critic, a new reward or another radius must have evidence
 before another full run. The original unmasked result still has five failed
 gates, so it also remains a research candidate rather than the finished navigator.
 
-Raw outcomes, endpoint checkpoints, actual process receipts and the independent
-review are retained in `results/omp-arrival-retention/`. Publication of a full
-archive is pending. The previous experiment's published
+The [666-input archive](../evidence/inputs/arrival-retention/records.tar.gz)
+retains the endpoint checkpoints, raw outcomes, banks, code, gates, failed logs
+and actual process receipts. Archive-only review reproduces all results and
+failed checks exactly:
+
+```sh
+python3 navigation_arrival_retention_results.py \
+  evidence/inputs/arrival-retention/records.tar.gz \
+  --output evidence/inputs/arrival-retention/review.json \
+  --plot artifacts/plots/arrival-retention.png
+```
+
+![Complete arrival-release comparison](../artifacts/plots/arrival-retention.png)
+
+The original source result files also remain in `results/omp-arrival-retention/`. The previous experiment's published
 [replayable evidence](PHYSICAL_RETENTION_RESULTS.md) remains the stronger control.

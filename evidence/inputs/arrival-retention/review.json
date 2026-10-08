@@ -1,0 +1,3074 @@
+{
+  "scope": "Exposed source development, endpoint paired masks, retained controls. No FINAL or independent transfer.",
+  "budgets": {
+    "1": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "wall_s": 669.2413022909313
+    },
+    "2": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "wall_s": 641.7210655841045
+    }
+  },
+  "panels": {
+    "clutter-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 224,
+        "collision": 15,
+        "timeout": 17
+      },
+      "unmasked_control": {
+        "success": 218,
+        "collision": 18,
+        "timeout": 20
+      },
+      "unmasked_treatment": {
+        "success": 227,
+        "collision": 19,
+        "timeout": 10
+      },
+      "masked_treatment": {
+        "success": 219,
+        "collision": 19,
+        "timeout": 18
+      },
+      "shared_arrival_delta_s": 0.3290389511520737,
+      "shared_successes": 217
+    },
+    "composite-both-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 233,
+        "collision": 23,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 185,
+        "collision": 71,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 236,
+        "collision": 20,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 230,
+        "collision": 26,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": 0.013194755138888873,
+      "shared_successes": 216
+    },
+    "composite-combined": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 227,
+        "collision": 28,
+        "timeout": 1
+      },
+      "unmasked_control": {
+        "success": 195,
+        "collision": 59,
+        "timeout": 2
+      },
+      "unmasked_treatment": {
+        "success": 228,
+        "collision": 28,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 222,
+        "collision": 34,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": 0.10666909890476187,
+      "shared_successes": 210
+    },
+    "composite-command-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 238,
+        "collision": 18,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 197,
+        "collision": 59,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 240,
+        "collision": 16,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 238,
+        "collision": 18,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.08174099517391298,
+      "shared_successes": 230
+    },
+    "composite-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 244,
+        "collision": 12,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 204,
+        "collision": 49,
+        "timeout": 3
+      },
+      "unmasked_treatment": {
+        "success": 245,
+        "collision": 11,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 246,
+        "collision": 10,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.07500171433333341,
+      "shared_successes": 240
+    },
+    "composite-sensor-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 250,
+        "collision": 6,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 201,
+        "collision": 55,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 247,
+        "collision": 9,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 242,
+        "collision": 14,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.0039916845378151,
+      "shared_successes": 238
+    },
+    "dev-a-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 220,
+        "collision": 24,
+        "timeout": 12
+      },
+      "unmasked_control": {
+        "success": 207,
+        "collision": 33,
+        "timeout": 16
+      },
+      "unmasked_treatment": {
+        "success": 217,
+        "collision": 28,
+        "timeout": 11
+      },
+      "masked_treatment": {
+        "success": 217,
+        "collision": 24,
+        "timeout": 15
+      },
+      "shared_arrival_delta_s": 0.31918149126213585,
+      "shared_successes": 206
+    },
+    "dev-b-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 228,
+        "collision": 17,
+        "timeout": 11
+      },
+      "unmasked_control": {
+        "success": 219,
+        "collision": 24,
+        "timeout": 13
+      },
+      "unmasked_treatment": {
+        "success": 232,
+        "collision": 16,
+        "timeout": 8
+      },
+      "masked_treatment": {
+        "success": 221,
+        "collision": 19,
+        "timeout": 16
+      },
+      "shared_arrival_delta_s": 0.3644939919158879,
+      "shared_successes": 214
+    },
+    "dev-c-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 222,
+        "collision": 26,
+        "timeout": 8
+      },
+      "unmasked_control": {
+        "success": 206,
+        "collision": 36,
+        "timeout": 14
+      },
+      "unmasked_treatment": {
+        "success": 217,
+        "collision": 28,
+        "timeout": 11
+      },
+      "masked_treatment": {
+        "success": 219,
+        "collision": 30,
+        "timeout": 7
+      },
+      "shared_arrival_delta_s": 0.21435849028708137,
+      "shared_successes": 209
+    },
+    "fresh-clutter-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 217,
+        "collision": 34,
+        "timeout": 5
+      },
+      "unmasked_control": {
+        "success": 206,
+        "collision": 41,
+        "timeout": 9
+      },
+      "unmasked_treatment": {
+        "success": 222,
+        "collision": 27,
+        "timeout": 7
+      },
+      "masked_treatment": {
+        "success": 216,
+        "collision": 30,
+        "timeout": 10
+      },
+      "shared_arrival_delta_s": 0.3571850245933015,
+      "shared_successes": 209
+    },
+    "fresh-course-both-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 212,
+        "collision": 44,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 188,
+        "collision": 68,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 221,
+        "collision": 35,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 217,
+        "collision": 39,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.1490083736318408,
+      "shared_successes": 201
+    },
+    "fresh-course-combined": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 209,
+        "collision": 47,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 187,
+        "collision": 69,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 215,
+        "collision": 41,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 210,
+        "collision": 46,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": 0.01742466095959588,
+      "shared_successes": 198
+    },
+    "fresh-course-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 246,
+        "collision": 10,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 216,
+        "collision": 40,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 246,
+        "collision": 10,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 240,
+        "collision": 16,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.06561331396624469,
+      "shared_successes": 237
+    },
+    "fresh-course-reflected-both-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 172,
+        "collision": 84,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 149,
+        "collision": 107,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 185,
+        "collision": 71,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 171,
+        "collision": 85,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": 0.022785340949367055,
+      "shared_successes": 158
+    },
+    "fresh-course-reflected-combined": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 170,
+        "collision": 86,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 147,
+        "collision": 109,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 181,
+        "collision": 75,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 168,
+        "collision": 88,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": 0.032667416333333255,
+      "shared_successes": 150
+    },
+    "fresh-course-reflected-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 205,
+        "collision": 51,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 171,
+        "collision": 85,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 216,
+        "collision": 40,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 210,
+        "collision": 46,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.0420407638308458,
+      "shared_successes": 201
+    },
+    "fresh-long-hallway-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.034961735390624964,
+      "shared_successes": 256
+    },
+    "fresh-long-open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 242,
+        "collision": 0,
+        "timeout": 14
+      },
+      "unmasked_treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 242,
+        "collision": 0,
+        "timeout": 14
+      },
+      "shared_arrival_delta_s": 1.5351591028512397,
+      "shared_successes": 242
+    },
+    "fresh-open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 252,
+        "collision": 0,
+        "timeout": 4
+      },
+      "unmasked_control": {
+        "success": 246,
+        "collision": 0,
+        "timeout": 10
+      },
+      "unmasked_treatment": {
+        "success": 250,
+        "collision": 0,
+        "timeout": 6
+      },
+      "masked_treatment": {
+        "success": 245,
+        "collision": 0,
+        "timeout": 11
+      },
+      "shared_arrival_delta_s": 0.8333495991358024,
+      "shared_successes": 243
+    },
+    "fresh-static-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 212,
+        "collision": 35,
+        "timeout": 9
+      },
+      "unmasked_control": {
+        "success": 207,
+        "collision": 36,
+        "timeout": 13
+      },
+      "unmasked_treatment": {
+        "success": 214,
+        "collision": 32,
+        "timeout": 10
+      },
+      "masked_treatment": {
+        "success": 205,
+        "collision": 40,
+        "timeout": 11
+      },
+      "shared_arrival_delta_s": 0.36590538487179486,
+      "shared_successes": 195
+    },
+    "long-hallway-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "unmasked_treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "shared_arrival_delta_s": -0.03711022222656246,
+      "shared_successes": 256
+    },
+    "long-open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "unmasked_control": {
+        "success": 234,
+        "collision": 0,
+        "timeout": 22
+      },
+      "unmasked_treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "masked_treatment": {
+        "success": 232,
+        "collision": 0,
+        "timeout": 24
+      },
+      "shared_arrival_delta_s": 1.5789154468965518,
+      "shared_successes": 232
+    },
+    "open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 250,
+        "collision": 0,
+        "timeout": 6
+      },
+      "unmasked_control": {
+        "success": 240,
+        "collision": 0,
+        "timeout": 16
+      },
+      "unmasked_treatment": {
+        "success": 249,
+        "collision": 0,
+        "timeout": 7
+      },
+      "masked_treatment": {
+        "success": 238,
+        "collision": 0,
+        "timeout": 18
+      },
+      "shared_arrival_delta_s": 0.7069470335714286,
+      "shared_successes": 238
+    }
+  },
+  "per_seed": {
+    "clutter-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 113,
+          "collision": 6,
+          "timeout": 9
+        },
+        "unmasked_control": {
+          "success": 114,
+          "collision": 9,
+          "timeout": 5
+        },
+        "unmasked_treatment": {
+          "success": 113,
+          "collision": 8,
+          "timeout": 7
+        },
+        "masked_treatment": {
+          "success": 109,
+          "collision": 8,
+          "timeout": 11
+        },
+        "wins": [],
+        "losses": [
+          9,
+          80,
+          91,
+          125
+        ],
+        "shared_arrival_delta_s": 0.07890163972477061
+      },
+      "2": {
+        "composed_parent": {
+          "success": 111,
+          "collision": 9,
+          "timeout": 8
+        },
+        "unmasked_control": {
+          "success": 104,
+          "collision": 9,
+          "timeout": 15
+        },
+        "unmasked_treatment": {
+          "success": 114,
+          "collision": 11,
+          "timeout": 3
+        },
+        "masked_treatment": {
+          "success": 110,
+          "collision": 11,
+          "timeout": 7
+        },
+        "wins": [
+          51,
+          65
+        ],
+        "losses": [
+          35,
+          41,
+          55,
+          83,
+          92,
+          97
+        ],
+        "shared_arrival_delta_s": 0.5814923487962963
+      }
+    },
+    "composite-both-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 115,
+          "collision": 13,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "wins": [
+          15,
+          54,
+          56,
+          59,
+          74,
+          93
+        ],
+        "losses": [
+          2,
+          6,
+          11,
+          22,
+          35,
+          38,
+          42,
+          47,
+          68,
+          69,
+          80,
+          83,
+          90,
+          107,
+          117,
+          119,
+          126
+        ],
+        "shared_arrival_delta_s": -0.1019825233663367
+      },
+      "2": {
+        "composed_parent": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 78,
+          "collision": 50,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 123,
+          "collision": 5,
+          "timeout": 0
+        },
+        "wins": [
+          2,
+          30,
+          78,
+          80,
+          81,
+          102,
+          105,
+          117
+        ],
+        "losses": [
+          6,
+          11,
+          56
+        ],
+        "shared_arrival_delta_s": 0.11435045191304352
+      }
+    },
+    "composite-combined": {
+      "1": {
+        "composed_parent": {
+          "success": 110,
+          "collision": 18,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 104,
+          "collision": 23,
+          "timeout": 1
+        },
+        "unmasked_treatment": {
+          "success": 114,
+          "collision": 14,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 109,
+          "collision": 19,
+          "timeout": 0
+        },
+        "wins": [
+          4,
+          15,
+          45,
+          54
+        ],
+        "losses": [
+          35,
+          42,
+          57,
+          64,
+          69,
+          100,
+          117,
+          119,
+          123
+        ],
+        "shared_arrival_delta_s": 0.1547654288571428
+      },
+      "2": {
+        "composed_parent": {
+          "success": 117,
+          "collision": 10,
+          "timeout": 1
+        },
+        "unmasked_control": {
+          "success": 91,
+          "collision": 36,
+          "timeout": 1
+        },
+        "unmasked_treatment": {
+          "success": 114,
+          "collision": 14,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 113,
+          "collision": 15,
+          "timeout": 0
+        },
+        "wins": [
+          20,
+          57,
+          59,
+          69,
+          80,
+          81,
+          92,
+          117
+        ],
+        "losses": [
+          14,
+          33,
+          38,
+          41,
+          43,
+          66,
+          83,
+          101,
+          102
+        ],
+        "shared_arrival_delta_s": 0.05857276895238093
+      }
+    },
+    "composite-command-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 117,
+          "collision": 11,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 105,
+          "collision": 23,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 117,
+          "collision": 11,
+          "timeout": 0
+        },
+        "wins": [
+          11,
+          35,
+          45,
+          90,
+          117
+        ],
+        "losses": [
+          14,
+          23,
+          59,
+          70,
+          83,
+          107
+        ],
+        "shared_arrival_delta_s": -0.12187779499999994
+      },
+      "2": {
+        "composed_parent": {
+          "success": 121,
+          "collision": 7,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 92,
+          "collision": 36,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 121,
+          "collision": 7,
+          "timeout": 0
+        },
+        "wins": [
+          54,
+          59,
+          81
+        ],
+        "losses": [
+          44,
+          83,
+          116,
+          118
+        ],
+        "shared_arrival_delta_s": -0.0436450495762711
+      }
+    },
+    "composite-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 119,
+          "collision": 9,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 111,
+          "collision": 16,
+          "timeout": 1
+        },
+        "unmasked_treatment": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "wins": [
+          68,
+          117
+        ],
+        "losses": [
+          35,
+          59
+        ],
+        "shared_arrival_delta_s": -0.16917053350000005
+      },
+      "2": {
+        "composed_parent": {
+          "success": 125,
+          "collision": 3,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 93,
+          "collision": 33,
+          "timeout": 2
+        },
+        "unmasked_treatment": {
+          "success": 123,
+          "collision": 5,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "wins": [
+          45,
+          54,
+          95,
+          105
+        ],
+        "losses": [
+          44,
+          117,
+          119
+        ],
+        "shared_arrival_delta_s": 0.01916710483333325
+      }
+    },
+    "composite-sensor-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 125,
+          "collision": 3,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 108,
+          "collision": 20,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "wins": [
+          74
+        ],
+        "losses": [
+          2,
+          69,
+          80,
+          90,
+          102,
+          105,
+          117
+        ],
+        "shared_arrival_delta_s": -0.08504466854700848
+      },
+      "2": {
+        "composed_parent": {
+          "success": 125,
+          "collision": 3,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 93,
+          "collision": 35,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 123,
+          "collision": 5,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "wins": [
+          23,
+          26,
+          78
+        ],
+        "losses": [
+          11,
+          18
+        ],
+        "shared_arrival_delta_s": 0.07438186198347105
+      }
+    },
+    "dev-a-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 108,
+          "collision": 11,
+          "timeout": 9
+        },
+        "unmasked_control": {
+          "success": 109,
+          "collision": 15,
+          "timeout": 4
+        },
+        "unmasked_treatment": {
+          "success": 105,
+          "collision": 16,
+          "timeout": 7
+        },
+        "masked_treatment": {
+          "success": 103,
+          "collision": 13,
+          "timeout": 12
+        },
+        "wins": [
+          33,
+          35,
+          46,
+          59
+        ],
+        "losses": [
+          2,
+          6,
+          11,
+          43,
+          74,
+          122
+        ],
+        "shared_arrival_delta_s": -0.23283263898989906
+      },
+      "2": {
+        "composed_parent": {
+          "success": 112,
+          "collision": 13,
+          "timeout": 3
+        },
+        "unmasked_control": {
+          "success": 98,
+          "collision": 18,
+          "timeout": 12
+        },
+        "unmasked_treatment": {
+          "success": 112,
+          "collision": 12,
+          "timeout": 4
+        },
+        "masked_treatment": {
+          "success": 114,
+          "collision": 11,
+          "timeout": 3
+        },
+        "wins": [
+          6,
+          8,
+          46,
+          74,
+          80,
+          94,
+          114
+        ],
+        "losses": [
+          7,
+          55,
+          71,
+          77,
+          82
+        ],
+        "shared_arrival_delta_s": 0.8299235370093457
+      }
+    },
+    "dev-b-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 114,
+          "collision": 6,
+          "timeout": 8
+        },
+        "unmasked_control": {
+          "success": 115,
+          "collision": 13,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 114,
+          "collision": 8,
+          "timeout": 6
+        },
+        "masked_treatment": {
+          "success": 113,
+          "collision": 4,
+          "timeout": 11
+        },
+        "wins": [
+          6,
+          20,
+          94,
+          95,
+          98,
+          118
+        ],
+        "losses": [
+          8,
+          47,
+          68,
+          74,
+          83,
+          114,
+          115
+        ],
+        "shared_arrival_delta_s": 0.2336506309345794
+      },
+      "2": {
+        "composed_parent": {
+          "success": 114,
+          "collision": 11,
+          "timeout": 3
+        },
+        "unmasked_control": {
+          "success": 104,
+          "collision": 11,
+          "timeout": 13
+        },
+        "unmasked_treatment": {
+          "success": 118,
+          "collision": 8,
+          "timeout": 2
+        },
+        "masked_treatment": {
+          "success": 108,
+          "collision": 15,
+          "timeout": 5
+        },
+        "wins": [
+          35
+        ],
+        "losses": [
+          6,
+          34,
+          67,
+          68,
+          78,
+          82,
+          83,
+          94,
+          102,
+          103,
+          107
+        ],
+        "shared_arrival_delta_s": 0.49533735289719627
+      }
+    },
+    "dev-c-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 113,
+          "collision": 10,
+          "timeout": 5
+        },
+        "unmasked_control": {
+          "success": 109,
+          "collision": 18,
+          "timeout": 1
+        },
+        "unmasked_treatment": {
+          "success": 110,
+          "collision": 10,
+          "timeout": 8
+        },
+        "masked_treatment": {
+          "success": 111,
+          "collision": 11,
+          "timeout": 6
+        },
+        "wins": [
+          14,
+          23,
+          42,
+          82,
+          102,
+          107,
+          114
+        ],
+        "losses": [
+          30,
+          34,
+          66,
+          71,
+          94,
+          115
+        ],
+        "shared_arrival_delta_s": -8.116346153710716e-07
+      },
+      "2": {
+        "composed_parent": {
+          "success": 109,
+          "collision": 16,
+          "timeout": 3
+        },
+        "unmasked_control": {
+          "success": 97,
+          "collision": 18,
+          "timeout": 13
+        },
+        "unmasked_treatment": {
+          "success": 107,
+          "collision": 18,
+          "timeout": 3
+        },
+        "masked_treatment": {
+          "success": 108,
+          "collision": 19,
+          "timeout": 1
+        },
+        "wins": [
+          66,
+          83,
+          95
+        ],
+        "losses": [
+          102,
+          107
+        ],
+        "shared_arrival_delta_s": 0.42667627504761907
+      }
+    },
+    "fresh-clutter-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 108,
+          "collision": 16,
+          "timeout": 4
+        },
+        "unmasked_control": {
+          "success": 110,
+          "collision": 16,
+          "timeout": 2
+        },
+        "unmasked_treatment": {
+          "success": 110,
+          "collision": 13,
+          "timeout": 5
+        },
+        "masked_treatment": {
+          "success": 105,
+          "collision": 16,
+          "timeout": 7
+        },
+        "wins": [
+          13,
+          84,
+          124
+        ],
+        "losses": [
+          23,
+          28,
+          52,
+          78,
+          93,
+          97,
+          108,
+          110
+        ],
+        "shared_arrival_delta_s": 0.36961661411764707
+      },
+      "2": {
+        "composed_parent": {
+          "success": 109,
+          "collision": 18,
+          "timeout": 1
+        },
+        "unmasked_control": {
+          "success": 96,
+          "collision": 25,
+          "timeout": 7
+        },
+        "unmasked_treatment": {
+          "success": 112,
+          "collision": 14,
+          "timeout": 2
+        },
+        "masked_treatment": {
+          "success": 111,
+          "collision": 14,
+          "timeout": 3
+        },
+        "wins": [
+          21,
+          35,
+          38,
+          69
+        ],
+        "losses": [
+          78,
+          87,
+          92,
+          93,
+          126
+        ],
+        "shared_arrival_delta_s": 0.3453343504672897
+      }
+    },
+    "fresh-course-both-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 105,
+          "collision": 23,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 100,
+          "collision": 28,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 108,
+          "collision": 20,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 106,
+          "collision": 22,
+          "timeout": 0
+        },
+        "wins": [
+          7,
+          11,
+          47,
+          61,
+          78,
+          81,
+          90,
+          114,
+          117
+        ],
+        "losses": [
+          5,
+          14,
+          27,
+          28,
+          31,
+          32,
+          62,
+          66,
+          105,
+          119,
+          126
+        ],
+        "shared_arrival_delta_s": -0.20000457360824742
+      },
+      "2": {
+        "composed_parent": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 88,
+          "collision": 40,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 113,
+          "collision": 15,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 111,
+          "collision": 17,
+          "timeout": 0
+        },
+        "wins": [
+          5,
+          20,
+          44,
+          57,
+          79,
+          83,
+          87
+        ],
+        "losses": [
+          14,
+          18,
+          21,
+          26,
+          59,
+          71,
+          89,
+          100,
+          113
+        ],
+        "shared_arrival_delta_s": -0.10144461019230773
+      }
+    },
+    "fresh-course-combined": {
+      "1": {
+        "composed_parent": {
+          "success": 102,
+          "collision": 26,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 100,
+          "collision": 28,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 108,
+          "collision": 20,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 101,
+          "collision": 27,
+          "timeout": 0
+        },
+        "wins": [
+          30,
+          81,
+          97
+        ],
+        "losses": [
+          5,
+          19,
+          38,
+          41,
+          54,
+          69,
+          78,
+          83,
+          105,
+          111
+        ],
+        "shared_arrival_delta_s": -0.02040861051020418
+      },
+      "2": {
+        "composed_parent": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 87,
+          "collision": 41,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 109,
+          "collision": 19,
+          "timeout": 0
+        },
+        "wins": [
+          28,
+          30,
+          44,
+          47,
+          62,
+          69,
+          74,
+          83,
+          85
+        ],
+        "losses": [
+          8,
+          17,
+          41,
+          92,
+          100,
+          104,
+          116
+        ],
+        "shared_arrival_delta_s": 0.05450126699999994
+      }
+    },
+    "fresh-course-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 113,
+          "collision": 15,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 117,
+          "collision": 11,
+          "timeout": 0
+        },
+        "wins": [
+          43,
+          81
+        ],
+        "losses": [
+          5,
+          28,
+          54,
+          71,
+          83,
+          88,
+          119
+        ],
+        "shared_arrival_delta_s": -0.15913406782608686
+      },
+      "2": {
+        "composed_parent": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 103,
+          "collision": 25,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 123,
+          "collision": 5,
+          "timeout": 0
+        },
+        "wins": [
+          2
+        ],
+        "losses": [
+          57,
+          71
+        ],
+        "shared_arrival_delta_s": 0.022541494999999977
+      }
+    },
+    "fresh-course-reflected-both-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 81,
+          "collision": 47,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 72,
+          "collision": 56,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 86,
+          "collision": 42,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 84,
+          "collision": 44,
+          "timeout": 0
+        },
+        "wins": [
+          30,
+          51,
+          57,
+          78,
+          87,
+          121,
+          127
+        ],
+        "losses": [
+          1,
+          8,
+          11,
+          20,
+          21,
+          66,
+          69,
+          98,
+          123
+        ],
+        "shared_arrival_delta_s": 0.050650518311688236
+      },
+      "2": {
+        "composed_parent": {
+          "success": 91,
+          "collision": 37,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 77,
+          "collision": 51,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 99,
+          "collision": 29,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 87,
+          "collision": 41,
+          "timeout": 0
+        },
+        "wins": [
+          16,
+          47,
+          64,
+          95,
+          117,
+          119
+        ],
+        "losses": [
+          1,
+          2,
+          19,
+          26,
+          29,
+          31,
+          35,
+          38,
+          41,
+          42,
+          56,
+          57,
+          61,
+          76,
+          83,
+          99,
+          107,
+          115
+        ],
+        "shared_arrival_delta_s": -0.0037037782716049326
+      }
+    },
+    "fresh-course-reflected-combined": {
+      "1": {
+        "composed_parent": {
+          "success": 79,
+          "collision": 49,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 72,
+          "collision": 56,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 83,
+          "collision": 45,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 80,
+          "collision": 48,
+          "timeout": 0
+        },
+        "wins": [
+          6,
+          8,
+          9,
+          10,
+          11,
+          66,
+          88,
+          100,
+          122,
+          127
+        ],
+        "losses": [
+          1,
+          7,
+          20,
+          21,
+          30,
+          33,
+          44,
+          48,
+          62,
+          81,
+          90,
+          102,
+          113
+        ],
+        "shared_arrival_delta_s": 0.07785891857142854
+      },
+      "2": {
+        "composed_parent": {
+          "success": 91,
+          "collision": 37,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 75,
+          "collision": 53,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 98,
+          "collision": 30,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 88,
+          "collision": 40,
+          "timeout": 0
+        },
+        "wins": [
+          7,
+          11,
+          26,
+          50,
+          56,
+          58,
+          78,
+          113
+        ],
+        "losses": [
+          10,
+          19,
+          29,
+          31,
+          38,
+          39,
+          45,
+          47,
+          55,
+          66,
+          71,
+          88,
+          98,
+          99,
+          107,
+          118,
+          119,
+          122
+        ],
+        "shared_arrival_delta_s": -0.006875148125000119
+      }
+    },
+    "fresh-course-reflected-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 99,
+          "collision": 29,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 77,
+          "collision": 51,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 105,
+          "collision": 23,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 100,
+          "collision": 28,
+          "timeout": 0
+        },
+        "wins": [
+          45,
+          69,
+          79
+        ],
+        "losses": [
+          10,
+          57,
+          66,
+          87,
+          95,
+          99,
+          106,
+          119
+        ],
+        "shared_arrival_delta_s": -0.08917729742268046
+      },
+      "2": {
+        "composed_parent": {
+          "success": 106,
+          "collision": 22,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 94,
+          "collision": 34,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 111,
+          "collision": 17,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 110,
+          "collision": 18,
+          "timeout": 0
+        },
+        "wins": [
+          14,
+          57,
+          69,
+          92,
+          97,
+          117
+        ],
+        "losses": [
+          24,
+          40,
+          73,
+          86,
+          99,
+          107,
+          126
+        ],
+        "shared_arrival_delta_s": 0.00192311846153845
+      }
+    },
+    "fresh-long-hallway-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "wins": [],
+        "losses": [],
+        "shared_arrival_delta_s": -0.05586065148437497
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "wins": [],
+        "losses": [],
+        "shared_arrival_delta_s": -0.01406281929687496
+      }
+    },
+    "fresh-long-open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 119,
+          "collision": 0,
+          "timeout": 9
+        },
+        "wins": [],
+        "losses": [
+          18,
+          34,
+          35,
+          52,
+          74,
+          81,
+          112,
+          118,
+          127
+        ],
+        "shared_arrival_delta_s": 0.9739718696638656
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 114,
+          "collision": 0,
+          "timeout": 14
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 123,
+          "collision": 0,
+          "timeout": 5
+        },
+        "wins": [],
+        "losses": [
+          52,
+          81,
+          112,
+          118,
+          127
+        ],
+        "shared_arrival_delta_s": 2.078096344715447
+      }
+    },
+    "fresh-open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 124,
+          "collision": 0,
+          "timeout": 4
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 122,
+          "collision": 0,
+          "timeout": 6
+        },
+        "masked_treatment": {
+          "success": 120,
+          "collision": 0,
+          "timeout": 8
+        },
+        "wins": [
+          61,
+          63
+        ],
+        "losses": [
+          15,
+          50,
+          97,
+          111
+        ],
+        "shared_arrival_delta_s": 0.5656905195762713
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 118,
+          "collision": 0,
+          "timeout": 10
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 125,
+          "collision": 0,
+          "timeout": 3
+        },
+        "wins": [],
+        "losses": [
+          20,
+          27,
+          49
+        ],
+        "shared_arrival_delta_s": 1.08601977024
+      }
+    },
+    "fresh-static-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 107,
+          "collision": 16,
+          "timeout": 5
+        },
+        "unmasked_control": {
+          "success": 112,
+          "collision": 14,
+          "timeout": 2
+        },
+        "unmasked_treatment": {
+          "success": 105,
+          "collision": 17,
+          "timeout": 6
+        },
+        "masked_treatment": {
+          "success": 108,
+          "collision": 14,
+          "timeout": 6
+        },
+        "wins": [
+          11,
+          45,
+          48,
+          56,
+          83,
+          90,
+          102,
+          107
+        ],
+        "losses": [
+          30,
+          38,
+          46,
+          95,
+          104
+        ],
+        "shared_arrival_delta_s": 0.04900252779999991
+      },
+      "2": {
+        "composed_parent": {
+          "success": 105,
+          "collision": 19,
+          "timeout": 4
+        },
+        "unmasked_control": {
+          "success": 95,
+          "collision": 22,
+          "timeout": 11
+        },
+        "unmasked_treatment": {
+          "success": 109,
+          "collision": 15,
+          "timeout": 4
+        },
+        "masked_treatment": {
+          "success": 97,
+          "collision": 26,
+          "timeout": 5
+        },
+        "wins": [
+          101,
+          127
+        ],
+        "losses": [
+          11,
+          18,
+          19,
+          31,
+          35,
+          49,
+          54,
+          55,
+          59,
+          67,
+          95,
+          102,
+          103,
+          104
+        ],
+        "shared_arrival_delta_s": 0.6994873396842105
+      }
+    },
+    "long-hallway-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "wins": [],
+        "losses": [],
+        "shared_arrival_delta_s": -0.06562649796874993
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "wins": [],
+        "losses": [],
+        "shared_arrival_delta_s": -0.00859394648437499
+      }
+    },
+    "long-open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 113,
+          "collision": 0,
+          "timeout": 15
+        },
+        "wins": [],
+        "losses": [
+          5,
+          12,
+          25,
+          33,
+          34,
+          40,
+          51,
+          57,
+          70,
+          79,
+          95,
+          98,
+          101,
+          113,
+          127
+        ],
+        "shared_arrival_delta_s": 1.087193022123894
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 106,
+          "collision": 0,
+          "timeout": 22
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 119,
+          "collision": 0,
+          "timeout": 9
+        },
+        "wins": [],
+        "losses": [
+          5,
+          12,
+          31,
+          34,
+          40,
+          70,
+          98,
+          101,
+          127
+        ],
+        "shared_arrival_delta_s": 2.0458451443697476
+      }
+    },
+    "open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 122,
+          "collision": 0,
+          "timeout": 6
+        },
+        "unmasked_control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_treatment": {
+          "success": 121,
+          "collision": 0,
+          "timeout": 7
+        },
+        "masked_treatment": {
+          "success": 112,
+          "collision": 0,
+          "timeout": 16
+        },
+        "wins": [],
+        "losses": [
+          1,
+          2,
+          17,
+          18,
+          19,
+          22,
+          33,
+          92,
+          98
+        ],
+        "shared_arrival_delta_s": 0.5951021909821429
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "unmasked_control": {
+          "success": 112,
+          "collision": 0,
+          "timeout": 16
+        },
+        "unmasked_treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "masked_treatment": {
+          "success": 126,
+          "collision": 0,
+          "timeout": 2
+        },
+        "wins": [],
+        "losses": [
+          86,
+          92
+        ],
+        "shared_arrival_delta_s": 0.8063646714285714
+      }
+    }
+  },
+  "gates": [
+    {
+      "gate": "clutter-nominal retention vs parent",
+      "pass": false,
+      "delta": -5
+    },
+    {
+      "gate": "clutter-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -8
+    },
+    {
+      "gate": "clutter-nominal collision vs parent",
+      "pass": false,
+      "delta": 4
+    },
+    {
+      "gate": "clutter-nominal timeout vs parent",
+      "pass": true,
+      "delta": 1
+    },
+    {
+      "gate": "clutter-nominal shared arrival",
+      "pass": true,
+      "delta_s": 0.3290389511520737
+    },
+    {
+      "gate": "composite-both-delay collision vs parent",
+      "pass": true,
+      "delta": 3
+    },
+    {
+      "gate": "composite-both-delay timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "composite-both-delay shared arrival",
+      "pass": true,
+      "delta_s": 0.013194755138888873
+    },
+    {
+      "gate": "composite-combined collision vs parent",
+      "pass": false,
+      "delta": 6
+    },
+    {
+      "gate": "composite-combined timeout vs parent",
+      "pass": true,
+      "delta": -1
+    },
+    {
+      "gate": "composite-combined shared arrival",
+      "pass": true,
+      "delta_s": 0.10666909890476187
+    },
+    {
+      "gate": "composite-command-delay collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "composite-command-delay timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "composite-command-delay shared arrival",
+      "pass": true,
+      "delta_s": -0.08174099517391298
+    },
+    {
+      "gate": "course absolute floor",
+      "pass": true,
+      "actual": 246
+    },
+    {
+      "gate": "course retention",
+      "pass": true,
+      "delta": 1
+    },
+    {
+      "gate": "composite-nominal collision vs parent",
+      "pass": true,
+      "delta": -2
+    },
+    {
+      "gate": "composite-nominal timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "composite-nominal shared arrival",
+      "pass": true,
+      "delta_s": -0.07500171433333341
+    },
+    {
+      "gate": "composite-sensor-delay collision vs parent",
+      "pass": false,
+      "delta": 8
+    },
+    {
+      "gate": "composite-sensor-delay timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "composite-sensor-delay shared arrival",
+      "pass": true,
+      "delta_s": -0.0039916845378151
+    },
+    {
+      "gate": "dev-a-nominal retention vs parent",
+      "pass": true,
+      "delta": -3
+    },
+    {
+      "gate": "dev-a-nominal retention vs unmasked",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "dev-a-nominal collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "dev-a-nominal timeout vs parent",
+      "pass": true,
+      "delta": 3
+    },
+    {
+      "gate": "dev-a-nominal shared arrival",
+      "pass": true,
+      "delta_s": 0.31918149126213585
+    },
+    {
+      "gate": "dev-b-nominal retention vs parent",
+      "pass": false,
+      "delta": -7
+    },
+    {
+      "gate": "dev-b-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -11
+    },
+    {
+      "gate": "dev-b-nominal collision vs parent",
+      "pass": true,
+      "delta": 2
+    },
+    {
+      "gate": "dev-b-nominal timeout vs parent",
+      "pass": false,
+      "delta": 5
+    },
+    {
+      "gate": "dev-b-nominal shared arrival",
+      "pass": true,
+      "delta_s": 0.3644939919158879
+    },
+    {
+      "gate": "static C recovery",
+      "pass": true,
+      "actual": 219
+    },
+    {
+      "gate": "dev-c-nominal retention vs parent",
+      "pass": true,
+      "delta": -3
+    },
+    {
+      "gate": "dev-c-nominal retention vs unmasked",
+      "pass": true,
+      "delta": 2
+    },
+    {
+      "gate": "dev-c-nominal collision vs parent",
+      "pass": false,
+      "delta": 4
+    },
+    {
+      "gate": "dev-c-nominal timeout vs parent",
+      "pass": true,
+      "delta": -1
+    },
+    {
+      "gate": "dev-c-nominal shared arrival",
+      "pass": true,
+      "delta_s": 0.21435849028708137
+    },
+    {
+      "gate": "fresh-clutter-nominal retention vs parent",
+      "pass": true,
+      "delta": -1
+    },
+    {
+      "gate": "fresh-clutter-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -6
+    },
+    {
+      "gate": "fresh-clutter-nominal collision vs parent",
+      "pass": true,
+      "delta": -4
+    },
+    {
+      "gate": "fresh-clutter-nominal timeout vs parent",
+      "pass": false,
+      "delta": 5
+    },
+    {
+      "gate": "fresh-clutter-nominal shared arrival",
+      "pass": true,
+      "delta_s": 0.3571850245933015
+    },
+    {
+      "gate": "fresh-course-both-delay collision vs parent",
+      "pass": true,
+      "delta": -5
+    },
+    {
+      "gate": "fresh-course-both-delay timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-course-both-delay shared arrival",
+      "pass": true,
+      "delta_s": -0.1490083736318408
+    },
+    {
+      "gate": "fresh-course-combined collision vs parent",
+      "pass": true,
+      "delta": -1
+    },
+    {
+      "gate": "fresh-course-combined timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-course-combined shared arrival",
+      "pass": true,
+      "delta_s": 0.01742466095959588
+    },
+    {
+      "gate": "fresh-course-nominal collision vs parent",
+      "pass": false,
+      "delta": 6
+    },
+    {
+      "gate": "fresh-course-nominal timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-course-nominal shared arrival",
+      "pass": true,
+      "delta_s": -0.06561331396624469
+    },
+    {
+      "gate": "fresh-course-reflected-both-delay collision vs parent",
+      "pass": true,
+      "delta": 1
+    },
+    {
+      "gate": "fresh-course-reflected-both-delay timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-course-reflected-both-delay shared arrival",
+      "pass": true,
+      "delta_s": 0.022785340949367055
+    },
+    {
+      "gate": "fresh-course-reflected-combined collision vs parent",
+      "pass": true,
+      "delta": 2
+    },
+    {
+      "gate": "fresh-course-reflected-combined timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-course-reflected-combined stress retention",
+      "pass": false,
+      "delta": -13
+    },
+    {
+      "gate": "fresh-course-reflected-combined shared arrival",
+      "pass": true,
+      "delta_s": 0.032667416333333255
+    },
+    {
+      "gate": "fresh-course-reflected-nominal collision vs parent",
+      "pass": true,
+      "delta": -5
+    },
+    {
+      "gate": "fresh-course-reflected-nominal timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-course-reflected-nominal shared arrival",
+      "pass": true,
+      "delta_s": -0.0420407638308458
+    },
+    {
+      "gate": "fresh-long-hallway-nominal retention vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal retention vs unmasked",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal absolute floor",
+      "pass": true,
+      "actual": 256
+    },
+    {
+      "gate": "fresh-long-hallway-nominal shared arrival",
+      "pass": true,
+      "delta_s": -0.034961735390624964
+    },
+    {
+      "gate": "fresh-long-open-nominal retention vs parent",
+      "pass": false,
+      "delta": -14
+    },
+    {
+      "gate": "fresh-long-open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -14
+    },
+    {
+      "gate": "fresh-long-open-nominal collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-long-open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 14
+    },
+    {
+      "gate": "fresh-long-open-nominal absolute floor",
+      "pass": false,
+      "actual": 242
+    },
+    {
+      "gate": "fresh-long-open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 1.5351591028512397
+    },
+    {
+      "gate": "fresh-open-nominal primary arrival floor",
+      "pass": false,
+      "actual": 245,
+      "required": 253
+    },
+    {
+      "gate": "fresh-open-nominal retention vs parent",
+      "pass": false,
+      "delta": -7
+    },
+    {
+      "gate": "fresh-open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -5
+    },
+    {
+      "gate": "fresh-open-nominal collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "fresh-open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 7
+    },
+    {
+      "gate": "fresh-open-nominal absolute floor",
+      "pass": false,
+      "actual": 245
+    },
+    {
+      "gate": "fresh-open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 0.8333495991358024
+    },
+    {
+      "gate": "fresh-static-nominal retention vs parent",
+      "pass": false,
+      "delta": -7
+    },
+    {
+      "gate": "fresh-static-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -9
+    },
+    {
+      "gate": "fresh-static-nominal collision vs parent",
+      "pass": false,
+      "delta": 5
+    },
+    {
+      "gate": "fresh-static-nominal timeout vs parent",
+      "pass": true,
+      "delta": 2
+    },
+    {
+      "gate": "fresh-static-nominal shared arrival",
+      "pass": true,
+      "delta_s": 0.36590538487179486
+    },
+    {
+      "gate": "long-hallway-nominal retention vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal retention vs unmasked",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal timeout vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal absolute floor",
+      "pass": true,
+      "actual": 256
+    },
+    {
+      "gate": "long-hallway-nominal shared arrival",
+      "pass": true,
+      "delta_s": -0.03711022222656246
+    },
+    {
+      "gate": "long-open-nominal retention vs parent",
+      "pass": false,
+      "delta": -24
+    },
+    {
+      "gate": "long-open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -24
+    },
+    {
+      "gate": "long-open-nominal collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "long-open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 24
+    },
+    {
+      "gate": "long-open-nominal absolute floor",
+      "pass": false,
+      "actual": 232
+    },
+    {
+      "gate": "long-open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 1.5789154468965518
+    },
+    {
+      "gate": "open-nominal primary arrival floor",
+      "pass": false,
+      "actual": 238,
+      "required": 253
+    },
+    {
+      "gate": "open-nominal retention vs parent",
+      "pass": false,
+      "delta": -12
+    },
+    {
+      "gate": "open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -11
+    },
+    {
+      "gate": "open-nominal collision vs parent",
+      "pass": true,
+      "delta": 0
+    },
+    {
+      "gate": "open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 12
+    },
+    {
+      "gate": "open-nominal absolute floor",
+      "pass": false,
+      "actual": 238
+    },
+    {
+      "gate": "open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 0.7069470335714286
+    }
+  ],
+  "failed_gates": [
+    {
+      "gate": "clutter-nominal retention vs parent",
+      "pass": false,
+      "delta": -5
+    },
+    {
+      "gate": "clutter-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -8
+    },
+    {
+      "gate": "clutter-nominal collision vs parent",
+      "pass": false,
+      "delta": 4
+    },
+    {
+      "gate": "composite-combined collision vs parent",
+      "pass": false,
+      "delta": 6
+    },
+    {
+      "gate": "composite-sensor-delay collision vs parent",
+      "pass": false,
+      "delta": 8
+    },
+    {
+      "gate": "dev-b-nominal retention vs parent",
+      "pass": false,
+      "delta": -7
+    },
+    {
+      "gate": "dev-b-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -11
+    },
+    {
+      "gate": "dev-b-nominal timeout vs parent",
+      "pass": false,
+      "delta": 5
+    },
+    {
+      "gate": "dev-c-nominal collision vs parent",
+      "pass": false,
+      "delta": 4
+    },
+    {
+      "gate": "fresh-clutter-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -6
+    },
+    {
+      "gate": "fresh-clutter-nominal timeout vs parent",
+      "pass": false,
+      "delta": 5
+    },
+    {
+      "gate": "fresh-course-nominal collision vs parent",
+      "pass": false,
+      "delta": 6
+    },
+    {
+      "gate": "fresh-course-reflected-combined stress retention",
+      "pass": false,
+      "delta": -13
+    },
+    {
+      "gate": "fresh-long-open-nominal retention vs parent",
+      "pass": false,
+      "delta": -14
+    },
+    {
+      "gate": "fresh-long-open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -14
+    },
+    {
+      "gate": "fresh-long-open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 14
+    },
+    {
+      "gate": "fresh-long-open-nominal absolute floor",
+      "pass": false,
+      "actual": 242
+    },
+    {
+      "gate": "fresh-long-open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 1.5351591028512397
+    },
+    {
+      "gate": "fresh-open-nominal primary arrival floor",
+      "pass": false,
+      "actual": 245,
+      "required": 253
+    },
+    {
+      "gate": "fresh-open-nominal retention vs parent",
+      "pass": false,
+      "delta": -7
+    },
+    {
+      "gate": "fresh-open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -5
+    },
+    {
+      "gate": "fresh-open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 7
+    },
+    {
+      "gate": "fresh-open-nominal absolute floor",
+      "pass": false,
+      "actual": 245
+    },
+    {
+      "gate": "fresh-open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 0.8333495991358024
+    },
+    {
+      "gate": "fresh-static-nominal retention vs parent",
+      "pass": false,
+      "delta": -7
+    },
+    {
+      "gate": "fresh-static-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -9
+    },
+    {
+      "gate": "fresh-static-nominal collision vs parent",
+      "pass": false,
+      "delta": 5
+    },
+    {
+      "gate": "long-open-nominal retention vs parent",
+      "pass": false,
+      "delta": -24
+    },
+    {
+      "gate": "long-open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -24
+    },
+    {
+      "gate": "long-open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 24
+    },
+    {
+      "gate": "long-open-nominal absolute floor",
+      "pass": false,
+      "actual": 232
+    },
+    {
+      "gate": "long-open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 1.5789154468965518
+    },
+    {
+      "gate": "open-nominal primary arrival floor",
+      "pass": false,
+      "actual": 238,
+      "required": 253
+    },
+    {
+      "gate": "open-nominal retention vs parent",
+      "pass": false,
+      "delta": -12
+    },
+    {
+      "gate": "open-nominal retention vs unmasked",
+      "pass": false,
+      "delta": -11
+    },
+    {
+      "gate": "open-nominal timeout vs parent",
+      "pass": false,
+      "delta": 12
+    },
+    {
+      "gate": "open-nominal absolute floor",
+      "pass": false,
+      "actual": 238
+    },
+    {
+      "gate": "open-nominal shared arrival",
+      "pass": false,
+      "delta_s": 0.7069470335714286
+    }
+  ],
+  "new_training_transitions": 8388608,
+  "new_evaluation_panels": 46,
+  "reused_evaluation_panels": 138,
+  "verdict": "NOT_ADOPTED",
+  "verified_archive_inputs": 666
+}

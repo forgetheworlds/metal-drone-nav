@@ -782,3 +782,9 @@ Shared long arrivals slow1.58s. No promotion, radius sweep or full extension.
 [Result](ARRIVAL_RETENTION_RESULTS.md) retains the original hypothesis/failure
 and narrows the earlier counterfactual-command diagnosis. Critic audit is still
 working with actual on-policy data; its findings must be reviewed before a fix.
+
+The rejected arrival-release attempt now has a666-input archive with final
+checkpoints, all retained/new comparison flights, source and actual gates.
+Archive-only grading is identical to live review, including every failed check.
+The figure and standalone replay are published with the negative outcome; no
+failure was removed to present a stronger policy.
