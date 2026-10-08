@@ -733,3 +733,9 @@ Root persistent validation now finishes default 100-rollout parity. A separate
 root pilot parent verifies those real receipts before accepting four matched
 256-rollout arms and 138 evaluation panels. No new loss outcome is claimed yet.
 [Experiment](PHYSICAL_RETENTION_EXPERIMENT.md) records the intervention and gates.
+
+Root validation subsequently completed both full 100-rollout byte comparisons.
+The persistent pilot parent accepted the actual calibration and immutable files,
+then launched seed 1 control. PID 14287 has real rollout history past 75; the
+other three arms and 138 panels follow serially. No navigation improvement from
+the loss is claimed before the complete paired comparison.

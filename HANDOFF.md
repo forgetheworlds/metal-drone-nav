@@ -33,13 +33,13 @@ error is 3.6e-7. Enabled six versus three-plus-three FULL resume is exact on bot
 seeds. Nine bad sidecar cases reject without writes; coefficient-zero resume passes.
 
 Actual validation parent: root exec 34579, PID 8867,
-results/omp-functional-retention/root-validation.py. It is finishing default
-100-rollout full-checkpoint parity. Do not mutate frozen loss code or binaries.
-Actual pilot waiter: root exec 70872, PID 11092, root-pilot.py. It checks every
-actual gate, calibration and immutable input before accepting the request, then
-runs C/T on two seeds, 256 rollouts / 4.19M transitions each, plus 138 evaluation
-panels. Inspect jobs, logs and headers; never duplicate or restart on a timeout.
-No pilot was running when this handoff was written. Parent and learner grading
+results/omp-functional-retention/root-validation.py is COMPLETE. Both 100-rollout
+FULL checkpoints match the reference exactly. Do not mutate loss code or binaries.
+Actual root pilot: exec 70872, parent PID 11092, root-pilot.py accepted the actual
+calibrated request after all gates. Seed 1 control child PID 14287 is training;
+actual history passed rollout 75. C/T on two seeds total 16.78M transitions and
+138 evaluation panels. Inspect jobs/logs/headers before action. Never duplicate
+or restart on an observation timeout. Parent and learner grading
 include broad retention and stress; no target simulator training or sealed FINAL.
 
 All GPU jobs use the absolute root metal-training.lock with persistent parents.

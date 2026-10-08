@@ -33,9 +33,10 @@ PPO rollout. PPO gradient norm is 7.1121 and unit retention-gradient norm is
 0.4300. The registered quarter-norm rule gives coefficient 4.134632354 for both
 seeds. No development outcomes chose that value. Later gradient ratios can differ.
 
-The root parent completes full 100-rollout default parity before releasing the
-pilot. The pilot then runs control and treatment on two seeds, 4.19 million
-transitions each, and evaluates the parents and learners on 138 source panels.
+Full 100-rollout default checkpoint parity now passes on both seeds. The root
+parent accepted the calibrated, hash-bound request and started the actual pilot:
+control and treatment on two seeds, 4.19 million transitions each. It then
+evaluates the parents and learners on 138 source panels.
 Course success, contact counts, static/open/long retention, stress and shared
 arrival time decide whether to keep it. There is no selected-best substitution.
 
