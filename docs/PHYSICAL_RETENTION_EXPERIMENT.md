@@ -40,6 +40,9 @@ evaluates the parents and learners on 138 source panels.
 Course success, contact counts, static/open/long retention, stress and shared
 arrival time decide whether to keep it. There is no selected-best substitution.
 
+The pilot and grading are now complete. See [results](PHYSICAL_RETENTION_RESULTS.md)
+for the measured gains, all five failed gates and retained evidence.
+
 Current commands, immutable source hashes, processes and raw gates are in
-`results/omp-functional-retention/`. This is an implementation and controlled
-experiment; a navigation improvement from the new loss has not yet been measured.
+`results/omp-functional-retention/`. The result improves retention and some source capability but does not
+complete the original navigation goal.

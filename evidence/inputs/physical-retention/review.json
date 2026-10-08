@@ -1,0 +1,3001 @@
+{
+  "scope": "Exposed source development panels, endpoint policies, same composed warmstart. No independent transfer or FINAL.",
+  "budgets": {
+    "control-s1": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 485.14939279062673
+    },
+    "treatment-s1": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 587.2855899161659
+    },
+    "control-s2": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 475.7671064999886
+    },
+    "treatment-s2": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 579.9048319999129
+    }
+  },
+  "panels": {
+    "clutter-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 224,
+        "collision": 15,
+        "timeout": 17
+      },
+      "control": {
+        "success": 218,
+        "collision": 18,
+        "timeout": 20
+      },
+      "treatment": {
+        "success": 227,
+        "collision": 19,
+        "timeout": 10
+      },
+      "shared_parent_arrival_delta_s": -0.04520560484018264,
+      "shared_parent_successes": 219
+    },
+    "composite-both-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 233,
+        "collision": 23,
+        "timeout": 0
+      },
+      "control": {
+        "success": 185,
+        "collision": 71,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 236,
+        "collision": 20,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.15848577294642854,
+      "shared_parent_successes": 224
+    },
+    "composite-combined": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 227,
+        "collision": 28,
+        "timeout": 1
+      },
+      "control": {
+        "success": 195,
+        "collision": 59,
+        "timeout": 2
+      },
+      "treatment": {
+        "success": 228,
+        "collision": 28,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.20741214060185179,
+      "shared_parent_successes": 216
+    },
+    "composite-command-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 238,
+        "collision": 18,
+        "timeout": 0
+      },
+      "control": {
+        "success": 197,
+        "collision": 59,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 240,
+        "collision": 16,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.12436182726495733,
+      "shared_parent_successes": 234
+    },
+    "composite-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 244,
+        "collision": 12,
+        "timeout": 0
+      },
+      "control": {
+        "success": 204,
+        "collision": 49,
+        "timeout": 3
+      },
+      "treatment": {
+        "success": 245,
+        "collision": 11,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.01820124355648532,
+      "shared_parent_successes": 239
+    },
+    "composite-sensor-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 250,
+        "collision": 6,
+        "timeout": 0
+      },
+      "control": {
+        "success": 201,
+        "collision": 55,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 247,
+        "collision": 9,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.07285879877551023,
+      "shared_parent_successes": 245
+    },
+    "dev-a-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 220,
+        "collision": 24,
+        "timeout": 12
+      },
+      "control": {
+        "success": 207,
+        "collision": 33,
+        "timeout": 16
+      },
+      "treatment": {
+        "success": 217,
+        "collision": 28,
+        "timeout": 11
+      },
+      "shared_parent_arrival_delta_s": -0.09455159227488151,
+      "shared_parent_successes": 211
+    },
+    "dev-b-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 228,
+        "collision": 17,
+        "timeout": 11
+      },
+      "control": {
+        "success": 219,
+        "collision": 24,
+        "timeout": 13
+      },
+      "treatment": {
+        "success": 232,
+        "collision": 16,
+        "timeout": 8
+      },
+      "shared_parent_arrival_delta_s": -0.2549819778280543,
+      "shared_parent_successes": 221
+    },
+    "dev-c-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 222,
+        "collision": 26,
+        "timeout": 8
+      },
+      "control": {
+        "success": 206,
+        "collision": 36,
+        "timeout": 14
+      },
+      "treatment": {
+        "success": 217,
+        "collision": 28,
+        "timeout": 11
+      },
+      "shared_parent_arrival_delta_s": -0.0014356995215311602,
+      "shared_parent_successes": 209
+    },
+    "fresh-clutter-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 217,
+        "collision": 34,
+        "timeout": 5
+      },
+      "control": {
+        "success": 206,
+        "collision": 41,
+        "timeout": 9
+      },
+      "treatment": {
+        "success": 222,
+        "collision": 27,
+        "timeout": 7
+      },
+      "shared_parent_arrival_delta_s": -0.27277543,
+      "shared_parent_successes": 213
+    },
+    "fresh-course-both-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 212,
+        "collision": 44,
+        "timeout": 0
+      },
+      "control": {
+        "success": 188,
+        "collision": 68,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 221,
+        "collision": 35,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.09951446921951218,
+      "shared_parent_successes": 205
+    },
+    "fresh-course-combined": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 209,
+        "collision": 47,
+        "timeout": 0
+      },
+      "control": {
+        "success": 187,
+        "collision": 69,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 215,
+        "collision": 41,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.13084877383084578,
+      "shared_parent_successes": 201
+    },
+    "fresh-course-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 246,
+        "collision": 10,
+        "timeout": 0
+      },
+      "control": {
+        "success": 216,
+        "collision": 40,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 246,
+        "collision": 10,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.07718018298755192,
+      "shared_parent_successes": 241
+    },
+    "fresh-course-reflected-both-delay": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 172,
+        "collision": 84,
+        "timeout": 0
+      },
+      "control": {
+        "success": 149,
+        "collision": 107,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 185,
+        "collision": 71,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": 0.037889065962733025,
+      "shared_parent_successes": 161
+    },
+    "fresh-course-reflected-combined": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 170,
+        "collision": 86,
+        "timeout": 0
+      },
+      "control": {
+        "success": 147,
+        "collision": 109,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 181,
+        "collision": 75,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": 0.03848771750000009,
+      "shared_parent_successes": 152
+    },
+    "fresh-course-reflected-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 205,
+        "collision": 51,
+        "timeout": 0
+      },
+      "control": {
+        "success": 171,
+        "collision": 85,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 216,
+        "collision": 40,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": 0.02786134049751241,
+      "shared_parent_successes": 201
+    },
+    "fresh-long-hallway-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "control": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": 0.02109423078125002,
+      "shared_parent_successes": 256
+    },
+    "fresh-long-open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "control": {
+        "success": 242,
+        "collision": 0,
+        "timeout": 14
+      },
+      "treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.553137656796875,
+      "shared_parent_successes": 256
+    },
+    "fresh-open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 252,
+        "collision": 0,
+        "timeout": 4
+      },
+      "control": {
+        "success": 246,
+        "collision": 0,
+        "timeout": 10
+      },
+      "treatment": {
+        "success": 250,
+        "collision": 0,
+        "timeout": 6
+      },
+      "shared_parent_arrival_delta_s": -0.09520070932000001,
+      "shared_parent_successes": 250
+    },
+    "fresh-static-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 212,
+        "collision": 35,
+        "timeout": 9
+      },
+      "control": {
+        "success": 207,
+        "collision": 36,
+        "timeout": 13
+      },
+      "treatment": {
+        "success": 214,
+        "collision": 32,
+        "timeout": 10
+      },
+      "shared_parent_arrival_delta_s": -0.202442556,
+      "shared_parent_successes": 205
+    },
+    "long-hallway-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "control": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": 0.034375786132812516,
+      "shared_parent_successes": 256
+    },
+    "long-open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "control": {
+        "success": 234,
+        "collision": 0,
+        "timeout": 22
+      },
+      "treatment": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "shared_parent_arrival_delta_s": -0.4406350812109375,
+      "shared_parent_successes": 256
+    },
+    "open-nominal": {
+      "tasks": 256,
+      "composed_parent": {
+        "success": 250,
+        "collision": 0,
+        "timeout": 6
+      },
+      "control": {
+        "success": 240,
+        "collision": 0,
+        "timeout": 16
+      },
+      "treatment": {
+        "success": 249,
+        "collision": 0,
+        "timeout": 7
+      },
+      "shared_parent_arrival_delta_s": -0.23340477283400815,
+      "shared_parent_successes": 247
+    }
+  },
+  "per_seed": {
+    "clutter-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 113,
+          "collision": 6,
+          "timeout": 9
+        },
+        "control": {
+          "success": 114,
+          "collision": 9,
+          "timeout": 5
+        },
+        "treatment": {
+          "success": 113,
+          "collision": 8,
+          "timeout": 7
+        },
+        "shared_parent_arrival_delta_s": 0.2590153372072072,
+        "wins_vs_control": [
+          11,
+          35,
+          64,
+          111
+        ],
+        "losses_vs_control": [
+          41,
+          50,
+          51,
+          55,
+          83
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 111,
+          "collision": 9,
+          "timeout": 8
+        },
+        "control": {
+          "success": 104,
+          "collision": 9,
+          "timeout": 15
+        },
+        "treatment": {
+          "success": 114,
+          "collision": 11,
+          "timeout": 3
+        },
+        "shared_parent_arrival_delta_s": -0.3578771286111111,
+        "wins_vs_control": [
+          8,
+          38,
+          41,
+          42,
+          55,
+          83,
+          91,
+          92,
+          97,
+          107,
+          108,
+          119,
+          125
+        ],
+        "losses_vs_control": [
+          22,
+          63,
+          82
+        ]
+      }
+    },
+    "composite-both-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 115,
+          "collision": 13,
+          "timeout": 0
+        },
+        "control": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.30451146954954944,
+        "wins_vs_control": [
+          6,
+          11,
+          14,
+          35,
+          41,
+          42,
+          45,
+          50,
+          57,
+          69,
+          80,
+          90,
+          105,
+          117,
+          119
+        ],
+        "losses_vs_control": [
+          15,
+          54,
+          59,
+          70
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "control": {
+          "success": 78,
+          "collision": 50,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.015044601946902658,
+        "wins_vs_control": [
+          0,
+          1,
+          5,
+          6,
+          9,
+          10,
+          11,
+          12,
+          16,
+          18,
+          20,
+          21,
+          23,
+          29,
+          31,
+          34,
+          36,
+          37,
+          39,
+          42,
+          44,
+          48,
+          53,
+          57,
+          59,
+          65,
+          71,
+          73,
+          84,
+          87,
+          91,
+          92,
+          99,
+          100,
+          103,
+          108,
+          109,
+          110,
+          119,
+          122,
+          123,
+          125,
+          126
+        ],
+        "losses_vs_control": [
+          74,
+          80,
+          81
+        ]
+      }
+    },
+    "composite-combined": {
+      "1": {
+        "composed_parent": {
+          "success": 110,
+          "collision": 18,
+          "timeout": 0
+        },
+        "control": {
+          "success": 104,
+          "collision": 23,
+          "timeout": 1
+        },
+        "treatment": {
+          "success": 114,
+          "collision": 14,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.3523444896261681,
+        "wins_vs_control": [
+          2,
+          27,
+          41,
+          42,
+          50,
+          56,
+          57,
+          74,
+          75,
+          90,
+          99,
+          105,
+          117
+        ],
+        "losses_vs_control": [
+          4,
+          10,
+          59
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 117,
+          "collision": 10,
+          "timeout": 1
+        },
+        "control": {
+          "success": 91,
+          "collision": 36,
+          "timeout": 1
+        },
+        "treatment": {
+          "success": 114,
+          "collision": 14,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.06513910073394491,
+        "wins_vs_control": [
+          6,
+          9,
+          12,
+          21,
+          25,
+          26,
+          30,
+          39,
+          42,
+          44,
+          45,
+          48,
+          53,
+          71,
+          72,
+          78,
+          83,
+          87,
+          89,
+          95,
+          101,
+          102,
+          105,
+          107,
+          110,
+          119,
+          122,
+          123
+        ],
+        "losses_vs_control": [
+          2,
+          11,
+          58,
+          80,
+          117
+        ]
+      }
+    },
+    "composite-command-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 117,
+          "collision": 11,
+          "timeout": 0
+        },
+        "control": {
+          "success": 105,
+          "collision": 23,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 118,
+          "collision": 10,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.27931672672413793,
+        "wins_vs_control": [
+          15,
+          21,
+          38,
+          42,
+          50,
+          54,
+          56,
+          69,
+          74,
+          80,
+          83,
+          99,
+          104,
+          105,
+          119
+        ],
+        "losses_vs_control": [
+          6,
+          117
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 121,
+          "collision": 7,
+          "timeout": 0
+        },
+        "control": {
+          "success": 92,
+          "collision": 36,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.027966717966101583,
+        "wins_vs_control": [
+          0,
+          2,
+          6,
+          10,
+          11,
+          12,
+          20,
+          21,
+          24,
+          31,
+          39,
+          42,
+          44,
+          53,
+          57,
+          66,
+          71,
+          72,
+          77,
+          78,
+          83,
+          84,
+          87,
+          92,
+          95,
+          108,
+          110,
+          113,
+          117,
+          119,
+          122,
+          123,
+          125
+        ],
+        "losses_vs_control": [
+          23,
+          59,
+          81
+        ]
+      }
+    },
+    "composite-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 119,
+          "collision": 9,
+          "timeout": 0
+        },
+        "control": {
+          "success": 111,
+          "collision": 16,
+          "timeout": 1
+        },
+        "treatment": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.01652578440677964,
+        "wins_vs_control": [
+          6,
+          11,
+          23,
+          30,
+          35,
+          41,
+          42,
+          54,
+          57,
+          90,
+          104,
+          116,
+          119,
+          126
+        ],
+        "losses_vs_control": [
+          9,
+          68,
+          107
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 125,
+          "collision": 3,
+          "timeout": 0
+        },
+        "control": {
+          "success": 93,
+          "collision": 33,
+          "timeout": 2
+        },
+        "treatment": {
+          "success": 123,
+          "collision": 5,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.019835162396694167,
+        "wins_vs_control": [
+          0,
+          5,
+          9,
+          18,
+          20,
+          21,
+          23,
+          24,
+          29,
+          30,
+          35,
+          39,
+          41,
+          42,
+          44,
+          47,
+          53,
+          57,
+          66,
+          69,
+          72,
+          78,
+          83,
+          84,
+          92,
+          93,
+          99,
+          101,
+          108,
+          110,
+          118,
+          122,
+          125
+        ],
+        "losses_vs_control": [
+          45,
+          54,
+          95
+        ]
+      }
+    },
+    "composite-sensor-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 125,
+          "collision": 3,
+          "timeout": 0
+        },
+        "control": {
+          "success": 108,
+          "collision": 20,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.06693700080645162,
+        "wins_vs_control": [
+          6,
+          11,
+          21,
+          30,
+          32,
+          35,
+          42,
+          45,
+          50,
+          54,
+          56,
+          68,
+          78,
+          90,
+          95,
+          98,
+          117,
+          126
+        ],
+        "losses_vs_control": [
+          9,
+          81
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 125,
+          "collision": 3,
+          "timeout": 0
+        },
+        "control": {
+          "success": 93,
+          "collision": 35,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 123,
+          "collision": 5,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.07892741818181823,
+        "wins_vs_control": [
+          0,
+          2,
+          6,
+          11,
+          18,
+          20,
+          24,
+          29,
+          30,
+          33,
+          39,
+          42,
+          44,
+          45,
+          53,
+          57,
+          59,
+          66,
+          72,
+          89,
+          92,
+          93,
+          99,
+          101,
+          102,
+          110,
+          119,
+          122,
+          123,
+          124,
+          125,
+          126
+        ],
+        "losses_vs_control": [
+          23,
+          26
+        ]
+      }
+    },
+    "dev-a-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 108,
+          "collision": 11,
+          "timeout": 9
+        },
+        "control": {
+          "success": 109,
+          "collision": 15,
+          "timeout": 4
+        },
+        "treatment": {
+          "success": 105,
+          "collision": 16,
+          "timeout": 7
+        },
+        "shared_parent_arrival_delta_s": 0.14320757650485438,
+        "wins_vs_control": [
+          6,
+          18,
+          48,
+          115
+        ],
+        "losses_vs_control": [
+          0,
+          8,
+          33,
+          47,
+          59,
+          71,
+          96,
+          114
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 112,
+          "collision": 13,
+          "timeout": 3
+        },
+        "control": {
+          "success": 98,
+          "collision": 18,
+          "timeout": 12
+        },
+        "treatment": {
+          "success": 112,
+          "collision": 12,
+          "timeout": 4
+        },
+        "shared_parent_arrival_delta_s": -0.32130339212962966,
+        "wins_vs_control": [
+          0,
+          2,
+          7,
+          11,
+          35,
+          44,
+          55,
+          65,
+          67,
+          71,
+          77,
+          82,
+          83,
+          90,
+          92
+        ],
+        "losses_vs_control": [
+          46
+        ]
+      }
+    },
+    "dev-b-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 114,
+          "collision": 6,
+          "timeout": 8
+        },
+        "control": {
+          "success": 115,
+          "collision": 13,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 114,
+          "collision": 8,
+          "timeout": 6
+        },
+        "shared_parent_arrival_delta_s": -0.24449929779816515,
+        "wins_vs_control": [
+          8,
+          23,
+          31,
+          34,
+          43,
+          101,
+          115
+        ],
+        "losses_vs_control": [
+          20,
+          78,
+          98,
+          102,
+          107,
+          118,
+          119,
+          126
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 114,
+          "collision": 11,
+          "timeout": 3
+        },
+        "control": {
+          "success": 104,
+          "collision": 11,
+          "timeout": 13
+        },
+        "treatment": {
+          "success": 118,
+          "collision": 8,
+          "timeout": 2
+        },
+        "shared_parent_arrival_delta_s": -0.26518387178571434,
+        "wins_vs_control": [
+          11,
+          23,
+          34,
+          43,
+          47,
+          67,
+          68,
+          74,
+          78,
+          94,
+          95,
+          103,
+          107,
+          119,
+          126
+        ],
+        "losses_vs_control": [
+          118
+        ]
+      }
+    },
+    "dev-c-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 113,
+          "collision": 10,
+          "timeout": 5
+        },
+        "control": {
+          "success": 109,
+          "collision": 18,
+          "timeout": 1
+        },
+        "treatment": {
+          "success": 110,
+          "collision": 10,
+          "timeout": 8
+        },
+        "shared_parent_arrival_delta_s": 0.15143241361904755,
+        "wins_vs_control": [
+          6,
+          7,
+          22,
+          34,
+          71,
+          90,
+          94,
+          95,
+          106,
+          115,
+          127
+        ],
+        "losses_vs_control": [
+          14,
+          16,
+          23,
+          32,
+          36,
+          42,
+          82,
+          102,
+          107,
+          119
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 109,
+          "collision": 16,
+          "timeout": 3
+        },
+        "control": {
+          "success": 97,
+          "collision": 18,
+          "timeout": 13
+        },
+        "treatment": {
+          "success": 107,
+          "collision": 18,
+          "timeout": 3
+        },
+        "shared_parent_arrival_delta_s": -0.15577369836538468,
+        "wins_vs_control": [
+          30,
+          56,
+          59,
+          71,
+          77,
+          85,
+          89,
+          91,
+          103,
+          107,
+          116,
+          118,
+          119,
+          126,
+          127
+        ],
+        "losses_vs_control": [
+          55,
+          66,
+          83,
+          95,
+          114
+        ]
+      }
+    },
+    "fresh-clutter-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 108,
+          "collision": 16,
+          "timeout": 4
+        },
+        "control": {
+          "success": 110,
+          "collision": 16,
+          "timeout": 2
+        },
+        "treatment": {
+          "success": 110,
+          "collision": 13,
+          "timeout": 5
+        },
+        "shared_parent_arrival_delta_s": -0.299529811047619,
+        "wins_vs_control": [
+          28,
+          35,
+          36,
+          50,
+          52,
+          54,
+          55,
+          78,
+          110
+        ],
+        "losses_vs_control": [
+          10,
+          13,
+          27,
+          49,
+          66,
+          80,
+          84,
+          105,
+          120
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 109,
+          "collision": 18,
+          "timeout": 1
+        },
+        "control": {
+          "success": 96,
+          "collision": 25,
+          "timeout": 7
+        },
+        "treatment": {
+          "success": 112,
+          "collision": 14,
+          "timeout": 2
+        },
+        "shared_parent_arrival_delta_s": -0.24676422620370372,
+        "wins_vs_control": [
+          13,
+          15,
+          26,
+          27,
+          28,
+          36,
+          40,
+          50,
+          52,
+          54,
+          68,
+          78,
+          87,
+          92,
+          93,
+          97,
+          105,
+          108,
+          121,
+          125
+        ],
+        "losses_vs_control": [
+          21,
+          38,
+          55,
+          69
+        ]
+      }
+    },
+    "fresh-course-both-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 105,
+          "collision": 23,
+          "timeout": 0
+        },
+        "control": {
+          "success": 100,
+          "collision": 28,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 108,
+          "collision": 20,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.33481156500000003,
+        "wins_vs_control": [
+          3,
+          5,
+          28,
+          30,
+          44,
+          54,
+          66,
+          69,
+          86,
+          95,
+          105,
+          107,
+          119,
+          125
+        ],
+        "losses_vs_control": [
+          47,
+          61,
+          78,
+          85,
+          116,
+          117
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "control": {
+          "success": 88,
+          "collision": 40,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 113,
+          "collision": 15,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.13349818873786415,
+        "wins_vs_control": [
+          2,
+          8,
+          9,
+          14,
+          17,
+          18,
+          21,
+          24,
+          29,
+          32,
+          33,
+          37,
+          40,
+          45,
+          48,
+          62,
+          64,
+          65,
+          70,
+          74,
+          84,
+          88,
+          90,
+          99,
+          105,
+          106,
+          107,
+          109,
+          111,
+          113,
+          114,
+          115,
+          119,
+          122
+        ],
+        "losses_vs_control": [
+          44,
+          69,
+          79,
+          80,
+          86,
+          87,
+          92,
+          104,
+          125
+        ]
+      }
+    },
+    "fresh-course-combined": {
+      "1": {
+        "composed_parent": {
+          "success": 102,
+          "collision": 26,
+          "timeout": 0
+        },
+        "control": {
+          "success": 100,
+          "collision": 28,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 108,
+          "collision": 20,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.3415078175,
+        "wins_vs_control": [
+          3,
+          11,
+          44,
+          51,
+          54,
+          56,
+          83,
+          86,
+          87,
+          90,
+          105,
+          110,
+          111,
+          117
+        ],
+        "losses_vs_control": [
+          31,
+          66,
+          85,
+          97,
+          102,
+          116
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "control": {
+          "success": 87,
+          "collision": 41,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 107,
+          "collision": 21,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.07772453673267322,
+        "wins_vs_control": [
+          2,
+          6,
+          8,
+          14,
+          18,
+          21,
+          29,
+          45,
+          48,
+          53,
+          63,
+          64,
+          78,
+          88,
+          89,
+          90,
+          95,
+          96,
+          99,
+          100,
+          105,
+          107,
+          111,
+          114,
+          116,
+          122,
+          123,
+          125,
+          126
+        ],
+        "losses_vs_control": [
+          11,
+          26,
+          28,
+          44,
+          47,
+          71,
+          79,
+          80,
+          85
+        ]
+      }
+    },
+    "fresh-course-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "control": {
+          "success": 113,
+          "collision": 15,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 122,
+          "collision": 6,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.13319631848739505,
+        "wins_vs_control": [
+          21,
+          26,
+          41,
+          59,
+          60,
+          66,
+          71,
+          83,
+          90,
+          92,
+          99,
+          114
+        ],
+        "losses_vs_control": [
+          11,
+          43,
+          57
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "control": {
+          "success": 103,
+          "collision": 25,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 124,
+          "collision": 4,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.022541493442622962,
+        "wins_vs_control": [
+          5,
+          6,
+          12,
+          14,
+          20,
+          30,
+          33,
+          41,
+          42,
+          51,
+          54,
+          60,
+          71,
+          74,
+          78,
+          84,
+          96,
+          100,
+          107,
+          111,
+          119,
+          122
+        ],
+        "losses_vs_control": [
+          83
+        ]
+      }
+    },
+    "fresh-course-reflected-both-delay": {
+      "1": {
+        "composed_parent": {
+          "success": 81,
+          "collision": 47,
+          "timeout": 0
+        },
+        "control": {
+          "success": 72,
+          "collision": 56,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 86,
+          "collision": 42,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.0337669880519478,
+        "wins_vs_control": [
+          1,
+          6,
+          9,
+          11,
+          20,
+          28,
+          42,
+          54,
+          59,
+          62,
+          68,
+          69,
+          72,
+          81,
+          84,
+          102,
+          104,
+          105,
+          114,
+          123
+        ],
+        "losses_vs_control": [
+          30,
+          39,
+          83,
+          87,
+          107,
+          121
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 91,
+          "collision": 37,
+          "timeout": 0
+        },
+        "control": {
+          "success": 77,
+          "collision": 51,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 99,
+          "collision": 29,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.1035737821428571,
+        "wins_vs_control": [
+          1,
+          4,
+          12,
+          14,
+          19,
+          21,
+          26,
+          27,
+          29,
+          30,
+          31,
+          32,
+          35,
+          41,
+          44,
+          56,
+          59,
+          61,
+          62,
+          66,
+          67,
+          69,
+          74,
+          75,
+          76,
+          80,
+          88,
+          92,
+          97,
+          98,
+          99,
+          106,
+          107,
+          114,
+          115
+        ],
+        "losses_vs_control": [
+          10,
+          16,
+          34,
+          45,
+          47,
+          64,
+          86,
+          87,
+          93,
+          95,
+          118,
+          119,
+          123
+        ]
+      }
+    },
+    "fresh-course-reflected-combined": {
+      "1": {
+        "composed_parent": {
+          "success": 79,
+          "collision": 49,
+          "timeout": 0
+        },
+        "control": {
+          "success": 72,
+          "collision": 56,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 83,
+          "collision": 45,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.03591630577464774,
+        "wins_vs_control": [
+          1,
+          13,
+          20,
+          38,
+          48,
+          81,
+          82,
+          87,
+          90,
+          92,
+          102,
+          105,
+          113,
+          114,
+          116,
+          125
+        ],
+        "losses_vs_control": [
+          6,
+          68,
+          83,
+          119,
+          122
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 91,
+          "collision": 37,
+          "timeout": 0
+        },
+        "control": {
+          "success": 75,
+          "collision": 53,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 98,
+          "collision": 30,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.10370605888888891,
+        "wins_vs_control": [
+          14,
+          16,
+          19,
+          21,
+          23,
+          27,
+          29,
+          31,
+          40,
+          44,
+          47,
+          59,
+          61,
+          62,
+          65,
+          67,
+          69,
+          71,
+          74,
+          76,
+          80,
+          88,
+          97,
+          98,
+          99,
+          106,
+          107,
+          112,
+          114,
+          115,
+          116,
+          119,
+          125
+        ],
+        "losses_vs_control": [
+          1,
+          7,
+          11,
+          57,
+          64,
+          78,
+          83,
+          86,
+          87,
+          113
+        ]
+      }
+    },
+    "fresh-course-reflected-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 99,
+          "collision": 29,
+          "timeout": 0
+        },
+        "control": {
+          "success": 77,
+          "collision": 51,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 105,
+          "collision": 23,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.05051137663265314,
+        "wins_vs_control": [
+          0,
+          6,
+          8,
+          10,
+          11,
+          18,
+          20,
+          21,
+          23,
+          30,
+          40,
+          47,
+          48,
+          57,
+          66,
+          78,
+          82,
+          83,
+          84,
+          86,
+          87,
+          90,
+          95,
+          96,
+          97,
+          100,
+          102,
+          105,
+          111,
+          120,
+          127
+        ],
+        "losses_vs_control": [
+          39,
+          117,
+          126
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 106,
+          "collision": 22,
+          "timeout": 0
+        },
+        "control": {
+          "success": 94,
+          "collision": 34,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 111,
+          "collision": 17,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.006310820679611521,
+        "wins_vs_control": [
+          1,
+          13,
+          16,
+          21,
+          24,
+          26,
+          27,
+          29,
+          31,
+          32,
+          44,
+          50,
+          61,
+          65,
+          67,
+          68,
+          76,
+          81,
+          89,
+          98,
+          99,
+          107,
+          126
+        ],
+        "losses_vs_control": [
+          14,
+          87,
+          93,
+          95,
+          117,
+          123
+        ]
+      }
+    },
+    "fresh-long-hallway-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.03945402687500005,
+        "wins_vs_control": [],
+        "losses_vs_control": []
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.0027344346874999953,
+        "wins_vs_control": [],
+        "losses_vs_control": []
+      }
+    },
+    "fresh-long-open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.076564248046875,
+        "wins_vs_control": [],
+        "losses_vs_control": []
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 114,
+          "collision": 0,
+          "timeout": 14
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -1.029711065546875,
+        "wins_vs_control": [
+          25,
+          32,
+          34,
+          44,
+          52,
+          58,
+          60,
+          70,
+          81,
+          85,
+          88,
+          112,
+          118,
+          127
+        ],
+        "losses_vs_control": []
+      }
+    },
+    "fresh-open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 124,
+          "collision": 0,
+          "timeout": 4
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 122,
+          "collision": 0,
+          "timeout": 6
+        },
+        "shared_parent_arrival_delta_s": 0.1692666863114754,
+        "wins_vs_control": [],
+        "losses_vs_control": [
+          20,
+          27,
+          49,
+          61,
+          63,
+          91
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 118,
+          "collision": 0,
+          "timeout": 10
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.34727119578125,
+        "wins_vs_control": [
+          15,
+          20,
+          27,
+          49,
+          61,
+          80,
+          91,
+          97,
+          111,
+          124
+        ],
+        "losses_vs_control": []
+      }
+    },
+    "fresh-static-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 107,
+          "collision": 16,
+          "timeout": 5
+        },
+        "control": {
+          "success": 112,
+          "collision": 14,
+          "timeout": 2
+        },
+        "treatment": {
+          "success": 105,
+          "collision": 17,
+          "timeout": 6
+        },
+        "shared_parent_arrival_delta_s": -0.034653193564356435,
+        "wins_vs_control": [
+          37,
+          67,
+          70,
+          101,
+          104
+        ],
+        "losses_vs_control": [
+          11,
+          18,
+          45,
+          48,
+          56,
+          58,
+          83,
+          90,
+          102,
+          107,
+          118,
+          126
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 105,
+          "collision": 19,
+          "timeout": 4
+        },
+        "control": {
+          "success": 95,
+          "collision": 22,
+          "timeout": 11
+        },
+        "treatment": {
+          "success": 109,
+          "collision": 15,
+          "timeout": 4
+        },
+        "shared_parent_arrival_delta_s": -0.36539184067307695,
+        "wins_vs_control": [
+          20,
+          26,
+          35,
+          38,
+          48,
+          49,
+          59,
+          66,
+          74,
+          78,
+          83,
+          95,
+          103,
+          104
+        ],
+        "losses_vs_control": []
+      }
+    },
+    "long-hallway-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.06523586656250002,
+        "wins_vs_control": [],
+        "losses_vs_control": []
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": 0.0035157057031250105,
+        "wins_vs_control": [],
+        "losses_vs_control": []
+      }
+    },
+    "long-open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.03828212164062493,
+        "wins_vs_control": [],
+        "losses_vs_control": []
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 106,
+          "collision": 0,
+          "timeout": 22
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.84298804078125,
+        "wins_vs_control": [
+          5,
+          7,
+          11,
+          12,
+          20,
+          21,
+          33,
+          34,
+          39,
+          40,
+          51,
+          57,
+          70,
+          74,
+          75,
+          88,
+          94,
+          98,
+          111,
+          113,
+          119,
+          127
+        ],
+        "losses_vs_control": []
+      }
+    },
+    "open-nominal": {
+      "1": {
+        "composed_parent": {
+          "success": 122,
+          "collision": 0,
+          "timeout": 6
+        },
+        "control": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "treatment": {
+          "success": 121,
+          "collision": 0,
+          "timeout": 7
+        },
+        "shared_parent_arrival_delta_s": -0.14537946436974794,
+        "wins_vs_control": [],
+        "losses_vs_control": [
+          25,
+          41,
+          63,
+          76,
+          86,
+          106,
+          107
+        ]
+      },
+      "2": {
+        "composed_parent": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "control": {
+          "success": 112,
+          "collision": 0,
+          "timeout": 16
+        },
+        "treatment": {
+          "success": 128,
+          "collision": 0,
+          "timeout": 0
+        },
+        "shared_parent_arrival_delta_s": -0.315240801796875,
+        "wins_vs_control": [
+          17,
+          18,
+          25,
+          27,
+          33,
+          41,
+          63,
+          69,
+          76,
+          86,
+          92,
+          94,
+          98,
+          106,
+          107,
+          121
+        ],
+        "losses_vs_control": []
+      }
+    }
+  },
+  "gates": [
+    {
+      "gate": "clutter-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 3
+    },
+    {
+      "gate": "clutter-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 9
+    },
+    {
+      "gate": "clutter-nominal collision vs parent",
+      "pass": false,
+      "actual_delta": 4
+    },
+    {
+      "gate": "clutter-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": -7
+    },
+    {
+      "gate": "clutter-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.04520560484018264
+    },
+    {
+      "gate": "composite-both-delay collision vs parent",
+      "pass": true,
+      "actual_delta": -3
+    },
+    {
+      "gate": "composite-both-delay timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "composite-both-delay shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.15848577294642854
+    },
+    {
+      "gate": "composite-combined collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "composite-combined timeout vs parent",
+      "pass": true,
+      "actual_delta": -1
+    },
+    {
+      "gate": "composite-combined shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.20741214060185179
+    },
+    {
+      "gate": "composite-command-delay collision vs parent",
+      "pass": true,
+      "actual_delta": -2
+    },
+    {
+      "gate": "composite-command-delay timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "composite-command-delay shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.12436182726495733
+    },
+    {
+      "gate": "primary course absolute",
+      "pass": true,
+      "actual": 245,
+      "required": 241
+    },
+    {
+      "gate": "primary course gain",
+      "pass": true,
+      "actual_delta": 41,
+      "required_delta": 10
+    },
+    {
+      "gate": "primary course contacts",
+      "pass": true,
+      "actual_delta": -38,
+      "required_delta": -10
+    },
+    {
+      "gate": "composite-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": -1
+    },
+    {
+      "gate": "composite-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "composite-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.01820124355648532
+    },
+    {
+      "gate": "composite-sensor-delay collision vs parent",
+      "pass": true,
+      "actual_delta": 3
+    },
+    {
+      "gate": "composite-sensor-delay timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "composite-sensor-delay shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.07285879877551023
+    },
+    {
+      "gate": "dev-a-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": -3
+    },
+    {
+      "gate": "dev-a-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 10
+    },
+    {
+      "gate": "dev-a-nominal collision vs parent",
+      "pass": false,
+      "actual_delta": 4
+    },
+    {
+      "gate": "dev-a-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": -1
+    },
+    {
+      "gate": "dev-a-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.09455159227488151
+    },
+    {
+      "gate": "dev-b-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 4
+    },
+    {
+      "gate": "dev-b-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 13
+    },
+    {
+      "gate": "dev-b-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": -1
+    },
+    {
+      "gate": "dev-b-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": -3
+    },
+    {
+      "gate": "dev-b-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.2549819778280543
+    },
+    {
+      "gate": "dev-c-nominal retention vs parent",
+      "pass": false,
+      "actual_delta": -5
+    },
+    {
+      "gate": "dev-c-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 11
+    },
+    {
+      "gate": "dev-c-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 2
+    },
+    {
+      "gate": "dev-c-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 3
+    },
+    {
+      "gate": "dev-c-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.0014356995215311602
+    },
+    {
+      "gate": "fresh-clutter-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 5
+    },
+    {
+      "gate": "fresh-clutter-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 16
+    },
+    {
+      "gate": "fresh-clutter-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": -7
+    },
+    {
+      "gate": "fresh-clutter-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 2
+    },
+    {
+      "gate": "fresh-clutter-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.27277543
+    },
+    {
+      "gate": "fresh-course-both-delay collision vs parent",
+      "pass": true,
+      "actual_delta": -9
+    },
+    {
+      "gate": "fresh-course-both-delay timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-course-both-delay shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.09951446921951218
+    },
+    {
+      "gate": "fresh-course-combined collision vs parent",
+      "pass": true,
+      "actual_delta": -6
+    },
+    {
+      "gate": "fresh-course-combined timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-course-combined shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.13084877383084578
+    },
+    {
+      "gate": "fresh-course-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-course-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-course-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.07718018298755192
+    },
+    {
+      "gate": "fresh-course-reflected-both-delay collision vs parent",
+      "pass": true,
+      "actual_delta": -13
+    },
+    {
+      "gate": "fresh-course-reflected-both-delay timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-course-reflected-both-delay shared arrival",
+      "pass": true,
+      "actual_delta_s": 0.037889065962733025
+    },
+    {
+      "gate": "fresh-course-reflected-combined collision vs parent",
+      "pass": true,
+      "actual_delta": -11
+    },
+    {
+      "gate": "fresh-course-reflected-combined timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-course-reflected-combined parent retention",
+      "pass": true,
+      "actual_delta": 11
+    },
+    {
+      "gate": "fresh-course-reflected-combined shared arrival",
+      "pass": true,
+      "actual_delta_s": 0.03848771750000009
+    },
+    {
+      "gate": "fresh-course-reflected-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": -11
+    },
+    {
+      "gate": "fresh-course-reflected-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-course-reflected-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": 0.02786134049751241
+    },
+    {
+      "gate": "fresh-long-hallway-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-long-hallway-nominal absolute floor",
+      "pass": true,
+      "actual": 256,
+      "parent": 256,
+      "required": 253
+    },
+    {
+      "gate": "fresh-long-hallway-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": 0.02109423078125002
+    },
+    {
+      "gate": "fresh-long-open-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-long-open-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 14
+    },
+    {
+      "gate": "fresh-long-open-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-long-open-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-long-open-nominal absolute floor",
+      "pass": true,
+      "actual": 256,
+      "parent": 256,
+      "required": 253
+    },
+    {
+      "gate": "fresh-long-open-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.553137656796875
+    },
+    {
+      "gate": "fresh-open-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": -2
+    },
+    {
+      "gate": "fresh-open-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 4
+    },
+    {
+      "gate": "fresh-open-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "fresh-open-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 2
+    },
+    {
+      "gate": "fresh-open-nominal absolute floor",
+      "pass": false,
+      "actual": 250,
+      "parent": 252,
+      "required": 253
+    },
+    {
+      "gate": "fresh-open-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.09520070932000001
+    },
+    {
+      "gate": "fresh-static-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 2
+    },
+    {
+      "gate": "fresh-static-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 7
+    },
+    {
+      "gate": "fresh-static-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": -3
+    },
+    {
+      "gate": "fresh-static-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 1
+    },
+    {
+      "gate": "fresh-static-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.202442556
+    },
+    {
+      "gate": "long-hallway-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "long-hallway-nominal absolute floor",
+      "pass": true,
+      "actual": 256,
+      "parent": 256,
+      "required": 253
+    },
+    {
+      "gate": "long-hallway-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": 0.034375786132812516
+    },
+    {
+      "gate": "long-open-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "long-open-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 22
+    },
+    {
+      "gate": "long-open-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "long-open-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "long-open-nominal absolute floor",
+      "pass": true,
+      "actual": 256,
+      "parent": 256,
+      "required": 253
+    },
+    {
+      "gate": "long-open-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.4406350812109375
+    },
+    {
+      "gate": "open-nominal retention vs parent",
+      "pass": true,
+      "actual_delta": -1
+    },
+    {
+      "gate": "open-nominal retention vs control",
+      "pass": true,
+      "actual_delta": 9
+    },
+    {
+      "gate": "open-nominal collision vs parent",
+      "pass": true,
+      "actual_delta": 0
+    },
+    {
+      "gate": "open-nominal timeout vs parent",
+      "pass": true,
+      "actual_delta": 1
+    },
+    {
+      "gate": "open-nominal absolute floor",
+      "pass": false,
+      "actual": 249,
+      "parent": 250,
+      "required": 253
+    },
+    {
+      "gate": "open-nominal shared arrival",
+      "pass": true,
+      "actual_delta_s": -0.23340477283400815
+    }
+  ],
+  "failed_gates": [
+    {
+      "gate": "clutter-nominal collision vs parent",
+      "pass": false,
+      "actual_delta": 4
+    },
+    {
+      "gate": "dev-a-nominal collision vs parent",
+      "pass": false,
+      "actual_delta": 4
+    },
+    {
+      "gate": "dev-c-nominal retention vs parent",
+      "pass": false,
+      "actual_delta": -5
+    },
+    {
+      "gate": "fresh-open-nominal absolute floor",
+      "pass": false,
+      "actual": 250,
+      "parent": 252,
+      "required": 253
+    },
+    {
+      "gate": "open-nominal absolute floor",
+      "pass": false,
+      "actual": 249,
+      "parent": 250,
+      "required": 253
+    }
+  ],
+  "verdict": "NOT_ADOPTED",
+  "note": "Missing a gain threshold does not alone prove the loss blocks useful learning; inspect the actual paired losses and scope before another fix.",
+  "verified_archive_inputs": 754
+}

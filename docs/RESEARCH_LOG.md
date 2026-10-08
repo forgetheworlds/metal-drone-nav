@@ -739,3 +739,24 @@ The persistent pilot parent accepted the actual calibration and immutable files,
 then launched seed 1 control. PID 14287 has real rollout history past 75; the
 other three arms and 138 panels follow serially. No navigation improvement from
 the loss is claimed before the complete paired comparison.
+
+## October 8 — completed physical-retention learning results
+
+All four 256-rollout runs and 138 panels are complete: 16.78M transitions,
+17,664 scored flights. Independent root review verifies headers, exposure,
+identities, stable arrivals and every gate. Course C204/T245, contacts49/11;
+both-delay185/236; long-open234/256; reflected combined147/181. Parent reflected
+170 improves in both seeds. Treatment costs21.5% more training wall time.
+
+Five gates fail: staticC -5, A/clutter +4contacts, old/freshopen249/250 below253.
+No promotion/full extension. Root repaired the evaluator CLI after training,
+proved nominal/combined parent parity and graded without repeating learners.
+[Results](PHYSICAL_RETENTION_RESULTS.md) and754hashed archive inputs replay exactly.
+
+Three frozen arrival traces preserve all scored flights. Teacher closing velocity
+is weak/negative near goal while ordinary PPO predicts positive closure on the
+same student states; teacher can preserve a weakness. Arrival-aware teacher loss
+is one new masked-approach hypothesis, with avoidance risk near goals explicitly
+gated. The user also requested an independent OpenCode free MiMo critic/training
+audit; it is actually responding. Both own isolated result folders and cannot
+change the frozen source or begin pilots before root code/evidence review.
