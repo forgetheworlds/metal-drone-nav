@@ -1,64 +1,48 @@
 # Current handoff — October 8
 
-The original goal is active and incomplete. Webots and VM work are deferred.
-Read goal.md, STATUS.md, docs/OUTPUT_CHANNEL_RECOVERY.md and the capacity and
-actor-step result reports. Preserve default policies, controls and real videos.
-
-Capacity and actor-step studies are complete. Do not rerun them. The corrected
-erosion replay is published in f57b44d. The optimizer audit (exec 19724, PID
-39887) finished with exit 0. Root rejected another advantage-cap trial and its
-unsupported clipping/noise explanation. The diagnostic's policy-active threshold
-was wrong; the actual learner's PPO threshold is correct. Read
-results/root-update-mechanism-review/decision.md.
-
-Root tested the output channels directly. Early yaw failed; early XYZ with late
-yaw recovered 67 of 73 lost courses with two new losses. Course success increased
-176 -> 244 of 256, contacts fell 79 -> 12. Long open increased 219 -> 256; short
-open 225 -> 250; static B 214 -> 228; reflected combined stress 118 -> 170,
-with 86 contacts remaining. Root combined the learned outputs into ONE
-184/5120/4 MLP. All 12 single-actor panels, 1,536 flights, match the dual-model
-CSV files exactly. There are 967,688 actor parameters, about 3.9 MB in FP32.
-This is a research candidate with no new learning, blind final or transfer test.
-Candidates: results/root-action-channel/composed-s1.bin and composed-s2.bin.
-They contain parameters only and cannot resume training.
+The original one-navigator goal is active and incomplete. Webots and VM work
+are deferred. Defaults and published native videos are preserved.
 
 ## Current work
 
-Physical-retention pilot COMPLETE: all four 256-rollout headers, 16.78M
-transitions and 138 actual evaluations are root-reviewed. The evaluator CLI was
-repaired; nominal/combined parent-flight parity is exact. Publication b1ae9bd
-contains 754 retained inputs, full final checkpoints, grades, source and replay.
-Archive-only review matches live results exactly. Course C204/T245 with49/11
-contacts; long open234/256; reflected combined147/181. Five gates still fail,
-so no default promotion or full extension. Read PHYSICAL_RETENTION_RESULTS.md.
+OpenCode free MiMo is auditing the critic and training pipeline. Actual session
+`ses_ee40a094fffedFudFA5Js2wDGh`, exec 89815, PID 87529. It owns only
+`results/mimo-training-audit`. Recent tool responses and changed analysis files
+confirm work; final REPORT.md is not yet present. No new training is authorized
+from a preliminary audit verdict. Root owns results/root-critic-audit-review.
 
-The arrival diagnosis and residual channel tests are complete. Teacher closing
-velocity near failed goals is weak/negative; ordinary PPO predicts positive
-closure on the same states. One new hypothesis releases the teacher penalty
-within one to three goal radii. It is training-only and carries avoidance risk
-near obstacles. Arrival code OMP exec26202/PID82206 is TERMINAL. Root reviewed
-actual source diff, default-off FULL6 parity, active6/3+3 resume, mask derivatives
-and refusal gates, then accepted its frozen two-seed request.
+Root corrected probe geometry timing and mover scaling; corrected clearance
+matches Metal within 7.4e-5 m. MiMo applied the corrections and withdrew its
+fresh-regressor information-bound claim. The critic has no value clipping.
+Root exercised the actual sample-loss kernel on a trained nonzero batch: dV
+error zero, raw critic-gradient CPU/Metal error 1.55e-6, fresh Adam parameter
+error 1.19e-7. This verifies one batch, not value adequacy or a causal remedy.
 
-Arrival-release pilot COMPLETE: two256-rollout headers and46 new panels plus
-138reused panels are independently graded. Mask release fails: oldopen249->238,
-freshopen250->245,longopen256->232,reflectedcombined181->168. Bothseeds lose open
-andlong skills. Course245->246 is insufficient. No promotion/sweep/full extension.
-Stronger unmasked teacher candidate preserved. Read ARRIVAL_RETENTION_RESULTS.md
-and results/omp-arrival-retention/root-results-review.json. Parent2724 terminal;
-never restart completed runs. Full masked raw archive publication is pending.
+## Completed studies
 
-The USER explicitly requested an independent OpenCode MiMo critic/training audit.
-It is active on opencode/mimo-v2.6-flash-free, exec89815/PID87529, session
-ses_ee40a094fffedFudFA5Js2wDGh. Own folder results/mimo-training-audit only.
-Probe builder and initial log analysis exist. It must verify critic information,
-fitting, clipping/targets/gradients/Adam/timing/reward contracts with actual
-on-policy tests. No new learner before root code/evidence review. No skills.
+Experience scale, capacity and actor-step studies are complete and published.
+Do not rerun. Wider actors under the fixed recipe lost skills. Root combined
+early XYZ and late yaw into one 184/5120/4 actor, with exact flight parity:
+course 244/256, long open 256/256, reflected combined stress 170/256.
 
-GPU jobs use absolute root metal-training.lock and real foreground/persistent
-parents. Native agents Luna only; Webots/VM deferred. Root sampler draft parked.
-Default policies and native videos unchanged. Full original goal active/incomplete.
-Root commits/pushes as Forge the World. Keep state concise and readable.
+Physical retention: four 256-rollout arms, 16.78M transitions and 138 panels
+complete. Course ordinary PPO 204 -> retention 245/256, long open 234 -> 256,
+reflected combined stress 147 -> 181. Five gates fail; no default promotion.
+Published b1ae9bd includes full checkpoints and 754-input replay.
+
+Arrival-release attempt: two masked arms and 46 new panels plus 138 retained
+panels complete. Open 249 -> 238, long open 256 -> 232, reflected combined
+181 -> 168. Rejected; no radius/coefficient sweep or extension. Full 666-input
+archive and replay published 93fd4cb. Preserve the unmasked candidate.
+
+## Execution
+
+All GPU jobs use /Users/muadhsambul/RL/results/metal-training.lock and actual
+foreground or root persistent parents. Inspect exit/header evidence. Only Luna
+native agents; no old external mission revival. Unverified competence-sampler
+draft remains unused. Research actors have not passed independent transfer or
+fresh sealed FINAL. Root reviews code and evidence, commits as Forge the World
+and pushes verified milestones to origin.
 
 ## Historical October 5 handoff
 

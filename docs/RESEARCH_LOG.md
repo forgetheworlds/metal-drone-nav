@@ -807,3 +807,20 @@ self-bootstrapped GAE targets; RMSE8.14. Rows with32+futuresteps haveEV0.296.
 These are correlated stochastic outcomes, not noiseless conditional targets;
 conditioning on eventual collision cannot prove critic optimism. The audit must
 keep target-fitting and independent future-prediction scope separate.
+
+## October 8 — actual critic loss-kernel check
+
+Root extended the nonzero trained-batch probe to dispatch the actual Metal
+`ppo_sample_loss_grad` kernel before critic backpropagation. Its value derivative
+exactly matches the direct formula. CPU/Metal raw gradient maximum difference
+is 1.55e-6; scaled gradient difference is 5.22e-8; fresh Adam parameter difference
+is 1.19e-7. The batch has nonzero gradients on 4097/4225 critic parameters and
+all varying input dimensions. Advantage normalization agrees within 5.05e-5.
+
+This is one critic minibatch with real collected values/targets and synthetic
+actor loss fields, not an inherited-moment resume test or proof the critic has
+enough information/capacity. No environment transitions or learner changes.
+Code, build hashes, raw output and receipt are retained under
+`results/root-critic-audit-review/loss-kernel-*` and `critic_loss_kernel_check.mm`.
+MiMo has applied the geometry corrections and removed the unsupported
+information-bound conclusion. Its final independent report is still pending.
