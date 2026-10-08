@@ -609,3 +609,21 @@ next, within the fixed three capability lanes. Root found the helper's normalize
 weight formula did not implement the documented exact25% uniform mixture;
 requested correction plus a numerical heterogeneous-count test before training.
 Episode-boundary selection and outcome attribution remain under implementation.
+
+## October 7 — controlled actor-capacity mission
+
+User explicitly requested OMP DeepSeek to implement and run the larger-network
+experiment, then root to wait/analyze. Root supplied function-preserving warm
+starts for widths64/256/768/2560/5120, about12k/50k/150k/500k/1M parameters,
+CPU prediction parity and unchanged critic bytes. OMP implemented isolated
+actor/critic dimensions, wide Metal forward/gradient kernels and bounded gates.
+Root verified49 frozen inputs and full41.94M width64 seed1 checkpoint byte
+parity against the published N512 control.
+
+Initial OMP ended while secondcontrol background tool was incomplete at1280.
+Root confirmed original processes terminal and launched persistent parent-owned
+recovery from actual header, then wide arms/full grading. Root corrected eval
+filename sample labels to rollout*512*32. No wide-policy capability claim yet.
+[Experiment direction](CAPACITY_EXPERIMENT.md); actual receipts and reporting
+under results/omp-capacity-scale. Luna's sampler integration stopped on quota
+and remains uncommitted/unverified; it is separate from capacity training.
