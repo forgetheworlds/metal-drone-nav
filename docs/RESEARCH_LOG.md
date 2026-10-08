@@ -788,3 +788,14 @@ checkpoints, all retained/new comparison flights, source and actual gates.
 Archive-only grading is identical to live review, including every failed check.
 The figure and standalone replay are published with the negative outcome; no
 failure was removed to present a stronger policy.
+
+## October 8 — independent audit geometry reconstruction correction
+
+Root checked MiMo's collector against the running shader. Values and co19 are
+pre-transition; recorded position/time are post-transition and can be reset.
+The offline moving-sphere formula also divides by speed twice. Root reconstructed
+pre-pose/time from critic fields and the correct world.hpp motion formula. On
+4096 moving-scene rows it matches actual Metal clearance to max7.4e-5m and
+mean6.1e-7m; the wrong motion formula alone reaches.68m error. This is a probe
+attribution defect, not a learner-physics change. The audit must correct its
+geometry error strata before they can support a causal training decision.
