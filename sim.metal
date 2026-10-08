@@ -227,7 +227,7 @@ kernel void sim_observe(device const RLPhysicsState* states [[buffer(0)]],device
     float co[PPO_CRITIC_OBS];sim_critic_obs(s,worlds[n],runs[n],co);for(uint j=0;j<PPO_CRITIC_OBS;j++)critic_obs[crow+j]=co[j];
 }
 kernel void sim_act(device RLPhysicsState* states [[buffer(0)]],device SimRun* runs [[buffer(1)]],device const WWorld* worlds [[buffer(2)]],device const float* observations [[buffer(3)]],device const float* critic_obs [[buffer(4)]],device const float* actor [[buffer(5)]],device const float* critic [[buffer(6)]],device float* actions [[buffer(7)]],device float* logp [[buffer(8)]],device float* values [[buffer(9)]],device float* commands [[buffer(10)]],constant RLPhysicsParams& p [[buffer(11)]],constant SimConfig& cfg [[buffer(12)]],uint n [[thread_position_in_grid]]) {
-    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float co[PPO_CRITIC_OBS],hidden[64],mean[4],a[4];
+    if(n>=cfg.n || (cfg.eval && runs[n].episodes))return;uint row=cfg.tick*cfg.n+n;float co[PPO_CRITIC_OBS],hidden[PPO_CRITIC_HIDDEN],mean[4],a[4];
     for(uint j=0;j<PPO_CRITIC_OBS;j++)co[j]=critic_obs[row*PPO_CRITIC_OBS+j];for(uint j=0;j<4;j++)mean[j]=actions[row*4+j];
     values[row]=ppo_critic_value(critic,co,hidden);
     if(SIM_HAS_GEOMETRY_PRIOR && cfg.mode>=9 && cfg.mode<=21){float scale=(cfg.mode==9||cfg.mode==13)?0.0f:((cfg.mode==10||cfg.mode==14||cfg.mode==16)?0.25f:(cfg.mode==15?1.0f:0.5f));if(cfg.mode>=17){float overhead=0;for(uint k=0;k<20;k++)overhead+=observations[row*PPO_ACTOR_OBS+k]*12>2.5f;scale=.25f+.75f*(overhead/20.0f);}if(cfg.mode==12){float near=12;for(uint k=0;k<80;k++)near=min(near,observations[row*PPO_ACTOR_OBS+k]*12);scale=clamp((near-.3f)/2,0.2f,1.0f);}for(uint j=0;j<3;j++){float prior=observations[row*PPO_ACTOR_OBS+PPO_ACTOR_OBS-3+j];mean[j]=prior+scale*(mean[j]-prior);}mean[3]*=scale;if(cfg.mode==16){uint context=row*PPO_ACTOR_OBS+SIM_CONTEXT_OFFSET;float yaw=atan2(observations[context+1],observations[context]);mean[3]+=nav_atanh(clamp(yaw*1.5f,-.85f,.85f));}}
@@ -324,7 +324,7 @@ kernel void sim_advance(device RLPhysicsState* states [[buffer(0)]],device SimRu
         }
     }
     bank_transition_ids[row]=bank_control.enabled!=0?bank_active_ids[n]:0xffffffffu;
-    float co[PPO_CRITIC_OBS],hidden[64];sim_critic_obs(s,worlds[n],runs[n],co);next_values[row]=ppo_critic_value(critic,co,hidden);
+    float co[PPO_CRITIC_OBS],hidden[PPO_CRITIC_HIDDEN];sim_critic_obs(s,worlds[n],runs[n],co);next_values[row]=ppo_critic_value(critic,co,hidden);
     if(success||collision||timeout) {
         runs[n].successes+=success;runs[n].collisions+=collision;runs[n].timeouts+=timeout&&!terminated[row];runs[n].episodes++;runs[n].success_time+=success?runs[n].elapsed:0;runs[n].total_path+=runs[n].path;runs[n].total_elapsed+=runs[n].elapsed;runs[n].final_progress+=1-after/max(runs[n].initial_distance,1e-4f);
         if(!cfg.eval){sim_reset_one(states[n],runs[n],worlds[n],sensors,commands,weights,environment_physics,runtime,p,cfg,n,false);if(bank_control.enabled!=0)sim_apply_challenge_world(states[n],runs[n],worlds[n],bank_worlds,bank_schedule,bank_control,bank_active_ids,cfg,n,cfg.tick+1);else bank_active_ids[n]=0xffffffffu;sim_reset_navigation_task(states[n],runs[n],worlds[n],task_states[n],task_control,cfg,n);}

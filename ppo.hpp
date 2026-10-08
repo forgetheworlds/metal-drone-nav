@@ -14,8 +14,15 @@
 #ifndef FIXED_PPO_CRITIC_OBS_DIM
 #define FIXED_PPO_CRITIC_OBS_DIM 32
 #endif
-#ifndef FIXED_PPO_HIDDEN_DIM
-#define FIXED_PPO_HIDDEN_DIM 64
+// The actor and critic are separate one-hidden-layer MLPs. Their widths are
+// independent: a capacity experiment may widen the actor while the critic stays
+// at the value-function width that was trained with the source corpus. Both
+// default to 64, which is exactly the legacy shared-width network.
+#ifndef FIXED_PPO_ACTOR_HIDDEN_DIM
+#define FIXED_PPO_ACTOR_HIDDEN_DIM 64
+#endif
+#ifndef FIXED_PPO_CRITIC_HIDDEN_DIM
+#define FIXED_PPO_CRITIC_HIDDEN_DIM 64
 #endif
 #ifndef FIXED_PPO_ACTION_DIM
 #define FIXED_PPO_ACTION_DIM 4
@@ -25,7 +32,11 @@ namespace fixed_ppo {
 
 constexpr std::size_t actor_obs_dim = FIXED_PPO_ACTOR_OBS_DIM;
 constexpr std::size_t critic_obs_dim = FIXED_PPO_CRITIC_OBS_DIM;
-constexpr std::size_t hidden_dim = FIXED_PPO_HIDDEN_DIM;
+constexpr std::size_t actor_hidden_dim = FIXED_PPO_ACTOR_HIDDEN_DIM;
+constexpr std::size_t critic_hidden_dim = FIXED_PPO_CRITIC_HIDDEN_DIM;
+// Legacy alias for the actor width. Actor-only call sites and other tools keep
+// using it; critic code must use critic_hidden_dim explicitly.
+constexpr std::size_t hidden_dim = actor_hidden_dim;
 constexpr std::size_t action_dim = FIXED_PPO_ACTION_DIM;
 constexpr bool has_geometry_prior = actor_obs_dim == 184 || actor_obs_dim == 824;
 constexpr bool has_raw_depth_extension = actor_obs_dim == 824;
@@ -33,15 +44,15 @@ constexpr std::size_t pooled_depth_dim = actor_obs_dim == 661 ? 320 : 80;
 constexpr std::size_t context_offset = 2 * pooled_depth_dim;
 constexpr std::size_t geometry_prior_offset = actor_obs_dim - (has_geometry_prior ? 3 : 0);
 constexpr std::size_t actor_w1_offset = 0;
-constexpr std::size_t actor_b1_offset = hidden_dim * actor_obs_dim;
-constexpr std::size_t actor_w2_offset = actor_b1_offset + hidden_dim;
-constexpr std::size_t actor_b2_offset = actor_w2_offset + action_dim * hidden_dim;
+constexpr std::size_t actor_b1_offset = actor_hidden_dim * actor_obs_dim;
+constexpr std::size_t actor_w2_offset = actor_b1_offset + actor_hidden_dim;
+constexpr std::size_t actor_b2_offset = actor_w2_offset + action_dim * actor_hidden_dim;
 constexpr std::size_t actor_log_std_offset = actor_b2_offset + action_dim;
 constexpr std::size_t actor_param_count = actor_log_std_offset + action_dim;
 constexpr std::size_t critic_w1_offset = 0;
-constexpr std::size_t critic_b1_offset = hidden_dim * critic_obs_dim;
-constexpr std::size_t critic_w2_offset = critic_b1_offset + hidden_dim;
-constexpr std::size_t critic_b2_offset = critic_w2_offset + hidden_dim;
+constexpr std::size_t critic_b1_offset = critic_hidden_dim * critic_obs_dim;
+constexpr std::size_t critic_w2_offset = critic_b1_offset + critic_hidden_dim;
+constexpr std::size_t critic_b2_offset = critic_w2_offset + critic_hidden_dim;
 constexpr std::size_t critic_param_count = critic_b2_offset + 1;
 constexpr float log_two_pi = 1.8378770664093453f;
 
@@ -64,7 +75,7 @@ inline float clamp(float x, float lo, float hi) { return std::max(lo, std::min(h
 
 inline void actor_forward(const float* obs, const ActorParams& p, float* hidden, float* mean) {
     const auto& w = p.values;
-    for (std::size_t h = 0; h < hidden_dim; ++h) {
+    for (std::size_t h = 0; h < actor_hidden_dim; ++h) {
         float z = w[actor_b1_offset + h];
         const std::size_t row = actor_w1_offset + h * actor_obs_dim;
         for (std::size_t i = 0; i < actor_obs_dim; ++i) z += w[row + i] * obs[i];
@@ -72,8 +83,8 @@ inline void actor_forward(const float* obs, const ActorParams& p, float* hidden,
     }
     for (std::size_t a = 0; a < action_dim; ++a) {
         float z = w[actor_b2_offset + a];
-        const std::size_t row = actor_w2_offset + a * hidden_dim;
-        for (std::size_t h = 0; h < hidden_dim; ++h) z += w[row + h] * hidden[h];
+        const std::size_t row = actor_w2_offset + a * actor_hidden_dim;
+        for (std::size_t h = 0; h < actor_hidden_dim; ++h) z += w[row + h] * hidden[h];
         if constexpr(has_geometry_prior) { if(a<3)z+=obs[geometry_prior_offset+a]; }
         mean[a] = z;
     }
@@ -81,14 +92,14 @@ inline void actor_forward(const float* obs, const ActorParams& p, float* hidden,
 
 inline float critic_forward(const float* obs, const CriticParams& p, float* hidden) {
     const auto& w = p.values;
-    for (std::size_t h = 0; h < hidden_dim; ++h) {
+    for (std::size_t h = 0; h < critic_hidden_dim; ++h) {
         float z = w[critic_b1_offset + h];
         const std::size_t row = critic_w1_offset + h * critic_obs_dim;
         for (std::size_t i = 0; i < critic_obs_dim; ++i) z += w[row + i] * obs[i];
         hidden[h] = std::tanh(z);
     }
     float value = w[critic_b2_offset];
-    for (std::size_t h = 0; h < hidden_dim; ++h) value += w[critic_w2_offset + h] * hidden[h];
+    for (std::size_t h = 0; h < critic_hidden_dim; ++h) value += w[critic_w2_offset + h] * hidden[h];
     return value;
 }
 
@@ -273,8 +284,8 @@ inline void actor_backward_sample(const float* obs, const float* hidden,
     const auto& w = p.values;
     for (std::size_t a = 0; a < action_dim; ++a) {
         out_grad[actor_b2_offset + a] = d_mean[a];
-        const std::size_t row = actor_w2_offset + a * hidden_dim;
-        for (std::size_t h = 0; h < hidden_dim; ++h) {
+        const std::size_t row = actor_w2_offset + a * actor_hidden_dim;
+        for (std::size_t h = 0; h < actor_hidden_dim; ++h) {
             out_grad[row + h] = d_mean[a] * hidden[h];
             const float d_hidden = d_mean[a] * w[row + h] * (1.0f - hidden[h] * hidden[h]);
             out_grad[actor_b1_offset + h] += d_hidden;
@@ -291,7 +302,7 @@ inline void critic_backward_sample(const float* obs, const float* hidden,
     std::fill(out_grad, out_grad + critic_param_count, 0.0f);
     const auto& w = p.values;
     out_grad[critic_b2_offset] = d_value;
-    for (std::size_t h = 0; h < hidden_dim; ++h) {
+    for (std::size_t h = 0; h < critic_hidden_dim; ++h) {
         out_grad[critic_w2_offset + h] = d_value * hidden[h];
         const float d_hidden = d_value * w[critic_w2_offset + h] * (1.0f - hidden[h] * hidden[h]);
         out_grad[critic_b1_offset + h] = d_hidden;

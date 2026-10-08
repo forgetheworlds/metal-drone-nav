@@ -8,8 +8,11 @@ using namespace metal;
 #ifndef FIXED_PPO_CRITIC_OBS_DIM
 #define FIXED_PPO_CRITIC_OBS_DIM 32
 #endif
-#ifndef FIXED_PPO_HIDDEN_DIM
-#define FIXED_PPO_HIDDEN_DIM 64
+#ifndef FIXED_PPO_ACTOR_HIDDEN_DIM
+#define FIXED_PPO_ACTOR_HIDDEN_DIM 64
+#endif
+#ifndef FIXED_PPO_CRITIC_HIDDEN_DIM
+#define FIXED_PPO_CRITIC_HIDDEN_DIM 64
 #endif
 #ifndef FIXED_PPO_ACTION_DIM
 #define FIXED_PPO_ACTION_DIM 4
@@ -17,7 +20,11 @@ using namespace metal;
 
 constant uint PPO_ACTOR_OBS = FIXED_PPO_ACTOR_OBS_DIM;
 constant uint PPO_CRITIC_OBS = FIXED_PPO_CRITIC_OBS_DIM;
-constant uint PPO_HIDDEN = FIXED_PPO_HIDDEN_DIM;
+// The actor and critic widths are independent. PPO_HIDDEN keeps naming the
+// actor width for the actor kernels; the critic kernels use PPO_CRITIC_HIDDEN.
+constant uint PPO_ACTOR_HIDDEN = FIXED_PPO_ACTOR_HIDDEN_DIM;
+constant uint PPO_CRITIC_HIDDEN = FIXED_PPO_CRITIC_HIDDEN_DIM;
+constant uint PPO_HIDDEN = PPO_ACTOR_HIDDEN;
 constant uint PPO_ACTIONS = FIXED_PPO_ACTION_DIM;
 constant bool PPO_HAS_GEOMETRY_PRIOR = PPO_ACTOR_OBS == 184 || PPO_ACTOR_OBS == 824;
 constant uint PPO_GEOMETRY_PRIOR_OFFSET = PPO_ACTOR_OBS - (PPO_HAS_GEOMETRY_PRIOR ? 3 : 0);
@@ -26,9 +33,9 @@ constant uint PPO_ACTOR_W2 = PPO_ACTOR_B1 + PPO_HIDDEN;
 constant uint PPO_ACTOR_B2 = PPO_ACTOR_W2 + PPO_ACTIONS * PPO_HIDDEN;
 constant uint PPO_ACTOR_LOG_STD = PPO_ACTOR_B2 + PPO_ACTIONS;
 constant uint PPO_ACTOR_PARAMS = PPO_ACTOR_LOG_STD + PPO_ACTIONS;
-constant uint PPO_CRITIC_B1 = PPO_HIDDEN * PPO_CRITIC_OBS;
-constant uint PPO_CRITIC_W2 = PPO_CRITIC_B1 + PPO_HIDDEN;
-constant uint PPO_CRITIC_B2 = PPO_CRITIC_W2 + PPO_HIDDEN;
+constant uint PPO_CRITIC_B1 = PPO_CRITIC_HIDDEN * PPO_CRITIC_OBS;
+constant uint PPO_CRITIC_W2 = PPO_CRITIC_B1 + PPO_CRITIC_HIDDEN;
+constant uint PPO_CRITIC_B2 = PPO_CRITIC_W2 + PPO_CRITIC_HIDDEN;
 constant uint PPO_CRITIC_PARAMS = PPO_CRITIC_B2 + 1;
 constant float PPO_LOG_TWO_PI = 1.8378770664093453f;
 
@@ -149,17 +156,24 @@ kernel void ppo_actor_geodesic_direction_grad(device const float* observations [
 
 inline float ppo_critic_value(device const float* params, thread const float* obs,
                               thread float* hidden) {
-    for (uint h = 0; h < PPO_HIDDEN; ++h) {
+    for (uint h = 0; h < PPO_CRITIC_HIDDEN; ++h) {
         float z = params[PPO_CRITIC_B1 + h];
         const uint row = h * PPO_CRITIC_OBS;
         for (uint i = 0; i < PPO_CRITIC_OBS; ++i) z += params[row + i] * obs[i];
         hidden[h] = tanh(z);
     }
     float value = params[PPO_CRITIC_B2];
-    for (uint h = 0; h < PPO_HIDDEN; ++h) value += params[PPO_CRITIC_W2 + h] * hidden[h];
+    for (uint h = 0; h < PPO_CRITIC_HIDDEN; ++h) value += params[PPO_CRITIC_W2 + h] * hidden[h];
     return value;
 }
 
+// ---------------------------------------------------- legacy 64-wide actor
+//
+// The scalar and SIMD-fused actor forwards are exactly the pre-capacity
+// implementation and are compiled only for the 64-unit actor. Wider actors use
+// the generic split kernels below, so a wide checkpoint can never be scored by
+// the fixed-tile 64-unit path.
+#if FIXED_PPO_ACTOR_HIDDEN_DIM == 64
 kernel void ppo_actor_forward(device const float* observations [[buffer(0)]],
                               device const float* params [[buffer(1)]],
                               device float* hidden_out [[buffer(2)]],
@@ -258,6 +272,49 @@ kernel void ppo_actor_forward_simd_fused(device const float* observations [[buff
         if (sample < batch_size) means[sample * PPO_ACTIONS + action] = mean;
     }
 }
+#endif // FIXED_PPO_ACTOR_HIDDEN_DIM == 64
+
+// ------------------------------------------------------- generic wide actor
+//
+// Width-generic actor forward in two passes. One thread owns one (sample,
+// hidden) or (sample, action) output and loops over the contraction with plain
+// scalars, so no thread-local array scales with PPO_HIDDEN. The layers pass
+// must precede the head pass in the same command encoder (serial dispatch
+// ordering provides the memory dependency).
+kernel void ppo_actor_forward_layers(device const float* observations [[buffer(0)]],
+                                     device const float* params [[buffer(1)]],
+                                     device float* hidden_out [[buffer(2)]],
+                                     constant uint& batch_size [[buffer(3)]],
+                                     uint gid [[thread_position_in_grid]]) {
+    const uint total = batch_size * PPO_HIDDEN;
+    if (gid >= total) return;
+    const uint n = gid / PPO_HIDDEN;
+    const uint h = gid % PPO_HIDDEN;
+    const uint obs_base = n * PPO_ACTOR_OBS;
+    const uint row = h * PPO_ACTOR_OBS;
+    float z = params[PPO_ACTOR_B1 + h];
+    for (uint i = 0; i < PPO_ACTOR_OBS; ++i) z += params[row + i] * observations[obs_base + i];
+    hidden_out[gid] = tanh(z);
+}
+
+kernel void ppo_actor_forward_head(device const float* observations [[buffer(0)]],
+                                   device const float* params [[buffer(1)]],
+                                   device const float* hidden [[buffer(2)]],
+                                   device float* means [[buffer(3)]],
+                                   constant uint& batch_size [[buffer(4)]],
+                                   uint gid [[thread_position_in_grid]]) {
+    const uint total = batch_size * PPO_ACTIONS;
+    if (gid >= total) return;
+    const uint n = gid / PPO_ACTIONS;
+    const uint a = gid % PPO_ACTIONS;
+    const uint row = PPO_ACTOR_W2 + a * PPO_HIDDEN;
+    const uint hidden_base = n * PPO_HIDDEN;
+    float z = params[PPO_ACTOR_B2 + a];
+    for (uint h = 0; h < PPO_HIDDEN; ++h) z += params[row + h] * hidden[hidden_base + h];
+    if (PPO_HAS_GEOMETRY_PRIOR && a < 3)
+        z += observations[n * PPO_ACTOR_OBS + PPO_GEOMETRY_PRIOR_OFFSET + a];
+    means[gid] = z;
+}
 
 kernel void ppo_critic_forward(device const float* observations [[buffer(0)]],
                                device const float* params [[buffer(1)]],
@@ -266,12 +323,12 @@ kernel void ppo_critic_forward(device const float* observations [[buffer(0)]],
                                constant uint& batch_size [[buffer(4)]],
                                uint n [[thread_position_in_grid]]) {
     if (n >= batch_size) return;
-    thread float hidden[PPO_HIDDEN];
+    thread float hidden[PPO_CRITIC_HIDDEN];
     thread float obs[PPO_CRITIC_OBS];
     const uint base = n * PPO_CRITIC_OBS;
     for (uint i = 0; i < PPO_CRITIC_OBS; ++i) obs[i] = observations[base + i];
     values[n] = ppo_critic_value(params, obs, hidden);
-    for (uint h = 0; h < PPO_HIDDEN; ++h) hidden_out[n * PPO_HIDDEN + h] = hidden[h];
+    for (uint h = 0; h < PPO_CRITIC_HIDDEN; ++h) hidden_out[n * PPO_CRITIC_HIDDEN + h] = hidden[h];
 }
 
 // Input arrays use time-major [time, environment] order. A truncation uses its
@@ -440,9 +497,9 @@ kernel void ppo_critic_backward(device const float* observations [[buffer(0)]],
     if (n >= batch_size) return;
     const float dv = d_values[n];
     const uint obs_base = n * PPO_CRITIC_OBS;
-    const uint hid_base = n * PPO_HIDDEN;
+    const uint hid_base = n * PPO_CRITIC_HIDDEN;
     partial_grad[PPO_CRITIC_B2 * batch_size + n] = dv;
-    for (uint h = 0; h < PPO_HIDDEN; ++h) {
+    for (uint h = 0; h < PPO_CRITIC_HIDDEN; ++h) {
         partial_grad[(PPO_CRITIC_W2 + h) * batch_size + n] = dv * hidden[hid_base + h];
         const float dh = dv * params[PPO_CRITIC_W2 + h] * (1.0f - hidden[hid_base + h] * hidden[hid_base + h]);
         partial_grad[(PPO_CRITIC_B1 + h) * batch_size + n] = dh;
@@ -621,10 +678,10 @@ kernel void ppo_critic_hidden_delta(device const float* params [[buffer(0)]],
                                     device float* hidden_delta [[buffer(3)]],
                                     constant uint& batch_size [[buffer(4)]],
                                     uint i [[thread_position_in_grid]]) {
-    const uint count = batch_size * PPO_HIDDEN;
+    const uint count = batch_size * PPO_CRITIC_HIDDEN;
     if (i >= count) return;
-    const uint n = i / PPO_HIDDEN;
-    const uint h = i % PPO_HIDDEN;
+    const uint n = i / PPO_CRITIC_HIDDEN;
+    const uint h = i % PPO_CRITIC_HIDDEN;
     const float activation = hidden[i];
     hidden_delta[i] = d_values[n] * params[PPO_CRITIC_W2 + h]
                     * (1.0f - activation * activation);
@@ -643,13 +700,13 @@ kernel void ppo_critic_grad_direct(device const float* observations [[buffer(0)]
         const uint h = p / PPO_CRITIC_OBS;
         const uint obs_i = p % PPO_CRITIC_OBS;
         for (uint n = 0; n < batch_size; ++n)
-            sum += hidden_delta[n * PPO_HIDDEN + h] * observations[n * PPO_CRITIC_OBS + obs_i];
+            sum += hidden_delta[n * PPO_CRITIC_HIDDEN + h] * observations[n * PPO_CRITIC_OBS + obs_i];
     } else if (p < PPO_CRITIC_W2) {
         const uint h = p - PPO_CRITIC_B1;
-        for (uint n = 0; n < batch_size; ++n) sum += hidden_delta[n * PPO_HIDDEN + h];
+        for (uint n = 0; n < batch_size; ++n) sum += hidden_delta[n * PPO_CRITIC_HIDDEN + h];
     } else if (p < PPO_CRITIC_B2) {
         const uint h = p - PPO_CRITIC_W2;
-        for (uint n = 0; n < batch_size; ++n) sum += d_values[n] * hidden[n * PPO_HIDDEN + h];
+        for (uint n = 0; n < batch_size; ++n) sum += d_values[n] * hidden[n * PPO_CRITIC_HIDDEN + h];
     } else {
         for (uint n = 0; n < batch_size; ++n) sum += d_values[n];
     }

@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <memory>
 #include <unordered_map>
 #include <cstring>
 #include "world.hpp"
@@ -85,6 +86,11 @@ static std::string base_source() {
     std::string root=SOURCE_DIR;
     const std::string actor_obs_define="#define FIXED_PPO_ACTOR_OBS_DIM "+std::to_string(fixed_ppo::actor_obs_dim)+"\n";
     const std::string critic_obs_define="#define FIXED_PPO_CRITIC_OBS_DIM "+std::to_string(fixed_ppo::critic_obs_dim)+"\n";
+    // The compiled CPU widths and the Metal widths must agree. Sourcing these
+    // from the same fixed_ppo constants keeps a wide binary from reading wide
+    // parameters with a narrow kernel (or the reverse).
+    const std::string actor_hidden_define="#define FIXED_PPO_ACTOR_HIDDEN_DIM "+std::to_string(fixed_ppo::actor_hidden_dim)+"\n";
+    const std::string critic_hidden_define="#define FIXED_PPO_CRITIC_HIDDEN_DIM "+std::to_string(fixed_ppo::critic_hidden_dim)+"\n";
 #ifdef NAV_CRITIC_CONTROL_STATE
     const std::string critic_state_define="#define NAV_CRITIC_CONTROL_STATE "+std::to_string(NAV_CRITIC_CONTROL_STATE)+"\n";
 #else
@@ -101,7 +107,7 @@ static std::string base_source() {
     const std::string delay_rehearsal_define="#define NAV_DELAY_REHEARSAL 0\n";
 #endif
     const std::string sensor_profile_define="#define NAV_SENSOR_PROFILE "+std::to_string(NAV_SENSOR_PROFILE)+"\n";
-    return "#include <metal_stdlib>\nusing namespace metal;\n"+sensor_profile_define+memory_age_define+delay_rehearsal_define+read_text(root+"/world.hpp")+read_text(root+"/sensor_profile.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+critic_obs_define+critic_state_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
+    return "#include <metal_stdlib>\nusing namespace metal;\n"+sensor_profile_define+memory_age_define+delay_rehearsal_define+read_text(root+"/world.hpp")+read_text(root+"/sensor_profile.hpp")+world_kernels+read_text(root+"/raptor.metal")+read_text(root+"/physics.metal")+read_text(root+"/physics_domain.hpp")+read_text(root+"/navigation_runtime.hpp")+read_text(root+"/navigation_tasks.hpp")+read_text(root+"/training_potential.hpp")+actor_obs_define+critic_obs_define+actor_hidden_define+critic_hidden_define+critic_state_define+read_text(root+"/ppo.metal")+read_text(root+"/guidance.hpp")+read_text(root+"/sim.metal")+read_text(root+"/memory.metal")+control_test_kernels;
 }
 static std::vector<float> poses(size_t n) { std::vector<float> p(n*12,0);for(size_t i=0;i<n;i++){p[i*12+2]=1.5f;p[i*12+3]=p[i*12+7]=p[i*12+11]=1;}return p; }
 static void world_tests(Metal& m) {
@@ -471,10 +477,30 @@ using BufferBinding=std::pair<id<MTLBuffer>,size_t>;
     auto p=m.pipeline(name);auto e=[cb computeCommandEncoder];[e setComputePipelineState:p];uint j=0;for(auto binding:bindings)[e setBuffer:binding.first offset:binding.second atIndex:j++];
     [e dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(std::min(group,size_t(p.maxTotalThreadsPerThreadgroup)),1,1)];[e endEncoding];
 }
+// Dispatch the actor forward for `batch` observation rows beginning at
+// `obs_row_offset` bytes into the time-major observation buffer. The output
+// means are written at `means_row_offset` (the collection path writes into the
+// tick's action row; the PPO update writes a minibatch-local buffer). Widths
+// other than 64 use the generic split kernels; the legacy 64-unit SIMD/scalar
+// path is byte-for-byte the original implementation.
+[[maybe_unused]] static void encode_actor_forward(Metal& m,id<MTLCommandBuffer> cb,bool wide_actor,bool simd_actor,
+                                                 id<MTLBuffer> observations,size_t obs_row_offset,id<MTLBuffer> actor,
+                                                 id<MTLBuffer> hidden_out,id<MTLBuffer> means,size_t means_row_offset,
+                                                 id<MTLBuffer> batch_count,size_t batch) {
+    if(wide_actor) {
+        encode(m,cb,"ppo_actor_forward_layers",size_t(batch)*fixed_ppo::actor_hidden_dim,
+               {{observations,obs_row_offset},{actor,0},{hidden_out,0},{batch_count,0}},64);
+        encode(m,cb,"ppo_actor_forward_head",size_t(batch)*fixed_ppo::action_dim,
+               {{observations,obs_row_offset},{actor,0},{hidden_out,0},{means,means_row_offset},{batch_count,0}},64);
+    } else {
+        encode(m,cb,simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",
+               simd_actor?((size_t(batch)+7)/8)*256:batch,
+               {{observations,obs_row_offset},{actor,0},{hidden_out,0},{means,means_row_offset},{batch_count,0}},simd_actor?256:64);
+    }
+}
 // Append after SimRun, SimConfig and load_raptor() are declared. This command
 // runs only the CPU path; it does not create or dispatch Metal command buffers.
 #include "cpu_reference.hpp"
-
 static cpu_reference::Metrics cpu_reference_benchmark(uint32_t rollouts=1,
                                                        uint32_t family=0,
                                                        uint32_t env_count=128,
@@ -527,6 +553,7 @@ struct Sim {
     bool direction_aux_enabled=false;
     id<MTLComputePipelineState> memory_points_p,memory_candidates_p;
     bool simd_actor=true;
+    bool wide_actor=false;
     Sim(Metal& metal,SimConfig config,uint32_t steps):m(metal),cfg(config),horizon(steps) {
         auto w=load_raptor();auto p=rl_physics_crazyflie_default();uint n=cfg.n;size_t rows=n*size_t(horizon);
         NavigationRuntimeConfig runtime{};runtime.domain_range=rl_physics_domain_stress_range();
@@ -545,19 +572,27 @@ struct Sim {
         bank_control=m.buffer(sizeof(bank_defaults),&bank_defaults);
         bank_active_ids=m.buffer(size_t(n)*sizeof(uint32_t));
         bank_transition_ids=m.buffer(rows*sizeof(uint32_t));
-        fixed_ppo::ActorParams a;fixed_ppo::CriticParams c;uint seed=1789;
+        // Heap allocations: the widest actor is near 1M parameters and a
+        // by-value ActorParams would not fit a normal thread stack.
+        auto a=std::make_unique<fixed_ppo::ActorParams>();
+        auto c=std::make_unique<fixed_ppo::CriticParams>();uint seed=1789;
         auto normal=[&](){float u=std::max(wurand(seed),1e-7f);return std::sqrt(-2*std::log(u))*std::cos(6.2831853f*wurand(seed));};
-        for(size_t i=0;i<fixed_ppo::actor_b1_offset;i++)a.values[i]=normal()*0.04f;
-        for(size_t i=fixed_ppo::actor_w2_offset;i<fixed_ppo::actor_b2_offset;i++)a.values[i]=normal()*0.01f;
-        for(size_t i=0;i<4;i++)a.values[fixed_ppo::actor_log_std_offset+i]=-1.0f;
-        for(size_t i=0;i<fixed_ppo::critic_b1_offset;i++)c.values[i]=normal()*0.15f;
-        for(size_t i=fixed_ppo::critic_w2_offset;i<fixed_ppo::critic_b2_offset;i++)c.values[i]=normal()*0.1f;
-        actor=m.buffer(sizeof(a),&a);critic=m.buffer(sizeof(c),&c);obs=m.buffer(rows*fixed_ppo::actor_obs_dim*4);co=m.buffer(rows*fixed_ppo::critic_obs_dim*4);actions=m.buffer(rows*4*4);logp=m.buffer(rows*4);values=m.buffer(rows*4);rewards=m.buffer(rows*4);next_values=m.buffer(rows*4);terminated=m.buffer(rows);truncated=m.buffer(rows);advantages=m.buffer(rows*4);returns=m.buffer(rows*4);
+        for(size_t i=0;i<fixed_ppo::actor_b1_offset;i++)a->values[i]=normal()*0.04f;
+        for(size_t i=fixed_ppo::actor_w2_offset;i<fixed_ppo::actor_b2_offset;i++)a->values[i]=normal()*0.01f;
+        for(size_t i=0;i<4;i++)a->values[fixed_ppo::actor_log_std_offset+i]=-1.0f;
+        for(size_t i=0;i<fixed_ppo::critic_b1_offset;i++)c->values[i]=normal()*0.15f;
+        for(size_t i=fixed_ppo::critic_w2_offset;i<fixed_ppo::critic_b2_offset;i++)c->values[i]=normal()*0.1f;
+        actor=m.buffer(sizeof(*a),a->values.data());critic=m.buffer(sizeof(*c),c->values.data());obs=m.buffer(rows*fixed_ppo::actor_obs_dim*4);co=m.buffer(rows*fixed_ppo::critic_obs_dim*4);actions=m.buffer(rows*4*4);logp=m.buffer(rows*4);values=m.buffer(rows*4);rewards=m.buffer(rows*4);next_values=m.buffer(rows*4);terminated=m.buffer(rows);truncated=m.buffer(rows);advantages=m.buffer(rows*4);returns=m.buffer(rows*4);
         for(uint t=0;t<horizon;t++){cfg.tick=t;configs.push_back(m.buffer(sizeof(cfg),&cfg));}cfg.tick=0;
-        simd_actor=!(std::getenv("METAL_NAV_SCALAR_ACTOR") && std::string(std::getenv("METAL_NAV_SCALAR_ACTOR"))=="1");
-        actor_p=m.pipeline(simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward");
-        require(!simd_actor || (fixed_ppo::hidden_dim==64 && actor_p.threadExecutionWidth==32 && actor_p.maxTotalThreadsPerThreadgroup>=256),"SIMD actor requires64hidden/M3-style32lane/256threadgroups");
-        actor_workspace=m.buffer(cfg.n*fixed_ppo::hidden_dim*4);env_count=m.buffer(sizeof(cfg.n),&cfg.n);
+        // The actor width is a compile-time constant. Widths other than 64 use the
+        // generic split forward; the 64-unit SIMD/scalar kernels are compiled and
+        // used only for the legacy network.
+        wide_actor=fixed_ppo::actor_hidden_dim!=64;
+        simd_actor=!wide_actor && !(std::getenv("METAL_NAV_SCALAR_ACTOR") && std::string(std::getenv("METAL_NAV_SCALAR_ACTOR"))=="1");
+        if(wide_actor) { m.pipeline("ppo_actor_forward_layers");m.pipeline("ppo_actor_forward_head");actor_p=nil; }
+        else actor_p=m.pipeline(simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward");
+        require(!simd_actor || (fixed_ppo::actor_hidden_dim==64 && actor_p.threadExecutionWidth==32 && actor_p.maxTotalThreadsPerThreadgroup>=256),"SIMD actor requires64hidden/M3-style32lane/256threadgroups");
+        actor_workspace=m.buffer(cfg.n*fixed_ppo::actor_hidden_dim*4);env_count=m.buffer(sizeof(cfg.n),&cfg.n);
         memory_points=m.buffer(size_t(n)*640*4*4);memory_clearances=m.buffer(size_t(n)*85*4);memory_points_p=m.pipeline("nav_memory_build_points");memory_candidates_p=m.pipeline("nav_memory_candidate_clearance");
         reset_p=m.pipeline("sim_reset");depth_p=m.pipeline("sim_depth");observe_p=m.pipeline("sim_observe");act_p=m.pipeline("sim_act");advance_p=m.pipeline("sim_advance");reset();
     }
@@ -581,10 +616,8 @@ struct Sim {
             }
             m.dispatch(cb,observe_p,cfg.n,{states,runs,worlds,sensors,obs,co,physics,c,poses,memory_clearances},64);
             const size_t row_offset=size_t(t%horizon)*cfg.n;
-            encode(m,cb,simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",
-                   simd_actor?((size_t(cfg.n)+7)/8)*256:cfg.n,
-                   {{obs,row_offset*fixed_ppo::actor_obs_dim*4},{actor,0},{actor_workspace,0},
-                    {actions,row_offset*fixed_ppo::action_dim*4},{env_count,0}},simd_actor?256:64);
+            encode_actor_forward(m,cb,wide_actor,simd_actor,obs,row_offset*fixed_ppo::actor_obs_dim*4,actor,
+                                 actor_workspace,actions,row_offset*fixed_ppo::action_dim*4,env_count,cfg.n);
             m.dispatch(cb,act_p,cfg.n,{states,runs,worlds,obs,co,actor,critic,actions,logp,values,commands,physics,c},64);
             if(direction_aux_enabled){
                 const size_t target_offset=row_offset*16*sizeof(float);
@@ -1150,6 +1183,8 @@ struct PPOTrainer {
     std::vector<id<MTLBuffer>> batch_size_buffers, adam_configs;
     id<MTLComputePipelineState> gae_p, normalize_p, actor_forward_p, critic_forward_p;
     id<MTLComputePipelineState> loss_grad_p, actor_hidden_delta_p, actor_grad_direct_p, critic_hidden_delta_p, critic_grad_direct_p;
+    // Wide actor first-layer gradient and output-head gradient (unused at width 64).
+    id<MTLComputePipelineState> actor_grad_tiled_p=nil, actor_grad_head_p=nil;
     id<MTLComputePipelineState> norm_factor_p, scale_grad_p, adam_p, clip_logstd_p;
     id<MTLComputePipelineState> metric_batch_p, metric_mean_p;
 
@@ -1171,17 +1206,17 @@ struct PPOTrainer {
         minibatches=(rows+minibatch-1)/minibatch;
         updates_per_rollout=epochs*minibatches;
         starts.reserve(minibatches);for(uint32_t s0=0;s0<rows;s0+=minibatch)starts.push_back(s0);
-        actor_hidden=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
+        actor_hidden=metal.buffer(size_t(minibatch)*fixed_ppo::actor_hidden_dim*4);
         actor_means=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
-        critic_hidden=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
+        critic_hidden=metal.buffer(size_t(minibatch)*fixed_ppo::critic_hidden_dim*4);
         predicted_values=metal.buffer(size_t(minibatch)*4);
         d_means=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
         d_log_stds=metal.buffer(size_t(minibatch)*fixed_ppo::action_dim*4);
         d_values=metal.buffer(size_t(minibatch)*4);
         losses=metal.buffer(size_t(minibatch)*4*4);
-        actor_hidden_delta=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
+        actor_hidden_delta=metal.buffer(size_t(minibatch)*fixed_ppo::actor_hidden_dim*4);
         actor_grad=metal.buffer(fixed_ppo::actor_param_count*4);
-        critic_hidden_delta=metal.buffer(size_t(minibatch)*fixed_ppo::hidden_dim*4);
+        critic_hidden_delta=metal.buffer(size_t(minibatch)*fixed_ppo::critic_hidden_dim*4);
         critic_grad=metal.buffer(fixed_ppo::critic_param_count*4);
         actor_m=metal.buffer(fixed_ppo::actor_param_count*4); actor_v=metal.buffer(fixed_ppo::actor_param_count*4);
         critic_m=metal.buffer(fixed_ppo::critic_param_count*4); critic_v=metal.buffer(fixed_ppo::critic_param_count*4);
@@ -1205,10 +1240,14 @@ struct PPOTrainer {
         for(uint32_t b=0;b<=minibatch;b++) batch_size_buffers.push_back(scalar(metal,b));
         for(uint32_t i=0;i<updates_per_rollout;i++) adam_configs.push_back(metal.buffer(sizeof(PpoAdamHostConfig)));
         gae_p=metal.pipeline("ppo_gae"); normalize_p=metal.pipeline("ppo_normalize_advantages");
-        actor_forward_p=metal.pipeline(sim.simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward"); critic_forward_p=metal.pipeline("ppo_critic_forward");
+        actor_forward_p=sim.wide_actor?nil:metal.pipeline(sim.simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward"); critic_forward_p=metal.pipeline("ppo_critic_forward");
         loss_grad_p=metal.pipeline("ppo_sample_loss_grad"); actor_hidden_delta_p=metal.pipeline("ppo_actor_hidden_delta");
         actor_grad_direct_p=metal.pipeline("ppo_actor_grad_direct"); critic_hidden_delta_p=metal.pipeline("ppo_critic_hidden_delta");
         critic_grad_direct_p=metal.pipeline("ppo_critic_grad_direct");
+        if(sim.wide_actor) {
+            actor_grad_tiled_p=metal.pipeline("ppo_actor_grad_tiled");
+            actor_grad_head_p=metal.pipeline("ppo_actor_grad_head");
+        }
         norm_factor_p=metal.pipeline("ppo_grad_scale_factor"); scale_grad_p=metal.pipeline("ppo_apply_grad_scale");
         adam_p=metal.pipeline("ppo_adam_update"); clip_logstd_p=metal.pipeline("ppo_clip_log_std");
         metric_batch_p=metal.pipeline("ppo_metrics_batch"); metric_mean_p=metal.pipeline("ppo_metrics_mean");
@@ -1340,7 +1379,7 @@ struct PPOTrainer {
                 const size_t co_offset=size_t(begin)*fixed_ppo::critic_obs_dim*4;
                 const size_t action_offset=size_t(begin)*fixed_ppo::action_dim*4, row_offset=size_t(begin)*4;
                 const auto bb=batch_size_buffers[b];
-                dispatch(cb,actor_forward_p,sim.simd_actor?((size_t(b)+7)/8)*256:b,{{sim.obs,obs_offset},{sim.actor,0},{actor_hidden,0},{actor_means,0},{bb,0}},sim.simd_actor?256:64);
+                encode_actor_forward(metal,cb,sim.wide_actor,sim.simd_actor,sim.obs,obs_offset,sim.actor,actor_hidden,actor_means,0,bb,b);
                 dispatch(cb,critic_forward_p,b,{{sim.co,co_offset},{sim.critic,0},{critic_hidden,0},{predicted_values,0},{bb,0}},64);
                 dispatch(cb,loss_grad_p,b,{{sim.actions,action_offset},{actor_means,0},{sim.actor,fixed_ppo::actor_log_std_offset*4},
                     {sim.logp,row_offset},{predicted_values,0},{sim.values,row_offset},{sim.advantages,row_offset},{sim.returns,row_offset},
@@ -1351,8 +1390,18 @@ struct PPOTrainer {
                         {sim.direction_aux_targets,target_offset},{d_means,0},{bb,0},{direction_aux_coefficient_b,0}},64);
                 }
                 dispatch(cb,metric_batch_p,1,{{losses,0},{metric_rows,size_t(update)*4*4},{bb,0}},1);
-                dispatch(cb,actor_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.actor,0},{d_means,0},{actor_hidden,0},{actor_hidden_delta,0},{bb,0}},128);
-                dispatch(cb,actor_grad_direct_p,fixed_ppo::actor_param_count,{{sim.obs,obs_offset},{actor_hidden,0},{d_means,0},{d_log_stds,0},{actor_hidden_delta,0},{actor_grad,0},{bb,0}},128);
+                dispatch(cb,actor_hidden_delta_p,size_t(b)*fixed_ppo::actor_hidden_dim,{{sim.actor,0},{d_means,0},{actor_hidden,0},{actor_hidden_delta,0},{bb,0}},128);
+                if(sim.wide_actor) {
+                    // The tiled SIMD kernel owns W1; the head kernel owns b1, W2,
+                    // b2 and the log standard deviations. Together they overwrite
+                    // the whole actor gradient without a per-sample scratch tensor.
+                    const size_t tiles=((fixed_ppo::actor_hidden_dim+7)/8)*((fixed_ppo::actor_obs_dim+7)/8);
+                    dispatch(cb,actor_grad_tiled_p,((tiles+3)/4)*128,{{sim.obs,obs_offset},{actor_hidden_delta,0},{actor_grad,0},{bb,0}},128);
+                    dispatch(cb,actor_grad_head_p,fixed_ppo::actor_param_count-fixed_ppo::actor_b1_offset,
+                             {{actor_hidden,0},{actor_hidden_delta,0},{d_means,0},{d_log_stds,0},{actor_grad,0},{bb,0}},128);
+                } else {
+                    dispatch(cb,actor_grad_direct_p,fixed_ppo::actor_param_count,{{sim.obs,obs_offset},{actor_hidden,0},{d_means,0},{d_log_stds,0},{actor_hidden_delta,0},{actor_grad,0},{bb,0}},128);
+                }
                 if(anchor_lambda>0) {
                     // Measure PPO and reference pull separately before their sum is clipped.
                     dispatch(cb,grad_norm_p,256,{{actor_grad,0},{anchor_norm_rows,size_t(update)*2*4},{actor_count_b,0}},256);
@@ -1361,7 +1410,7 @@ struct PPOTrainer {
                     dispatch(cb,grad_norm_p,256,{{anchor_component_grad,0},{anchor_norm_rows,(size_t(update)*2+1)*4},{actor_count_b,0}},256);
                     dispatch(cb,anchor_p,fixed_ppo::actor_param_count,{{actor_grad,0},{sim.actor,0},{anchor_ref_b,0},{anchor_lambda_b,0},{actor_count_b,0}},128);
                 }
-                dispatch(cb,critic_hidden_delta_p,size_t(b)*fixed_ppo::hidden_dim,{{sim.critic,0},{d_values,0},{critic_hidden,0},{critic_hidden_delta,0},{bb,0}},128);
+                dispatch(cb,critic_hidden_delta_p,size_t(b)*fixed_ppo::critic_hidden_dim,{{sim.critic,0},{d_values,0},{critic_hidden,0},{critic_hidden_delta,0},{bb,0}},128);
                 dispatch(cb,critic_grad_direct_p,fixed_ppo::critic_param_count,{{sim.co,co_offset},{critic_hidden,0},{d_values,0},{critic_hidden_delta,0},{critic_grad,0},{bb,0}},128);
                 require(optimizer_step<uint64_t(std::numeric_limits<uint32_t>::max()),"PPO Adam step overflow");
                 const uint32_t step=uint32_t(++optimizer_step);

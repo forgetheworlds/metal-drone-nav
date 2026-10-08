@@ -559,10 +559,9 @@ static void local_tick(LocalRun& run,id<MTLCommandBuffer> cb,uint32_t tick,bool 
     if(run.observation_transform)
         sim.m.dispatch(cb,run.observation_transform,sim.cfg.n,{sim.obs,c},64);
     const size_t row_offset=size_t(tick%sim.horizon)*sim.cfg.n;
-    encode(sim.m,cb,sim.simd_actor?"ppo_actor_forward_simd_fused":"ppo_actor_forward",
-           sim.simd_actor?((size_t(sim.cfg.n)+7)/8)*256:sim.cfg.n,
-           {{sim.obs,row_offset*fixed_ppo::actor_obs_dim*4},{sim.actor,0},{sim.actor_workspace,0},
-           {sim.actions,row_offset*fixed_ppo::action_dim*4},{sim.env_count,0}},sim.simd_actor?256:64);
+    encode_actor_forward(sim.m,cb,sim.wide_actor,sim.simd_actor,sim.obs,row_offset*fixed_ppo::actor_obs_dim*4,
+                         sim.actor,sim.actor_workspace,sim.actions,row_offset*fixed_ppo::action_dim*4,
+                         sim.env_count,sim.cfg.n);
     if(run.action_transform) {
         if(run.action_transform_data)
             sim.m.dispatch(cb,run.action_transform,sim.cfg.n,{sim.obs,sim.actions,sim.runs,c,run.action_transform_data},64);
@@ -838,6 +837,7 @@ static void usage() {
     std::cout<<
         "commands\n"
         "  local-test\n"
+        "  capacity-parity WARMSTART [--envs N] [--rows B]  CPU/Metal parity on real observations\n"
         "  local-contract [OUT_JSON]     runner hash + compiled Metal source hash + profile\n"
         "  local-bank  SPEC OUT_PREFIX [--tasks N] [--seed N]\n"
         "  local-train ROLLOUTS CHECKPOINT WARMSTART [--spec NAME] [--bank PATH] [--seed N]\n"
@@ -876,11 +876,20 @@ static int command_test() {
     physics_tests(metal);
     raptor_px4_adapter_tests();
     require(fixed_ppo::run_cpu_self_tests(),"PPO CPU self tests");
-    ppo_tests(metal);
-    geodesic_direction_gradient_test(metal);
-    closed_loop_tests(metal);
-    mixed_domain_tests(metal);
-    deployed_action_map_test(metal);
+    if(fixed_ppo::actor_hidden_dim==64) {
+        ppo_tests(metal);
+        geodesic_direction_gradient_test(metal);
+        closed_loop_tests(metal);
+        mixed_domain_tests(metal);
+        deployed_action_map_test(metal);
+    } else {
+        // The SIMD/scalar 64-unit kernels and the fixed 64-wide CPU reference are
+        // not exercised at other widths; the split forward, tiled gradient and
+        // the per-split rollout/update contract below cover the wide network.
+        std::cout<<"capacity_test actor_hidden_dim="<<fixed_ppo::actor_hidden_dim
+                 <<" critic_hidden_dim="<<fixed_ppo::critic_hidden_dim
+                 <<" skipping the legacy 64-wide PPO micro-tests\n";
+    }
     for(const char* name:{"source","dev-a","dev-b","open","clutter","dev-r1","dev-r2"}) {
         const BankSpec spec=spec_by_name(name);
         const auto bank=build_bank(spec,nullptr);
@@ -917,6 +926,207 @@ static int command_test() {
                  <<" ratio="<<metric[3]<<" collect_gpu_s="<<collect_gpu<<" update_gpu_s="<<update_gpu<<" PASS\n";
     }
     std::cout<<"local_test_all PASS sensor_profile="<<NAV_SENSOR_ACTIVE_NAME<<"\n";
+    return 0;
+}
+
+// CPU/Metal parity for the compiled actor and critic widths on REAL actor
+// observations collected from the source bank. Validates the split wide
+// forward, the geometry-prior residual, the tiled first-layer gradient, the
+// output-head gradient and the critic path against the fixed_ppo CPU reference.
+static int command_capacity_parity(int argc,char** argv) {
+    require(argc>=3,"capacity-parity WARMSTART [--envs N] [--rows B]");
+    const std::string warmstart=argv[2];
+    uint32_t environments=128,rows=256;
+    std::string observation_dump;
+    for(int index=3;index<argc;index++) {
+        const std::string option=argv[index];
+        if(option=="--envs")environments=option_uint(argc,argv,index,option);
+        else if(option=="--rows")rows=option_uint(argc,argv,index,option);
+        else if(option=="--dump-observations")observation_dump=option_value(argc,argv,index,option);
+        else throw std::runtime_error("unknown capacity-parity option "+option);
+    }
+    require(environments>0&&environments<=1024,"capacity-parity environments out of range");
+    require(rows>=8&&rows%8==0&&rows<=2*environments,
+            "capacity-parity rows must be a multiple of 8 within two collected ticks");
+    Metal metal;metal.compile(base_source()+PPO_TRAINER_MSL+kWaypointKernels);
+    const BankSpec spec=spec_by_name("source");
+    const auto bank=build_bank(spec,nullptr);
+    const BankControl control{spec.period,uint32_t(bank.size())};
+    SimConfig config;
+    config.n=environments;config.mode=22;config.family=0;config.seed=spec.seed;
+    config.speed=1.5f;config.distance=4;config.max_steps=400;config.geometry_memory=1;
+    config.entropy_coef=0.001f;config.learning_rate=0.0001f;
+    Sim sim(metal,config,32);
+    LocalRun run=make_local_run(sim,bank,control,metal.pipeline("waypoint_task_apply"));
+    auto probe=[metal.queue commandBuffer];local_probe(run,probe);metal.finish(probe);
+    auto collected=[metal.queue commandBuffer];local_collect(run,collected,2);metal.finish(collected);
+    navigation_training::load_actor(sim,warmstart,true);
+
+    const size_t obs_floats=size_t(rows)*fixed_ppo::actor_obs_dim;
+    std::vector<float> observations(obs_floats),critic_observations(size_t(rows)*fixed_ppo::critic_obs_dim);
+    std::copy_n(static_cast<const float*>(sim.obs.contents),obs_floats,observations.begin());
+    std::copy_n(static_cast<const float*>(sim.co.contents),critic_observations.size(),critic_observations.begin());
+    for(float value:observations)
+        require(std::isfinite(value),"capacity-parity actor observation is non-finite");
+    if(!observation_dump.empty()) {
+        // Real actor observations for independent host-side widening checks.
+        std::ofstream dump(observation_dump,std::ios::binary);
+        require(bool(dump),"cannot write capacity-parity observation dump");
+        dump.write(reinterpret_cast<const char*>(observations.data()),observations.size()*sizeof(float));
+        require(bool(dump),"capacity-parity observation dump write failed");
+    }
+
+    uint32_t row_count=rows;
+    auto observations_b=metal.buffer(obs_floats*4,observations.data());
+    auto critic_observations_b=metal.buffer(critic_observations.size()*4,critic_observations.data());
+    auto count_b=metal.buffer(sizeof(row_count),&row_count);
+    auto hidden_b=metal.buffer(size_t(rows)*fixed_ppo::actor_hidden_dim*4);
+    auto means_b=metal.buffer(size_t(rows)*fixed_ppo::action_dim*4);
+    auto forward=[&](id<MTLCommandBuffer> buffer){
+        encode_actor_forward(metal,buffer,sim.wide_actor,sim.simd_actor,observations_b,0,sim.actor,
+                             hidden_b,means_b,0,count_b,rows);
+    };
+    auto forward_buffer=[metal.queue commandBuffer];forward(forward_buffer);metal.finish(forward_buffer);
+
+    auto actor=std::make_unique<fixed_ppo::ActorParams>();
+    std::memcpy(actor->values.data(),sim.actor.contents,fixed_ppo::actor_param_count*4);
+    std::vector<float> cpu_hidden(size_t(rows)*fixed_ppo::actor_hidden_dim);
+    std::vector<float> cpu_means(size_t(rows)*fixed_ppo::action_dim);
+    for(uint32_t row=0;row<rows;row++)
+        fixed_ppo::actor_forward(observations.data()+size_t(row)*fixed_ppo::actor_obs_dim,*actor,
+                                 cpu_hidden.data()+size_t(row)*fixed_ppo::actor_hidden_dim,
+                                 cpu_means.data()+size_t(row)*fixed_ppo::action_dim);
+    const auto worst_abs=[&](const std::vector<float>& expected,const void* actual,size_t count){
+        const float* values=static_cast<const float*>(actual);float worst=0;
+        for(size_t i=0;i<count;i++)worst=std::max(worst,std::fabs(expected[i]-values[i]));
+        return worst;
+    };
+    const float hidden_error=worst_abs(cpu_hidden,hidden_b.contents,cpu_hidden.size());
+    const float means_error=worst_abs(cpu_means,means_b.contents,cpu_means.size());
+    require(hidden_error<3e-5f,"capacity-parity actor hidden differs from the CPU reference");
+    require(means_error<3e-5f,"capacity-parity actor means differ from the CPU reference");
+
+    // Real rollout quantities drive the loss derivatives, so the gradient check
+    // covers the same residual and log-probability terms the trainer uses.
+    const size_t rollout_rows=size_t(rows);
+    auto actions_b=metal.buffer(rollout_rows*4*4);
+    auto logp_b=metal.buffer(rollout_rows*4);
+    auto values_b=metal.buffer(rollout_rows*4);
+    auto advantages_b=metal.buffer(rollout_rows*4);
+    auto returns_b=metal.buffer(rollout_rows*4);
+    std::copy_n(static_cast<const float*>(sim.actions.contents),rollout_rows*4,static_cast<float*>(actions_b.contents));
+    std::copy_n(static_cast<const float*>(sim.logp.contents),rollout_rows,static_cast<float*>(logp_b.contents));
+    std::copy_n(static_cast<const float*>(sim.values.contents),rollout_rows,static_cast<float*>(values_b.contents));
+    std::copy_n(static_cast<const float*>(sim.advantages.contents),rollout_rows,static_cast<float*>(advantages_b.contents));
+    std::copy_n(static_cast<const float*>(sim.returns.contents),rollout_rows,static_cast<float*>(returns_b.contents));
+    auto critic_hidden_b=metal.buffer(rollout_rows*fixed_ppo::critic_hidden_dim*4);
+    auto predicted_b=metal.buffer(rollout_rows*4);
+    auto d_means_b=metal.buffer(rollout_rows*4*4);
+    auto d_log_stds_b=metal.buffer(rollout_rows*4*4);
+    auto d_values_b=metal.buffer(rollout_rows*4);
+    auto losses_b=metal.buffer(rollout_rows*4*4);
+    auto float_scalar=[&](float value){return metal.buffer(sizeof(value),&value);};
+    auto hidden_delta_b=metal.buffer(size_t(rows)*fixed_ppo::actor_hidden_dim*4);
+    auto actor_grad_b=metal.buffer(fixed_ppo::actor_param_count*4);
+    auto critic_hidden_delta_b=metal.buffer(rollout_rows*fixed_ppo::critic_hidden_dim*4);
+    auto critic_grad_b=metal.buffer(fixed_ppo::critic_param_count*4);
+    const size_t log_std_offset=size_t(fixed_ppo::actor_log_std_offset)*4;
+    auto clip_b=float_scalar(0.2f);
+    auto value_coefficient_b=float_scalar(0.5f);
+    auto entropy_coefficient_b=float_scalar(sim.cfg.entropy_coef);
+    auto gradient_buffer=[metal.queue commandBuffer];
+    encode(metal,gradient_buffer,"ppo_critic_forward",rows,
+           {{critic_observations_b,0},{sim.critic,0},{critic_hidden_b,0},{predicted_b,0},{count_b,0}},64);
+    encode(metal,gradient_buffer,"ppo_sample_loss_grad",rows,
+           {{actions_b,0},{means_b,0},{sim.actor,log_std_offset},{logp_b,0},{predicted_b,0},{values_b,0},
+            {advantages_b,0},{returns_b,0},{d_means_b,0},{d_log_stds_b,0},{d_values_b,0},{losses_b,0},
+            {count_b,0},{clip_b,0},{value_coefficient_b,0},{entropy_coefficient_b,0}},64);
+    if(sim.wide_actor) {
+        encode(metal,gradient_buffer,"ppo_actor_hidden_delta",size_t(rows)*fixed_ppo::actor_hidden_dim,
+               {{sim.actor,0},{d_means_b,0},{hidden_b,0},{hidden_delta_b,0},{count_b,0}},128);
+        const size_t tiles=((fixed_ppo::actor_hidden_dim+7)/8)*((fixed_ppo::actor_obs_dim+7)/8);
+        encode(metal,gradient_buffer,"ppo_actor_grad_tiled",((tiles+3)/4)*128,
+               {{observations_b,0},{hidden_delta_b,0},{actor_grad_b,0},{count_b,0}},128);
+        encode(metal,gradient_buffer,"ppo_actor_grad_head",fixed_ppo::actor_param_count-fixed_ppo::actor_b1_offset,
+               {{hidden_b,0},{hidden_delta_b,0},{d_means_b,0},{d_log_stds_b,0},{actor_grad_b,0},{count_b,0}},128);
+    } else {
+        encode(metal,gradient_buffer,"ppo_actor_hidden_delta",size_t(rows)*fixed_ppo::actor_hidden_dim,
+               {{sim.actor,0},{d_means_b,0},{hidden_b,0},{hidden_delta_b,0},{count_b,0}},128);
+        encode(metal,gradient_buffer,"ppo_actor_grad_direct",fixed_ppo::actor_param_count,
+               {{observations_b,0},{hidden_b,0},{d_means_b,0},{d_log_stds_b,0},{hidden_delta_b,0},{actor_grad_b,0},{count_b,0}},128);
+    }
+    encode(metal,gradient_buffer,"ppo_critic_hidden_delta",rollout_rows*fixed_ppo::critic_hidden_dim,
+           {{sim.critic,0},{d_values_b,0},{critic_hidden_b,0},{critic_hidden_delta_b,0},{count_b,0}},128);
+    encode(metal,gradient_buffer,"ppo_critic_grad_direct",fixed_ppo::critic_param_count,
+           {{critic_observations_b,0},{critic_hidden_b,0},{d_values_b,0},{critic_hidden_delta_b,0},{critic_grad_b,0},{count_b,0}},128);
+    metal.finish(gradient_buffer);
+
+    std::vector<float> d_means(rollout_rows*4),d_log_stds(rollout_rows*4),d_values(rollout_rows);
+    std::copy_n(static_cast<const float*>(d_means_b.contents),d_means.size(),d_means.begin());
+    std::copy_n(static_cast<const float*>(d_log_stds_b.contents),d_log_stds.size(),d_log_stds.begin());
+    std::copy_n(static_cast<const float*>(d_values_b.contents),d_values.size(),d_values.begin());
+    for(float value:d_means)require(std::isfinite(value),"capacity-parity d_means is non-finite");
+    for(float value:d_log_stds)require(std::isfinite(value),"capacity-parity d_log_std is non-finite");
+    for(float value:d_values)require(std::isfinite(value),"capacity-parity d_value is non-finite");
+
+    // CPU reference: per-sample actor and critic gradients, accumulated in
+    // double so the comparison is not dominated by the reference's own rounding.
+    std::vector<double> cpu_actor_grad(fixed_ppo::actor_param_count,0.0);
+    std::vector<double> cpu_critic_grad(fixed_ppo::critic_param_count,0.0);
+    std::vector<float> sample_grad(fixed_ppo::actor_param_count);
+    std::vector<float> sample_critic_grad(fixed_ppo::critic_param_count);
+    auto critic=std::make_unique<fixed_ppo::CriticParams>();
+    std::memcpy(critic->values.data(),sim.critic.contents,fixed_ppo::critic_param_count*4);
+    const float* gpu_critic_hidden=static_cast<const float*>(critic_hidden_b.contents);
+    for(uint32_t row=0;row<rows;row++) {
+        fixed_ppo::actor_backward_sample(observations.data()+size_t(row)*fixed_ppo::actor_obs_dim,
+            cpu_hidden.data()+size_t(row)*fixed_ppo::actor_hidden_dim,
+            d_means.data()+size_t(row)*4,d_log_stds.data()+size_t(row)*4,*actor,sample_grad.data());
+        for(size_t p=0;p<fixed_ppo::actor_param_count;p++)cpu_actor_grad[p]+=double(sample_grad[p]);
+        fixed_ppo::critic_backward_sample(critic_observations.data()+size_t(row)*fixed_ppo::critic_obs_dim,
+            gpu_critic_hidden+size_t(row)*fixed_ppo::critic_hidden_dim,
+            d_values[row],*critic,sample_critic_grad.data());
+        for(size_t p=0;p<fixed_ppo::critic_param_count;p++)cpu_critic_grad[p]+=double(sample_critic_grad[p]);
+    }
+    const auto gradient_error=[&](const std::vector<double>& expected,const void* actual,size_t count){
+        const float* values=static_cast<const float*>(actual);
+        double max_abs=0,max_expected=0,residual=0,reference=0;
+        for(size_t i=0;i<count;i++) {
+            require(std::isfinite(values[i]),"capacity-parity gradient is non-finite");
+            const double difference=double(values[i])-expected[i];
+            max_abs=std::max(max_abs,std::fabs(difference));
+            max_expected=std::max(max_expected,std::fabs(expected[i]));
+            residual+=difference*difference;reference+=expected[i]*expected[i];
+        }
+        return std::array<double,3>{max_abs,max_expected,reference>0?std::sqrt(residual/reference):0.0};
+    };
+    const auto actor_gradient=gradient_error(cpu_actor_grad,actor_grad_b.contents,fixed_ppo::actor_param_count);
+    const auto critic_gradient=gradient_error(cpu_critic_grad,critic_grad_b.contents,fixed_ppo::critic_param_count);
+    require(actor_gradient[2]<1e-3 && actor_gradient[0]<=1e-3*(1.0+actor_gradient[1]),
+            "capacity-parity actor gradient differs from the CPU reference");
+    require(critic_gradient[2]<1e-3 && critic_gradient[0]<=1e-3*(1.0+critic_gradient[1]),
+            "capacity-parity critic gradient differs from the CPU reference");
+    const float critic_value_error=worst_abs([&]{
+        std::vector<float> values(rows);
+        std::vector<float> hidden(fixed_ppo::critic_hidden_dim);
+        auto local=std::make_unique<fixed_ppo::CriticParams>();
+        std::memcpy(local->values.data(),sim.critic.contents,fixed_ppo::critic_param_count*4);
+        for(uint32_t row=0;row<rows;row++)
+            values[row]=fixed_ppo::critic_forward(critic_observations.data()+size_t(row)*fixed_ppo::critic_obs_dim,*local,hidden.data());
+        return values;
+    }(),predicted_b.contents,rows);
+    require(critic_value_error<3e-5f,"capacity-parity critic value differs from the CPU reference");
+
+    std::cout<<"capacity_parity PASS actor_hidden_dim="<<fixed_ppo::actor_hidden_dim
+             <<" critic_hidden_dim="<<fixed_ppo::critic_hidden_dim
+             <<" actor_params="<<fixed_ppo::actor_param_count<<" critic_params="<<fixed_ppo::critic_param_count
+             <<" rows="<<rows<<" split="<<spec.name
+             <<" hidden_error="<<hidden_error<<" means_error="<<means_error
+             <<" critic_value_error="<<critic_value_error
+             <<" actor_grad_max_abs="<<actor_gradient[0]<<" actor_grad_max_ref="<<actor_gradient[1]
+             <<" actor_grad_rel_l2="<<actor_gradient[2]
+             <<" critic_grad_max_abs="<<critic_gradient[0]<<" critic_grad_rel_l2="<<critic_gradient[2]
+             <<" wide_actor="<<(sim.wide_actor?1:0)<<"\n";
     return 0;
 }
 
@@ -1934,6 +2144,7 @@ int main(int argc,char** argv) {@autoreleasepool {try {
     const std::string command=argv[1];
     if(command=="local-bank")return waypoint::command_bank(argc,argv);
     if(command=="local-test")return waypoint::command_test();
+    if(command=="capacity-parity")return waypoint::command_capacity_parity(argc,argv);
     if(command=="critic-state-test")return waypoint::command_critic_state_test();
     if(command=="local-contract")return waypoint::command_contract(argc,argv);
     if(command=="local-train")return waypoint::command_train(argc,argv);
