@@ -1,0 +1,179 @@
+{
+  "verified_records": 135,
+  "panels": {
+    "composite-nominal": {
+      "tasks": 256,
+      "early": {
+        "success": 248,
+        "collision": 8,
+        "timeout": 0
+      },
+      "full": {
+        "success": 176,
+        "collision": 79,
+        "timeout": 1
+      },
+      "composed": {
+        "success": 244,
+        "collision": 12,
+        "timeout": 0
+      },
+      "rescued_full_failures": 70,
+      "new_full_losses": 2
+    },
+    "open-nominal": {
+      "tasks": 256,
+      "early": {
+        "success": 250,
+        "collision": 0,
+        "timeout": 6
+      },
+      "full": {
+        "success": 225,
+        "collision": 0,
+        "timeout": 31
+      },
+      "composed": {
+        "success": 250,
+        "collision": 0,
+        "timeout": 6
+      },
+      "rescued_full_failures": 26,
+      "new_full_losses": 1
+    },
+    "long-open-nominal": {
+      "tasks": 256,
+      "early": {
+        "success": 236,
+        "collision": 0,
+        "timeout": 20
+      },
+      "full": {
+        "success": 219,
+        "collision": 0,
+        "timeout": 37
+      },
+      "composed": {
+        "success": 256,
+        "collision": 0,
+        "timeout": 0
+      },
+      "rescued_full_failures": 37,
+      "new_full_losses": 0
+    },
+    "dev-b-nominal": {
+      "tasks": 256,
+      "early": {
+        "success": 228,
+        "collision": 18,
+        "timeout": 10
+      },
+      "full": {
+        "success": 214,
+        "collision": 25,
+        "timeout": 17
+      },
+      "composed": {
+        "success": 228,
+        "collision": 17,
+        "timeout": 11
+      },
+      "rescued_full_failures": 24,
+      "new_full_losses": 10
+    },
+    "fresh-course-reflected-both-delay": {
+      "tasks": 256,
+      "early": {
+        "success": 175,
+        "collision": 81,
+        "timeout": 0
+      },
+      "full": {
+        "success": 135,
+        "collision": 120,
+        "timeout": 1
+      },
+      "composed": {
+        "success": 172,
+        "collision": 84,
+        "timeout": 0
+      },
+      "rescued_full_failures": 58,
+      "new_full_losses": 21
+    },
+    "fresh-course-reflected-combined": {
+      "tasks": 256,
+      "early": {
+        "success": 174,
+        "collision": 81,
+        "timeout": 1
+      },
+      "full": {
+        "success": 118,
+        "collision": 137,
+        "timeout": 1
+      },
+      "composed": {
+        "success": 170,
+        "collision": 86,
+        "timeout": 0
+      },
+      "rescued_full_failures": 70,
+      "new_full_losses": 18
+    }
+  },
+  "course_interventions": {
+    "1": {
+      "lost_from_early": 28,
+      "early-yaw": {
+        "outcomes": {
+          "success": 100,
+          "collision": 27,
+          "timeout": 1
+        },
+        "rescued_early_losses": 12,
+        "new_full_losses": 9,
+        "gate": false
+      },
+      "early-xyz": {
+        "outcomes": {
+          "success": 119,
+          "collision": 9,
+          "timeout": 0
+        },
+        "rescued_early_losses": 24,
+        "new_full_losses": 2,
+        "gate": true
+      }
+    },
+    "2": {
+      "lost_from_early": 45,
+      "early-yaw": {
+        "outcomes": {
+          "success": 73,
+          "collision": 55,
+          "timeout": 0
+        },
+        "rescued_early_losses": 4,
+        "new_full_losses": 11,
+        "gate": false
+      },
+      "early-xyz": {
+        "outcomes": {
+          "success": 125,
+          "collision": 3,
+          "timeout": 0
+        },
+        "rescued_early_losses": 43,
+        "new_full_losses": 0,
+        "gate": true
+      }
+    }
+  },
+  "scope": "Frozen exposed development intervention and exact single-MLP composition; no new learning or independent transfer.",
+  "single_vs_dual_flight_parity": {
+    "panels": 12,
+    "flights": 1536,
+    "entire_csv_identical": true
+  }
+}

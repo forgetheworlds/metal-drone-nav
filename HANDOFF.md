@@ -1,37 +1,44 @@
 # Current handoff — October 8
 
-The original goal is active and incomplete. Read goal.md, STATUS.md and the
-capacity/actor-step result reports. Webots and VM work remain deferred.
+The original goal is active and incomplete. Webots and VM work are deferred.
+Read goal.md, STATUS.md, docs/OUTPUT_CHANNEL_RECOVERY.md and the capacity and
+actor-step result reports. Preserve default policies, controls and real videos.
 
-Capacity (419.4M transitions / 1,530 panels) and actor-step pilot/full comparisons
-are complete and pushed through 2f0ee15. Do not rerun them. Larger actors lose
-retention under the tested recipe. Actor-only rate factor 0.4 reduces first-step
-KL and helps the same-size control, but course success falls 248 -> 176/256 with
-continued learning. Default policy remains unchanged.
+Capacity and actor-step studies are complete. Do not rerun them. The corrected
+erosion replay is published in f57b44d. The optimizer audit (exec 19724, PID
+39887) finished with exit 0. Root rejected another advantage-cap trial and its
+unsupported clipping/noise explanation. The diagnostic's policy-active threshold
+was wrong; the actual learner's PPO threshold is correct. Read
+results/root-update-mechanism-review/decision.md.
 
-The erosion audit confirms loss on the exact TRAIN payload set. Its hard GAE
-horizon explanation was withdrawn. Root independently replayed all eight corrected
-stochastic CSVs and normalization, and reproduced the sampled-clearance bands.
-Read results/omp-erosion-contract-repair/root-decision.md and root-review.json.
-Latent actions are not physical commands. Sampled pre-action clearance is not
-substep flight minimum. Low-margin correlation does not establish update cause.
-No anchor/lambda experiment was approved.
+Root tested the output channels directly. Early yaw failed; early XYZ with late
+yaw recovered 67 of 73 lost courses with two new losses. Course success increased
+176 -> 244 of 256, contacts fell 79 -> 12. Long open increased 219 -> 256; short
+open 225 -> 250; static B 214 -> 228; reflected combined stress 118 -> 170,
+with 86 contacts remaining. Root combined the learned outputs into ONE
+184/5120/4 MLP. All 12 single-actor panels, 1,536 flights, match the dual-model
+CSV files exactly. There are 967,688 actor parameters, about 3.9 MB in FP32.
+This is a research candidate with no new learning, blind final or transfer test.
+Candidates: results/root-action-channel/composed-s1.bin and composed-s2.bin.
+They contain parameters only and cannot resume training.
 
-Current OMP update-mechanism mission uses opencode-go/deepseek-v4.1-flash in SAME
-session 01a117e9-8c9b-755b-b8d6-6c35054380b8. Root launch exec 19724, initial PID
-39887, folder results/omp-update-mechanism. It owns only that folder; all original
-learners/checkpoints/results read-only. Inspect actual launcher/events/child logs.
-Mission: resume cloned FULL pilot/final learner states for bounded diagnostic
-updates, prove instrument-off resume parity, measure functional step/clipping/
-anchor and additive task-gradient conflict. Root reviews before any long training.
-The previous audit exec 58161 is terminal exit 0; no duplicate or stale revival.
+Current OMP mission uses opencode-go/deepseek-v4.1-flash, same session
+01a117e9-8c9b-755b-b8d6-6c35054380b8, root exec 6589, initial PID 77229.
+It owns only results/omp-functional-retention. Frozen original core and results
+are read-only. It implements one training-only physical XYZ mean teacher loss,
+then proves derivatives, Metal parity, full default checkpoint parity and strict
+teacher/coefficient resume. TRAIN-only calibration precedes a frozen two-seed
+control/treatment pilot request. Root reviews gates before launching pilots.
+The teacher is removed at inference; shared features can still affect yaw, so
+that effect and broad retention must be graded. No coefficient or reward sweep.
 
-Only Luna native agents; no skills. Free OpenCode MiMo is a fallback after concrete
-terminal/provider evidence. All heavy jobs share absolute root metal-training.lock.
-OMP print disposal kills background children: bounded foreground or root persistent
-parents only. Saved header counts are incremental. Root partial competence sampler
-is unverified; never adopt or train from it. Preserve controls, actual videos,
-failures and denominators. Keep state readable and observe at longer intervals.
+Inspect real launcher, events and child output before acting. Never restart on
+an observation timeout. All GPU work uses the absolute root metal-training.lock
+with real foreground or persistent parent ownership. No callback-ended children.
+Native agents use Luna only. No skills. Free MiMo is a fallback after concrete
+provider or terminal evidence. The unverified root competence sampler stays
+parked. Fresh sealed FINAL follows full freeze. Root commits as Forge the World
+and pushes reviewed milestones. Keep state readable and observe longer intervals.
 
 ## Historical October 5 handoff
 

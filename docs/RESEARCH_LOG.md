@@ -691,3 +691,26 @@ Root wrote an independent replay and decision in results/omp-erosion-contract-re
 A new same-session bounded update audit now inspects cloned saved early/full Adam
 and simulator states, with parity before instrumentation. It must identify a real
 update mechanism and its second-order costs before another long learning change.
+
+## October 8 — output intervention and one composed actor
+
+Root reviewed the optimizer audit and rejected another advantage-cap trial.
+The probe used incorrect policy-active log-ratio thresholds; the learner uses
+correct probability thresholds. The clipping, noise and gradient-share causal
+claims are not established. The diagnostic remains useful update evidence.
+
+Early yaw failed both registered course gates. Early XYZ with late yaw rescued
+67 of 73 lost early-solved courses with two new losses. Course success 176 -> 244
+of 256, contacts 79 -> 12; long open 219 -> 256; short open 225 -> 250; static B
+214 -> 228; reflected combined stress 118 -> 170. Stress remains weak.
+Root joined hidden neurons and output heads into ONE 967,688-parameter MLP.
+All 12 single-actor panels, 1,536 actual flights, match the dual-model CSV files
+exactly. No new learning or independent transfer is claimed.
+
+[Output recovery](OUTPUT_CHANNEL_RECOVERY.md) records the intervention, exact
+composition and replayable 135-record bundle. The next OMP mission owns only
+results/omp-functional-retention: training-only physical XYZ teacher loss,
+derivative/Metal/resume/default parity and a frozen two-seed pilot request.
+Root reviews before heavy execution. The teacher is removed at inference;
+shared-feature yaw and exploration effects still need checks. This larger
+candidate is a research teacher, not an assumed microcontroller deployment.
