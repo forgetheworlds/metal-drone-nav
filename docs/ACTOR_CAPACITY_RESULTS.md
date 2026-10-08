@@ -105,7 +105,8 @@ The [raw evidence bundle](../evidence/inputs/actor-capacity/records.tar.gz) and
 receipts, headers, final inference weights, verification probes and frozen code.
 Intermediate model hashes and headers are retained; rerunning intermediate
 policy flights requires local snapshots or retraining. Full resume checkpoints
-remain local. Inference prefixes cannot resume training or prove budgets alone.
+remain local. Drift fingerprints identify the retained parameter prefixes;
+original full smoke-checkpoint hashes are retained separately. Inference prefixes cannot resume training or prove budgets alone.
 The experimental implementation is on branch `codex/actor-capacity-sweep`,
 commit `2f17eda`; the default navigator is unchanged.
 

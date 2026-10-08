@@ -118,7 +118,7 @@ def update_drift(folder):
                         'probe_rows': 256, 'raw_mean_rms_change': float(np.sqrt(np.mean((after - before) ** 2))),
                         'old_to_new_gaussian_kl_mean': float(np.mean(kl)), 'kl_max': float(np.max(kl)),
                         'warm_sha256': hashlib.sha256(warm.read_bytes()).hexdigest(),
-                        'smoke_sha256': hashlib.sha256(smoke.read_bytes()).hexdigest()})
+                        'smoke_parameter_sha256': hashlib.sha256(smoke.read_bytes()[:136 + 4 * (189 * width + 8 + 4225)]).hexdigest()})
     return {'scope': 'Post-hoc fixed256 real source-observation probe after one source rollout/128Adam updates, one seed. KL is latent Gaussian policy shift, not closed-loop improvement or proof of failure cause. Same warm means, reset logstd-1.',
             'records': records}
 

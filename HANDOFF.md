@@ -1,10 +1,42 @@
-# Navigation state — October 7
+# Current handoff — October 8
 
-The original handoff below is historical. Usage has reset and the root agent
-is actively working. The fresh native benchmark completed all 192 valid flights.
-The user now prioritizes the training-scale phase and defers Webots. The local
-`rl-webots` VM was deleted; no VM or Webots process is running.
-Read `docs/TRAINING_SCALE_PHASE.md` and `STATUS.md` for current work.
+Original goal active/incomplete. Read goal.md, STATUS.md, docs/TRAINING_SCALE_PHASE.md,
+CODE_DIRECTION and ACTOR_CAPACITY_RESULTS. No Webots/VM this phase. Existing
+policies, actual native videos and all failed experiments preserved.
+
+## Full capacity experiment COMPLETE
+
+All10producers/419.4M transitions and1530panels/195840flights complete, not live.
+root_parent.py38317 and report_when_ready.py10143 finished. DeepSeek final report
+finished too. Published535b9df contains full results/raw58.6MB bundle/reviewer.
+Both narrow full checkpoints match priorN512 bit-for-bit. No widened policy
+promoted. Root rejected broad"capacitynotbottleneck" inference. Original
+capacity-parity mostlyentropy (zeroadvantages); root's all10trained dense checks
+now validate everyactor layer/newrows. First-updateKL.00691at64 vs.04267at2560
+vs.09066at5120 motivates next targeted actor-step test. Bundle parameter-prefix
+fingerprint/reproduction correction published as follow-up; curves/values unchanged.
+
+## Current delegated continuation
+
+SAME OMP opencode-go/deepseek-v4.1-flash session01a117e9-8c9b-755b-b8d6-6c35054380b8,
+rootexec71240, initialPID22276, results/omp-actor-step/{brief,launcher,events}.
+Inspect actualprocess andownedfiles before action. NativeLuna only; freeOpenCode
+MiMo acceptable fallback after concrete terminal/provider evidence, no duplicate.
+Owns /Users/muadhsambul/.codex/worktrees/navigation-actor-capacity/RL and that
+result folder. It is implementing actor-only Adamrate factor.4 atfixedH2560;
+criticrate.0001/reward/source/physics/NN remainfixed. Must prove default1full100
+parity, actualnonzero actor/critic optimizer isolation, strictresume, functional
+KLreduction then write frozen2seedpilot request. ROOT must readcode+gates before
+launching actual persistent training. No actor-step fulltraining claimed.
+Old capacity controls already complete: reusematchingprefix256 for4.194M pilots,
+not rerun. Fulltreatment total2560rollouts (resumeincrementally fromactualheader).
+Samewarmw2560 seed1/2, sametrainingseeds20261210/11, samebankn512 period48.
+Original old frozen code/binaries preserved on2f17eda andevidence bundle.
+
+Root main has partial unverified Luna sampler edits. Do not adopt/merge/training
+from them. Main selectedassets untouched. AllGPUjobs absolute rootlock, owned
+persistentparents. OMPprint endingdisposescallback/backgroundchildren; never use
+that as fulltrainingownership. Root handlescoherent Forge theWorldcommit/push.
 
 ## Historical October 5 handoff
 
