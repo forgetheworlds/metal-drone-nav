@@ -714,3 +714,22 @@ derivative/Metal/resume/default parity and a frozen two-seed pilot request.
 Root reviews before heavy execution. The teacher is removed at inference;
 shared-feature yaw and exploration effects still need checks. This larger
 candidate is a research teacher, not an assumed microcontroller deployment.
+
+## October 8 — root repairs and executes the retention gates
+
+The OMP implementation ended before its derivative, calibration and full parity
+procedures were complete. Its coefficient 0.05 request had no calibration and
+was rejected. Root preserved it and completed actual nonzero derivative tests.
+Root fixed the always-failing descent fixture, batch buffer alias, sidecar path
+and parameter provenance, and bound the new loss source into enabled resumes.
+
+Actual Metal derivative relative L2 is 3.6e-7; shared hidden derivatives are
+nonzero while the direct yaw head remains zero. Enabled six versus three-plus-
+three FULL checkpoints match on both seeds. Nine wrong-resume cases reject
+without writes; disabled compatibility passes. One TRAIN-only quarter-gradient
+calibration gives coefficient 4.134632354, not a development-selected value.
+
+Root persistent validation now finishes default 100-rollout parity. A separate
+root pilot parent verifies those real receipts before accepting four matched
+256-rollout arms and 138 evaluation panels. No new loss outcome is claimed yet.
+[Experiment](PHYSICAL_RETENTION_EXPERIMENT.md) records the intervention and gates.

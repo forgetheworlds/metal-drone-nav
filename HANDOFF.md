@@ -22,23 +22,31 @@ This is a research candidate with no new learning, blind final or transfer test.
 Candidates: results/root-action-channel/composed-s1.bin and composed-s2.bin.
 They contain parameters only and cannot resume training.
 
-Current OMP mission uses opencode-go/deepseek-v4.1-flash, same session
-01a117e9-8c9b-755b-b8d6-6c35054380b8, root exec 6589, initial PID 77229.
-It owns only results/omp-functional-retention. Frozen original core and results
-are read-only. It implements one training-only physical XYZ mean teacher loss,
-then proves derivatives, Metal parity, full default checkpoint parity and strict
-teacher/coefficient resume. TRAIN-only calibration precedes a frozen two-seed
-control/treatment pilot request. Root reviews gates before launching pilots.
-The teacher is removed at inference; shared features can still affect yaw, so
-that effect and broad retention must be graded. No coefficient or reward sweep.
+## Root-owned next learning comparison
 
-Inspect real launcher, events and child output before acting. Never restart on
-an observation timeout. All GPU work uses the absolute root metal-training.lock
-with real foreground or persistent parent ownership. No callback-ended children.
-Native agents use Luna only. No skills. Free MiMo is a fallback after concrete
-provider or terminal evidence. The unverified root competence sampler stays
-parked. Fresh sealed FINAL follows full freeze. Root commits as Forge the World
-and pushes reviewed milestones. Keep state readable and observe longer intervals.
+The OMP functional-retention mission ended (exec 6589, PID 77229, exit 0). Its
+unrun procedures and coefficient 0.05 request were not accepted. Root preserved
+the original delivery and failed logs, fixed genuine nonzero derivative probes,
+descent/batch fixtures and sidecar paths, and bound new implementation hashes.
+Actual TRAIN calibration yields 4.134632354 for both seeds. Metal relative L2
+error is 3.6e-7. Enabled six versus three-plus-three FULL resume is exact on both
+seeds. Nine bad sidecar cases reject without writes; coefficient-zero resume passes.
+
+Actual validation parent: root exec 34579, PID 8867,
+results/omp-functional-retention/root-validation.py. It is finishing default
+100-rollout full-checkpoint parity. Do not mutate frozen loss code or binaries.
+Actual pilot waiter: root exec 70872, PID 11092, root-pilot.py. It checks every
+actual gate, calibration and immutable input before accepting the request, then
+runs C/T on two seeds, 256 rollouts / 4.19M transitions each, plus 138 evaluation
+panels. Inspect jobs, logs and headers; never duplicate or restart on a timeout.
+No pilot was running when this handoff was written. Parent and learner grading
+include broad retention and stress; no target simulator training or sealed FINAL.
+
+All GPU jobs use the absolute root metal-training.lock with persistent parents.
+Only Luna native agents. No skills. Webots/VM deferred. The unverified root
+competence sampler stays parked. Default assets and videos remain unchanged.
+Root commits as Forge the World and pushes reviewed milestones. Original goal
+active and incomplete. Read docs/PHYSICAL_RETENTION_EXPERIMENT.md.
 
 ## Historical October 5 handoff
 
