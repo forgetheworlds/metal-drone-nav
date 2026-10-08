@@ -771,3 +771,14 @@ clip. Motor state named rpm is normalized0..1, so its name does not demonstrate
 input saturation. MiMo's log analysis identified the same value-clip correction.
 Actual predictive-quality and input-alias probes are still in progress; mean
 ratio or aggregate value loss alone does not settle critic quality.
+
+## October 8 — arrival teacher-release attempt rejected
+
+Root independently reviewed two masked256-rollout headers/exposures and184
+comparison cells (46new,138reused). The targeted open failures worsen249->238
+and freshopen250->245; longopen256->232 and reflected combined181->168. Both
+seeds regress on oldopen and longopen. Nominalcourse245->246 is insufficient.
+Shared long arrivals slow1.58s. No promotion, radius sweep or full extension.
+[Result](ARRIVAL_RETENTION_RESULTS.md) retains the original hypothesis/failure
+and narrows the earlier counterfactual-command diagnosis. Critic audit is still
+working with actual on-policy data; its findings must be reviewed before a fix.
