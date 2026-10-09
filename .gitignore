@@ -17,3 +17,6 @@ webots/controllers/sensor_geometry_audit/sensor_geometry_audit
 
 # Unsplit local copy; public lossless parts are kept in Git.
 /evidence/inputs/critic-geometry/records.tar.gz
+
+# Local complete gate-state copy; code/effects bundle is public.
+/evidence/inputs/goal-variance-gates/records.tar.gz

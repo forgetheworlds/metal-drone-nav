@@ -1,0 +1,75 @@
+{
+  "verified_inputs": 110,
+  "scope": "Code, actual gate receipts and shared TRAIN-state before/after update measurements. Full gate checkpoint payloads retained in local records.tar.gz (153MB), not in this smaller public bundle.",
+  "validation": {
+    "status": "PASS",
+    "results": [
+      {
+        "seed": 1,
+        "default_off_full100_byte_identical": true,
+        "sha256": "95d462b5ddce64ce69284940ed9ec44f9783d9e7c4db9e21916b06c60148d76f"
+      },
+      {
+        "seed": 2,
+        "default_off_full100_byte_identical": true,
+        "sha256": "bfdac4c860e9efbb6b845d8194389a3563d63f9d9218fa7822e2a3a93a22b1c5"
+      },
+      {
+        "seed": 1,
+        "enabled6_vs3plus3_full_byte_identical": true,
+        "sha256": "49b835e0345ea2c5fb17969c4d537549e3efb01d695c03bbefe6d9f3754f8ffe"
+      },
+      {
+        "seed": 2,
+        "enabled6_vs3plus3_full_byte_identical": true,
+        "sha256": "d721969a987bd55d502f3ef642e250349be241de07553998b9b8bc71571d572b"
+      }
+    ],
+    "wrong_distribution_refused_without_write": true,
+    "no_full_pilot": true
+  },
+  "shared_effects": {
+    "scope": "Same union of512 real source-state observations for both updated policies, after one bounded update each; not navigation gains.",
+    "rows": 512,
+    "near_rows": 256,
+    "far_rows": 256,
+    "policies": {
+      "control-global": {
+        "near_kl_mean": 0.007397600553794619,
+        "far_kl_mean": 0.008393491976670048,
+        "max_kl": 0.03466113730433429,
+        "mean_latent_delta_l2": 0.04363563998200915
+      },
+      "control-goal": {
+        "near_kl_mean": 0.06296539765287296,
+        "far_kl_mean": 0.008393491976670048,
+        "max_kl": 0.3888844907134553,
+        "mean_latent_delta_l2": 0.04363563998200915
+      },
+      "goal-global": {
+        "near_kl_mean": 0.005057607249869917,
+        "far_kl_mean": 0.0056420469279300205,
+        "max_kl": 0.024906973514471575,
+        "mean_latent_delta_l2": 0.03781368618015857
+      },
+      "goal-goal": {
+        "near_kl_mean": 0.04030438735158812,
+        "far_kl_mean": 0.0056420469279300205,
+        "max_kl": 0.24551924318440554,
+        "mean_latent_delta_l2": 0.03781368618015857
+      }
+    }
+  },
+  "calibration": {
+    "enabled": 1,
+    "actual_sample_rows": 256,
+    "actual_logp_max_error": 1.47819519e-05,
+    "near_effective_kl_mean": 0.02243549718,
+    "far_effective_kl_mean": 0.002747334661,
+    "max_effective_kl": 0.1447894071,
+    "actor_grad_norm_mean": 9.103914261,
+    "critic_grad_norm_mean": 3.882957458,
+    "scope": "One bounded real update on frozen warmstart state observations, not learning capability"
+  },
+  "no_full_learning_pilot": true
+}
