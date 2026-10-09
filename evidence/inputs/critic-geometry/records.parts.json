@@ -1,0 +1,17 @@
+{
+  "archive_sha256": "d86d40ad728aca7fc2aa39f6923df4970455cf7c775ac031fd043876882dbdc7",
+  "bytes": 90244788,
+  "parts": [
+    {
+      "name": "records.tar.gz.part1",
+      "bytes": 48000000,
+      "sha256": "6ef18ad6800364b24e64a2aec5faf8994f7bc18936999025f87035ccd8c98357"
+    },
+    {
+      "name": "records.tar.gz.part2",
+      "bytes": 42244788,
+      "sha256": "08558ab149018c8a662b347d61652c0f2eea8fdce28dc0167c438035f7f65771"
+    }
+  ],
+  "reason": "Lossless split for reliable Git upload; original595-input archive unchanged."
+}

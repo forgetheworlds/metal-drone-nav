@@ -8,6 +8,9 @@ record individual experiments and do not replace it.
 
 | Document | Purpose |
 |---|---|
+| [CRITIC_GEOMETRY_RESULTS.md](CRITIC_GEOMETRY_RESULTS.md) | Complete matched critic-input experiment, navigation gains and eight failed checks |
+| [WIDE_NATIVE_TRANSFER.md](WIDE_NATIVE_TRANSFER.md) | Width-aware actor port and 48 actual frozen Webots flights |
+| [CRITIC_AUDIT_RESULTS.md](CRITIC_AUDIT_RESULTS.md) | Independent critic audit, corrected claims and portable raw-data replay |
 | [PARALLELISM_PILOT.md](PARALLELISM_PILOT.md) | Matched sample/optimizer budget, throughput, memory and broad skill outcomes |
 | [TRAINING_SCALE_REVIEW.md](TRAINING_SCALE_REVIEW.md) | Requested Astra review: batch-regime causality, capacity blockers and measurement controls |
 | [ACTOR_STEP_RESULTS.md](ACTOR_STEP_RESULTS.md) | Actor-only update scaling: early gains, full-budget retention failures and next diagnosis |

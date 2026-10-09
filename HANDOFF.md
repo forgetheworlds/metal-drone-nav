@@ -1,62 +1,61 @@
 # Current handoff — October 8
 
-The original one-navigator goal is active and incomplete. Webots validation is permitted as needed with minimized batch runs on RL
-port23456. VM work remains deferred. Defaults and published native videos are preserved.
+Original one-navigator goal active and incomplete. Webots is permitted as needed
+with minimized batch mode, dedicated RL port23456 and isolated projects. No VM.
+Default policies, actual native videos and all useful failed experiments retained.
 
-## Current work
+## Latest complete work
 
-MiMo's critic audit and correction are COMPLETE. Their reviewed72-input replay
-is published3a697ce. No old external mission remains active.
+Critic geometry: four256-rollout headers/32768Adam steps each,16.78Mtransitions,
+92actual evaluations/11,776flights. Root independent live and archive-only reviews
+agree. Source course C241/T247 of256, contacts15/9; reflected combined175/184;
+longopen256/256. StaticC218/220, contacts24/25; open246/244, freshopen249/249.
+Both-delay course and fresh combined regress. EIGHT gates fail; NOT ADOPTED.
+No extension or feature/coefficient sweep. Read CRITIC_GEOMETRY_RESULTS.md.
+Source595-input bundle includes full models, code, actual exposure and all cases.
 
-Root implemented the critic geometry experiment. Both critics have226inputs,
-64hidden and14,593parameters. Control pads the old64 with162zeros; treatment
-adds all16objects' geometry/motion, count and actual time. The actor remains
-184/5120/4 and never receives those training-only features. Same source, reward,
-teacher and compute. Current and next value use the SAME feature builder.
+Large actor native port: NAVWID4 records width/camera/timing/body/source contract;
+184/5120/4 actor only, no critic/teacher at inference. Legacy64 mean/commands exact;
+512 synthetic CPU/Metal means within1.44e-6, actual sim_act commands within5.52e-7;
+eight invalid formats refused; controller builds arm64/x86_64. Read
+WIDE_NATIVE_TRANSFER.md. Prior model/hardware camera mismatch.75/body-origin
+versusnative.8/.08m remains disclosed; no target feedback tuning.
 
-Engineering gates PASS: CPU/Metal feature error0; actor and original64-input
-hashes identical; zero appended warmstart weights with biases/head preserved;
-new feature gradient L2=7.88; CPU/Metal gradient max error2.53e-7; next-value
-consistency1.29e-5 or better with nonzero added weights. Both seeds C/T6vs3+3
-FULL resume exact, wrong feature/width refused without writes, first rollout
-actor bytes identical. Existing inference frontend scored128 first-update
-flights identically for C/T. Initial CPU fixture FMA-contraction failure retained;
-reference-only contraction disabled to restore exact preservation, training
-compiler flags unchanged.
+Native48 COMPLETE: three frozen large actors on16matched DEV tasks,47new plus
+one reused valid smoke. Parent15/16, priorunmasked15/16, geometry14/16. All actual
+owned processes, model/physics/hold/world/mover receipts checked. Mover pose
+error<=.000935m;44/48 source/native verdicts agree. Shared moving9contacts already
+occur in Metal. Geometry adds one static6timeout. No native training, promotion,
+broad robustness or blindFINAL claim. Native451-input replay matches live counts.
 
-Actual ROOT producer/grader: results/root-critic-geometry/run.py, persistent
-exec32931. Read jobs.json and actual PID/history/header, never duplicate/restart
-on an observation timeout. Four256-rollout arms (16.78Mtransitions), then92
-actual DEV/stress panels. Critic-only addition, not an actor-capacity sweep.
-The freeze covers sources/binaries/banks/parents/request/decision. Do not mutate
-these while active. No learning gain claimed yet. Final checkpoints only.
-Read docs/CRITIC_GEOMETRY_EXPERIMENT.md and decision.md for exact outcome gates.
+## Actual execution state
 
-## Completed studies
+ALL root geometry producers/evaluators, native smoke/pair and MiMo audits are
+TERMINAL. No active GPU, native flight or external engineering mission. Old
+exec32931/PID5710, exec74995 nativepair, exec89815/PID87529 audit and24910/PID64343
+correction must not be restarted. Root owns state. Sampler draft remains unused.
 
-Experience scale, capacity and actor-step studies are complete and published.
-Do not rerun. Wider actors under the fixed recipe lost skills. Root combined
-early XYZ and late yaw into one 184/5120/4 actor, with exact flight parity:
-course 244/256, long open 256/256, reflected combined stress 170/256.
+## Next evidence
 
-Physical retention: four 256-rollout arms, 16.78M transitions and 138 panels
-complete. Course ordinary PPO 204 -> retention 245/256, long open 234 -> 256,
-reflected combined stress 147 -> 181. Five gates fail; no default promotion.
-Published b1ae9bd includes full checkpoints and 754-input replay.
+Diagnose current goal stalls and shared contact records before another learner.
+Use actual input warnings, requested/executed motion and contact-object evidence;
+nearest geometry alone is not sensor visibility or sufficient warning. Parent's
+last moving9pose is near a static wall; unmasked/geometry near the mover. This
+is preliminary pose attribution, not an exact contact-point audit. Keep source
+and native body timing/frames explicit. One justified fix, not a speculative sweep.
 
-Arrival-release attempt: two masked arms and 46 new panels plus 138 retained
-panels complete. Open 249 -> 238, long open 256 -> 232, reflected combined
-181 -> 168. Rejected; no radius/coefficient sweep or extension. Full 666-input
-archive and replay published 93fd4cb. Preserve the unmasked candidate.
+A possible diagnosis is deployment mean behavior versus stochastic training on
+mechanically selected failed open arrivals; test with frozen weights/physics before
+assuming a noise schedule is a remedy. Source selection is DEV, oldFINALgeometry
+exposed. New sealedFINAL only after full freeze and broad source/transfer readiness.
 
-## Execution
+## Rules
 
-All GPU jobs use /Users/muadhsambul/RL/results/metal-training.lock and actual
-foreground or root persistent parents. Inspect exit/header evidence. Only Luna
-native agents; no old external mission revival. Unverified competence-sampler
-draft remains unused. Research actors have not passed independent transfer or
-fresh sealed FINAL. Root reviews code and evidence, commits as Forge the World
-and pushes verified milestones to origin.
+All heavy work uses /Users/muadhsambul/RL/results/metal-training.lock and real
+foreground/persistent root ownership. Never kill other-project processes or touch
+its files/settings. Read current exit/header/hash evidence; no duplicate or
+timeout-based restarts. Native agents Luna only, no skills. Root writes/reviews
+code, preserves denominators and pushes Forge the World milestones.
 
 ## Historical October 5 handoff
 

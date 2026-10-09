@@ -5,11 +5,16 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import tarfile
+import tempfile
 
 from navigation_physical_retention_results import flights, totals
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "results/root-critic-geometry"
+ORIGINAL_ROOT = Path("/Users/muadhsambul/RL")
+ORIGINAL_WORKTREE = Path("/Users/muadhsambul/.codex/worktrees/navigation-actor-capacity/RL")
+ARCHIVE_ROOT = None
 IDENTITY_FIELDS = [
     "env", "scene_seed", "route_class", "family", "start_x", "start_y",
     "start_z", "start_yaw", "goal_x", "goal_y", "goal_z",
@@ -17,7 +22,20 @@ IDENTITY_FIELDS = [
 
 
 def sha(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return hashlib.sha256(resolve(path).read_bytes()).hexdigest()
+
+
+def resolve(path):
+    path = Path(path)
+    if ARCHIVE_ROOT is not None and path.is_absolute():
+        if path.is_relative_to(ARCHIVE_ROOT):
+            return path
+        if path.is_relative_to(ORIGINAL_ROOT):
+            return ARCHIVE_ROOT / path.relative_to(ORIGINAL_ROOT)
+        if path.is_relative_to(ORIGINAL_WORKTREE):
+            return ARCHIVE_ROOT / "worktree" / path.relative_to(ORIGINAL_WORKTREE)
+        raise ValueError(f"Unbound archived input: {path}")
+    return path
 
 
 def compare_flights(control, geometry):
@@ -53,7 +71,7 @@ def review(folder):
             raise ValueError(f"Frozen input changed: {path}")
     budget = {}
     for job in jobs:
-        checkpoint = Path(job["checkpoint"])
+        checkpoint = resolve(job["checkpoint"])
         if sha(checkpoint) != job["checkpoint_sha256"]:
             raise ValueError("Final checkpoint hash differs")
         header = checkpoint.read_bytes()[:136]
@@ -77,10 +95,10 @@ def review(folder):
     for receipt in receipts:
         if sha(receipt["csv"]) != receipt["csv_sha256"] or sha(receipt["bank"]) != receipt["bank_sha256"]:
             raise ValueError("Flight or bank hash differs")
-        data[identity(receipt)] = flights(receipt["csv"])
+        data[identity(receipt)] = flights(resolve(receipt["csv"]))
     # Reuse the already scored parent and unmasked candidate. Check their exact
     # files and paired task identities; do not launch their flights again.
-    references = json.loads((ROOT / "results/omp-functional-retention/root-eval-receipts.json").read_text())
+    references = json.loads(resolve(ORIGINAL_ROOT / "results/omp-functional-retention/root-eval-receipts.json").read_text())
     reference_roles = {"composed_parent": "composed_parent", "treatment": "prior_unmasked"}
     reference_count = 0
     for receipt in references:
@@ -91,7 +109,7 @@ def review(folder):
         if sha(receipt["bank"]) != receipt["bank_sha256"]:
             raise ValueError("Cached reference bank differs")
         key = (reference_roles[receipt["label"]], receipt["seed"], receipt["panel"], receipt["profile"])
-        data[key] = flights(receipt["csv"])
+        data[key] = flights(resolve(receipt["csv"]))
         reference_count += 1
     if reference_count != 92:
         raise ValueError("All 92 cached parent/prior-model cases are required")
@@ -167,8 +185,43 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--folder", type=Path, default=OUT)
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--archive", type=Path)
     args = parser.parse_args()
-    result = review(args.folder)
+    if args.archive:
+        with tempfile.TemporaryDirectory() as directory:
+            ARCHIVE_ROOT = Path(directory)
+            archive_path = args.archive
+            if archive_path.suffix == ".json":
+                parts = json.loads(archive_path.read_text())
+                joined = ARCHIVE_ROOT / "joined-records.tar.gz"
+                with joined.open("wb") as output:
+                    for item in parts["parts"]:
+                        name = item["name"]
+                        if Path(name).name != name:
+                            raise ValueError("Unsafe archive part name")
+                        data = (archive_path.parent / name).read_bytes()
+                        if hashlib.sha256(data).hexdigest() != item["sha256"]:
+                            raise ValueError("Archive part hash differs")
+                        output.write(data)
+                if hashlib.sha256(joined.read_bytes()).hexdigest() != parts["archive_sha256"]:
+                    raise ValueError("Reassembled archive hash differs")
+                archive_path = joined
+            with tarfile.open(archive_path, "r:gz") as archive:
+                manifest = json.load(archive.extractfile("SHA256.json"))
+                for name, expected in manifest.items():
+                    member = archive.getmember(name)
+                    if not member.isfile() or Path(name).is_absolute() or ".." in Path(name).parts:
+                        raise ValueError("Unsafe archive member")
+                    data = archive.extractfile(member).read()
+                    if hashlib.sha256(data).hexdigest() != expected:
+                        raise ValueError(f"Input hash mismatch: {name}")
+                    path = ARCHIVE_ROOT / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(data)
+            result = review(ARCHIVE_ROOT / "results/root-critic-geometry")
+            result["verified_archive_inputs"] = len(manifest)
+    else:
+        result = review(args.folder)
     text = json.dumps(result, indent=2) + "\n"
     if args.out:
         args.out.write_text(text)

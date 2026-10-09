@@ -860,3 +860,32 @@ first-rollout actor byte parity pass.128 actual inference flights match exactly.
 Four256-rollout arms and92 panels are root-owned under the shared lock; no gain
 is claimed while training. All broad capability/contact/speed/stress gates were
 frozen before launch. See [experiment](CRITIC_GEOMETRY_EXPERIMENT.md).
+
+## October 8 — complete geometry-critic outcomes and large-policy transfer
+
+All four256-rollout headers/32768optimizer steps and92panels are complete.
+Root grades11,776new source flights and cached parent/unmasked references.
+Geometry inputs change course241→247/256 (contacts15→9) and reflected combined
+175→184, but staticC gains only2 and adds1contact; open244/fresh249 remain below
+253. Both-delay course loses5, fresh combined loses5; eight frozen checks fail.
+No adoption/extension/sweep. The595-input full checkpoint/source/flight archive
+replays identically. [Source result](CRITIC_GEOMETRY_RESULTS.md).
+
+Root found the old native loader limited to64hidden, then implemented optional
+NAVWID4 for the184/H/4 actor. Legacy interfaces remain unchanged. Frozen Metal
+means and the actual sim_act body commands match CPU inference within1.44e-6
+and5.52e-7 respectively; legacy64 outputs exact; eight malformed loads refused.
+Controller built arm64/x86_64. The451-input native archive retains code and
+parameters. Three frozen5120-hidden actors fly16matched static/moving DEV tasks
+each: parent15/16, priorunmasked15/16, geometry14/16.47new flights plus one reused
+valid integration smoke, all minimized/batched RLport23456, no target training.
+Actual mover poses match within.000935m;44/48 source/native verdicts agree.
+The shared moving9contact occurs in Metal too. Geometry's added static6timeout
+is preserved. Model legacy.75/body-origin versus physicalnative.8/.08m residual
+remains disclosed; no target feedback tuning. [Native result](WIDE_NATIVE_TRANSFER.md).
+
+Next diagnose actual goal-stall and shared contact trajectories, actor input
+warning and requested/executed motion before another learning change. Critic
+geometry adds useful signal but does not fix every failure. Full original goal
+remains active; source-wide retention, broad native stress and sealedFINAL are
+not established. No active training/native/external producer remains.

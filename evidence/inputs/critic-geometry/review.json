@@ -1,0 +1,78 @@
+{
+  "verified_inputs": 595,
+  "archive_only_matches_live": true,
+  "status": "NOT_ADOPTED",
+  "failed_gates": [
+    {
+      "gate": "composite-both-delay success retention",
+      "pass": false,
+      "actual": -5,
+      "required": ">=-3"
+    },
+    {
+      "gate": "composite-both-delay collision",
+      "pass": false,
+      "actual": 5,
+      "required": "<=3"
+    },
+    {
+      "gate": "dev-c-nominal primary success",
+      "pass": false,
+      "actual": 2,
+      "required": ">=4"
+    },
+    {
+      "gate": "dev-c-nominal primary contacts",
+      "pass": false,
+      "actual": 1,
+      "required": "<=-3"
+    },
+    {
+      "gate": "fresh-course-combined success retention",
+      "pass": false,
+      "actual": -5,
+      "required": ">=-3"
+    },
+    {
+      "gate": "fresh-course-combined collision",
+      "pass": false,
+      "actual": 6,
+      "required": "<=3"
+    },
+    {
+      "gate": "fresh-open-nominal absolute floor",
+      "pass": false,
+      "actual": 249,
+      "required": ">=253"
+    },
+    {
+      "gate": "open-nominal absolute floor",
+      "pass": false,
+      "actual": 244,
+      "required": ">=253"
+    }
+  ],
+  "actual_flights": 11776,
+  "budget": {
+    "control-s1": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 608.0400099754333
+    },
+    "geometry-s1": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 648.0635600090027
+    },
+    "control-s2": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 952.7373530864716
+    },
+    "geometry-s2": {
+      "transitions": 4194304,
+      "optimizer_steps": 32768,
+      "training_wall_s": 608.0935549736023
+    }
+  }
+}

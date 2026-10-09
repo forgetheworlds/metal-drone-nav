@@ -14,3 +14,6 @@ artifacts/videos/*-frames/
 webots/controllers/local_waypoint_transfer/local_waypoint_transfer
 webots/controllers/sensor_geometry_audit/sensor_geometry_audit
 *.potential-v2.cache
+
+# Unsplit local copy; public lossless parts are kept in Git.
+/evidence/inputs/critic-geometry/records.tar.gz

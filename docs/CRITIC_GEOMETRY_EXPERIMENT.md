@@ -70,5 +70,5 @@ evaluation costs are reported separately. Target-fit metrics cannot promote a
 policy. A failed recipe will be retained rather than followed by a feature sweep.
 
 The frozen source, gates, decision and actual parent-owned jobs are in
-`results/root-critic-geometry`. Default assets are unchanged. Capability results
-will be added after all four producers and 92 evaluations finish.
+`results/root-critic-geometry`. Default assets are unchanged. All four producers and 92 evaluations are complete. The treatment fails eight
+checks; see [results](CRITIC_GEOMETRY_RESULTS.md).

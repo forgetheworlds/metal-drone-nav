@@ -80,11 +80,21 @@ Earlier checks remain useful controls:
 
 The [results gallery](docs/RESULTS_GALLERY.md) contains native videos, training curves, speed and reliability plots, and their source records. The [document index](docs/README.md) separates current work from earlier studies.
 
+The latest [critic geometry comparison](docs/CRITIC_GEOMETRY_RESULTS.md) improves
+course success 241→247/256 and reflected stress 175→184, but fails eight
+acceptance checks. It is retained as an experiment, not the default policy.
+
+The large actor now also flies in [native Webots](docs/WIDE_NATIVE_TRANSFER.md):
+the composed and physical-retention models each reach 15/16 goals in the frozen
+nominal development diagnostic, with no target training. The geometry treatment
+reaches 14/16. These are actual full-stack flights through one navigation actor
+and RAPTOR, using minimized batch runs.
+
 ## How learning works
 
 The simulator advances L2F-compatible rigid-body dynamics and motor lag, renders depth, runs actual RAPTOR, and collects navigation experience. PPO, GAE, backward passes and Adam run in raw Metal. Python handles experiment orchestration and evidence review.
 
-The default actor has **184 inputs, one 64-unit hidden layer and four outputs**, about 12,000 parameters. Current larger-policy research uses a 5,120-unit hidden layer with the same input/output contract; its deployment cost still needs measurement. Its inputs include pooled current and previous depth, motion, goal context and depth-derived geometry guidance. A training critic can receive controller state that the deployed actor does not receive.
+The default actor has **184 inputs, one 64-unit hidden layer and four outputs**, about 12,000 parameters. Current larger-policy research uses a 5,120-unit hidden layer with the same input/output contract; its FP32 actor occupies about 3.9 MB and the local CPU fixture averages 0.542 ms per forward. Microcontroller deployment still needs distillation and measurement. Its inputs include pooled current and previous depth, motion, goal context and depth-derived geometry guidance. A training critic can receive controller state that the deployed actor does not receive.
 
 The useful imitation baseline was initialized from a trained PPO policy, then fitted to successful source flights with braking and turning behavior. It was not trained from random weights solely by imitation. Later work uses successful arrival, static, hallway and moving-course teachers to fit **one actor**, followed by PPO on the combined distribution. No teacher ID or route witness enters the deployed actor.
 
