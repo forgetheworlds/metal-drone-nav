@@ -889,3 +889,22 @@ warning and requested/executed motion before another learning change. Critic
 geometry adds useful signal but does not fix every failure. Full original goal
 remains active; source-wide retention, broad native stress and sealedFINAL are
 not established. No active training/native/external producer remains.
+
+## October 9 — frozen sampling rescues mean-policy stalls
+
+Root replayed the exact priorunmasked s1 open128 mean evaluation, then its
+mode22 map with the sampler disabled; all physical fields match. With unchanged
+weights/physics and learned Gaussian variance, eight seeds reach1023/1024 goals.
+All seven predeclared mean failures are rescued in all eight seeds (56/56),
+while one formerly successful task gains a contact. No learning or noisy
+deployment fallback. This supports a behavior gap between the training policy
+and its deterministic mean on these cases, not a guaranteed variance remedy.
+Full1280episodes and source/code/receipts are kept in the hash-checked archive.
+See [diagnosis](OPEN_MEAN_DIAGNOSIS.md). Any state-dependent variance fix must
+keep sample/logprob/ratio/entropy/derivatives consistent and check near-goal
+update size and broad retention before a full pilot.
+
+Git publication repair: native commit719f2e2 uploaded separately; the source
+archive is now losslessly split into checksum-bound parts. Cold replay matches
+the original595-input result exactly. Original cc72bc5 is preserved locally at
+codex/source-evidence-before-split; no remote history was forced or rewritten.

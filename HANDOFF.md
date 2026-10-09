@@ -1,4 +1,4 @@
-# Current handoff — October 8
+# Current handoff — October 9
 
 Original one-navigator goal active and incomplete. Webots is permitted as needed
 with minimized batch mode, dedicated RL port23456 and isolated projects. No VM.
@@ -56,6 +56,19 @@ foreground/persistent root ownership. Never kill other-project processes or touc
 its files/settings. Read current exit/header/hash evidence; no duplicate or
 timeout-based restarts. Native agents Luna only, no skills. Root writes/reviews
 code, preserves denominators and pushes Forge the World milestones.
+
+## Latest October 9 diagnosis
+
+Frozen priorunmasked s1 open128: mean17=121S/0C/7T; noise-off22 identical.
+Eight stochastic seeds=1023S/1C/0T of1024. All seven mean failures are rescued
+in all8seeds,56/56; a new contact occurs elsewhere. All1280episodes complete,
+no actor update or noisy deployment fallback. OPEN_MEAN_DIAGNOSIS.md records
+the causal sampler intervention and limits. Next implement a mathematically
+consistent training-only state-dependent variance hypothesis with default-off
+parity, genuine derivatives, effective-likelihood/entropy/ratio consistency and
+second-order update/retention checks. No full learner before those gates.
+All producers terminal. Remote source/native evidence now uploaded successfully
+through1fbbf30 after lossless splitting; no forcepush, all original data retained.
 
 ## Historical October 5 handoff
 

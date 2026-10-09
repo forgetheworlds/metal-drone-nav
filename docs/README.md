@@ -8,6 +8,7 @@ record individual experiments and do not replace it.
 
 | Document | Purpose |
 |---|---|
+| [OPEN_MEAN_DIAGNOSIS.md](OPEN_MEAN_DIAGNOSIS.md) | Frozen sampler intervention rescues mean-policy goal stalls; no new learning |
 | [CRITIC_GEOMETRY_RESULTS.md](CRITIC_GEOMETRY_RESULTS.md) | Complete matched critic-input experiment, navigation gains and eight failed checks |
 | [WIDE_NATIVE_TRANSFER.md](WIDE_NATIVE_TRANSFER.md) | Width-aware actor port and 48 actual frozen Webots flights |
 | [CRITIC_AUDIT_RESULTS.md](CRITIC_AUDIT_RESULTS.md) | Independent critic audit, corrected claims and portable raw-data replay |

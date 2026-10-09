@@ -1,0 +1,103 @@
+{
+  "actual_flights": 1280,
+  "verified_inputs": 73,
+  "totals": {
+    "mean17": {
+      "success": 121,
+      "collision": 0,
+      "timeout": 7
+    },
+    "mean22-off": {
+      "success": 121,
+      "collision": 0,
+      "timeout": 7
+    },
+    "stoch-700001": {
+      "success": 128,
+      "collision": 0,
+      "timeout": 0
+    },
+    "stoch-700002": {
+      "success": 128,
+      "collision": 0,
+      "timeout": 0
+    },
+    "stoch-700003": {
+      "success": 128,
+      "collision": 0,
+      "timeout": 0
+    },
+    "stoch-700004": {
+      "success": 128,
+      "collision": 0,
+      "timeout": 0
+    },
+    "stoch-700005": {
+      "success": 127,
+      "collision": 1,
+      "timeout": 0
+    },
+    "stoch-700006": {
+      "success": 128,
+      "collision": 0,
+      "timeout": 0
+    },
+    "stoch-700007": {
+      "success": 128,
+      "collision": 0,
+      "timeout": 0
+    },
+    "stoch-700008": {
+      "success": 128,
+      "collision": 0,
+      "timeout": 0
+    }
+  },
+  "failed_mean_tasks": [
+    {
+      "env": 25,
+      "successes": 8,
+      "contacts": 0,
+      "samples": 8
+    },
+    {
+      "env": 41,
+      "successes": 8,
+      "contacts": 0,
+      "samples": 8
+    },
+    {
+      "env": 63,
+      "successes": 8,
+      "contacts": 0,
+      "samples": 8
+    },
+    {
+      "env": 76,
+      "successes": 8,
+      "contacts": 0,
+      "samples": 8
+    },
+    {
+      "env": 86,
+      "successes": 8,
+      "contacts": 0,
+      "samples": 8
+    },
+    {
+      "env": 106,
+      "successes": 8,
+      "contacts": 0,
+      "samples": 8
+    },
+    {
+      "env": 107,
+      "successes": 8,
+      "contacts": 0,
+      "samples": 8
+    }
+  ],
+  "support_count": 7,
+  "scope": "Frozen priorunmasked s1 actor, exact128 open DEV tasks, nominal physics/sensors; no learning, modified parameters or target-side tuning. Mode22 uses learned Gaussian variance; noise-off is an explicit sampler-only source intervention.",
+  "no_new_learning": true
+}
