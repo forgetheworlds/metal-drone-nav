@@ -908,3 +908,13 @@ Git publication repair: native commit719f2e2 uploaded separately; the source
 archive is now losslessly split into checksum-bound parts. Cold replay matches
 the original595-input result exactly. Original cc72bc5 is preserved locally at
 codex/source-evidence-before-split; no remote history was forced or rewritten.
+
+## October 9 — consistent goal-dependent variance implementation
+
+Root implemented a training-only Gaussian variance profile, preserving mean
+architecture and inference. Learned globalstd plus fixed log(scale(goal-distance))
+is used in sampling, old/current logp, PPO ratio, entropy and derivatives. No
+mean-dependent post-sampling attenuation. Synthetic nonzero derivative/clip
+checks pass, gradient error4.17e-7 and FD.000213. Default100/resume and bounded
+actual-likelihood/KL gates are running; no full pilot or capability gain yet.
+Read [experiment](GOAL_VARIANCE_EXPERIMENT.md) before further learning.

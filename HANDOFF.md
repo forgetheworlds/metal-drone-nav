@@ -70,6 +70,23 @@ second-order update/retention checks. No full learner before those gates.
 All producers terminal. Remote source/native evidence now uploaded successfully
 through1fbbf30 after lossless splitting; no forcepush, all original data retained.
 
+## Goal-variance implementation — gates in progress
+
+Root isolated a fixed training distribution profile: sigma scale.25 inside
+.35m goal radius, smooth to1 by1.05m. Mean inference/reward/teacher/architecture
+unchanged. Sampler/old-current logp/ratio/entropy/derivatives use effective sigma.
+Synthetic nonzero CPU/Metal math passes (gradient4.17e-7, loss4.77e-7, FD.000213).
+No full pilot. Real bounded validation exec66358, parent23760: default-off100
+FULL parity against old cached baseline, enabled6vs3+3/resume/profile refusal.
+S1off100 complete and exact; inspect S2actual history. Effects exec9296 waits
+sharedlock for one real update in each arm, actual likelihood and near/far KL.
+Keep build.json/gate-freeze.json source/binaries immutable while gates run.
+Read actual PIDs/exits/logs; no observation-timeout restart. Implementation errors
+(main macro collision, missing preprocessor newline and test accessor typo) were
+fixed before learning; original failure receipts retained where available.
+Next independently review all actual gates and functional drift before a matched
+learning request. No source/native gain is claimed from this implementation.
+
 ## Historical October 5 handoff
 
 The goal is active and incomplete. Build one fast, reliable local 3-D navigator
