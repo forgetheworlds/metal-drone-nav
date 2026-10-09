@@ -87,6 +87,21 @@ fixed before learning; original failure receipts retained where available.
 Next independently review all actual gates and functional drift before a matched
 learning request. No source/native gain is claimed from this implementation.
 
+## Latest goal-variance gate verdict
+
+All validation/effects producers COMPLETE, no live GPU job or full learningpilot.
+OffFULL100 and on6vs3+3 exact bothseeds; wrongdistribution refuses. ActualLP
+error1.48e-5. Shared-state analysis: goal mean shift smaller.0378vs.0436 yet
+near effectiveKL.0403vscontrolglobal.0074 due narrower variance. Same narrow
+metric oncontrol=.0630. One TRAIN sqrt-step calibration factor.17137 yielded
+own-state nearKL.0224, not predicted.0074; calibration assumption not verified.
+Read results/root-goal-variance/decision.md and GOAL_VARIANCE_EXPERIMENT.md.
+Do NOT launch a rate sweep or assume fair update-size matching. Next root review
+the minimum effective-distribution trust/update-budget mechanism or justify a
+bounded learning contrast with explicit near-goal/retention gates. Preserve
+optimizer/resume, all old math/default behavior and critic/teacher updates.
+Sampler global/goal variance contrast is valid; its practical fix remains unproved.
+
 ## Historical October 5 handoff
 
 The goal is active and incomplete. Build one fast, reliable local 3-D navigator

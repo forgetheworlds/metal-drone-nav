@@ -918,3 +918,15 @@ mean-dependent post-sampling attenuation. Synthetic nonzero derivative/clip
 checks pass, gradient error4.17e-7 and FD.000213. Default100/resume and bounded
 actual-likelihood/KL gates are running; no full pilot or capability gain yet.
 Read [experiment](GOAL_VARIANCE_EXPERIMENT.md) before further learning.
+
+## October 9 — variance math is valid; update sensitivity still matters
+
+Both default-off FULL100 gates and enabled6vs3+3 FULL resume pass both seeds;
+wrong-distribution resume refuses without writes. Real sampled likelihood error
+<=1.48e-5. Shared512 TRAIN-state replay separates parameter movement from
+distribution sensitivity: goal mean latent delta.0378 <control.0436, but goal
+effective nearKL.0403 >controlglobal.0074. The control under the SAME narrower
+metric is.0630. Do not call this a larger mean step. One measured sqrt-rate
+calibration (.17137 from.4) produces own-state nearKL.0224, not predicted.0074;
+no rate sweep or full pilot follows. Need a justified effective-distribution
+update budget/control and optimizer/resume treatment before learning.

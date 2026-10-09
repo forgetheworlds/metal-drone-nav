@@ -28,11 +28,23 @@ and negative advantages, and clipped and unclipped ratios. Maximum gradient
 difference is 0.000000418; loss/ratio/entropy difference 0.000000477. Central
 finite differences agree within 0.000213. Both near and far gradients are nonzero.
 
-Default-off full100-rollout parity against the preserved engine, enabled6 versus
-3+3 full resume, and wrong-distribution refusal are executing. A separate bounded
-real-update probe checks actual sampled likelihoods and effective-distribution
-KL on near/far states with the original teacher loss. Those results must be read
-before a full pilot. No full training comparison has been launched.
+Default-off full100-rollout parity against the preserved engine passes on both
+seeds. Enabled6 versus3+3 FULL resume also passes both seeds; a mismatched
+distribution is refused without writes. Actual sampler likelihoods agree with
+the effective Gaussian to within0.0000148. No full learning pilot has launched.
+
+The bounded update revealed an important effect. On the SAME512 real source
+states, the goal-variance policy has a smaller mean-latent shift than control
+(.0378 versus.0436) but greater near-goal effective-distribution KL (.0403
+versus.0074). Narrower variance increases sensitivity to a given mean shift.
+A single TRAIN-derived sqrt-step calibration to actor factor.17137 reduced
+near-goal KL to.0224 on its own state subset, but did not match the predicted
+.0074. It is retained as a failed calibration assumption, not a rate sweep.
+
+The next decision must address actual functional update size before treating
+this as a fair full learning comparison. Numerical correctness is not evidence
+of reliable arrival. The fixed profile and actor-rate calibration remain
+experimental, with no deployment change or policy promotion.
 
 Lower variance can increase mean-gradient size and functional drift, reduce
 useful exploration, or preserve the teacher's weak approach behavior. Matching
